@@ -8,22 +8,23 @@ import {
 	googleAuthCallback,
 	logout
 } from '../controllers/auth/controller';
+import authenticate from '../middlewares/auth';
+import { validateBody } from '../lib/validation';
+import { completeSignupSchema } from '../validation/auth.schemas';
 
 const router = express.Router();
 
+// Public routes
 router.get('/google', googleAuth);
-// Callback: Google redirects to GOOGLE_CALLBACK_URL. Support both path orders.
 router.get('/callback/google', googleAuthCallback);
 router.get('/google/callback', googleAuthCallback);
-
 router.get('/apple', appleAuth);
-// Callback: Apple redirects to APPLE_CALLBACK_URL. Support both path orders.
 router.route('/callback/apple').get(appleAuthCallback).post(appleAuthCallback);
 router.route('/apple/callback').get(appleAuthCallback).post(appleAuthCallback);
-
-router.post('/complete-signup', completeSignUp);
-
-router.get('/me', getMe);
+router.post('/complete-signup', validateBody(completeSignupSchema), completeSignUp);
 router.post('/logout', logout);
+
+// Protected routes (require authenticated session)
+router.get('/me', authenticate, getMe);
 
 export default router;

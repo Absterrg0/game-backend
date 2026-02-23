@@ -2,25 +2,23 @@ import type { Request, Response } from 'express';
 import { LogError } from '../../lib/logger';
 import User from '../../models/User';
 import UserAuth from '../../models/UserAuth';
-import type { ICompleteSignup } from './types';
+import type { CompleteSignupInput } from '../../validation/auth.schemas';
 
 const DEFAULT_ELO = { rating: 1500, tau: 0.5, rd: 200, vol: 0.06 };
 
 /**
  * Completes first-time signup. User+UserAuth were created by passport during OAuth.
  * This updates the User with profile info and establishes a session.
+ * Request body is validated by validateBody(completeSignupSchema) middleware.
  */
 export async function completeSignUp(req: Request, res: Response) {
-	const data: ICompleteSignup = req.body;
-	if (!data?.email) return res.status(400).json({ message: 'Email is required', error: true, code: 'WARNING' });
-	if (!data?.alias) return res.status(400).json({ message: 'Alias is required', error: true, code: 'WARNING' });
-	if (!data?.name) return res.status(400).json({ message: 'Name is required', error: true, code: 'WARNING' });
+	const data = req.body as CompleteSignupInput;
 
 	const updatePayload = {
 		alias: data.alias,
 		name: data.name,
 		dateOfBirth: data.dateOfBirth ?? null,
-		gender: data.gender && data.gender !== '' ? data.gender : null,
+		gender: data.gender ?? null,
 		elo: DEFAULT_ELO
 	};
 
