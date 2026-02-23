@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema, model, models } from 'mongoose';
+import mongoose, { Document, Schema, model } from 'mongoose';
 
 export interface IClub extends Document {
 	name: string;
@@ -71,6 +71,6 @@ const clubSchema = new Schema<IClub>(
 	}
 );
 
-const Club = models.Club ?? model<IClub>('Club', clubSchema);
+const Club = mongoose.models.Club ?? mongoose.model<IClub>('Club', clubSchema);
 
 export default Club;

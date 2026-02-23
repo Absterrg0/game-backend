@@ -3,7 +3,6 @@ import { LogError } from '../../lib/logger';
 import User from '../../models/User';
 import UserAuth from '../../models/UserAuth';
 import type { ICompleteSignup } from './types';
-import { createTokenAndSession } from './session';
 
 const DEFAULT_ELO = { rating: 1500, tau: 0.5, rd: 200, vol: 0.06 };
 
@@ -14,9 +13,10 @@ export async function completeSignUp(req: Request, res: Response) {
 	if (!data?.name) return res.status(400).json({ message: 'Name is required', error: true, code: 'WARNING' });
 
 	try {
+		let user;
 		if (!data?.appleId || data.appleId.trim() === '') {
-			// Google (or email-only) path: find User by email, get hmacKey from UserAuth
-			const user = await User.findOne({ email: data.email }).exec();
+			// Google (or email-only) path: find User by email
+			user = await User.findOne({ email: data.email }).exec();
 			if (!user)
 				return res
 					.status(404)
@@ -35,18 +35,15 @@ export async function completeSignUp(req: Request, res: Response) {
 				gender: data.gender && data.gender !== '' ? data.gender : null,
 				elo: DEFAULT_ELO
 			});
-
-			const token = await createTokenAndSession(user._id, userAuth.hmacKey);
-			res.status(200).json({ message: 'Sign up completed', code: 'SIGNUP_SUCCESSFUL', error: false, token });
 		} else {
-			// Apple path: find UserAuth by appleId, then update linked User
+			// Apple path: find UserAuth by appleId
 			const userAuth = await UserAuth.findOne({ appleId: data.appleId }).exec();
 			if (!userAuth)
 				return res
 					.status(404)
 					.json({ message: 'No user found. Please login with Apple.', error: true, code: 'NO_USER_FOUND' });
 
-			const user = await User.findById(userAuth.user).exec();
+			user = await User.findById(userAuth.user).exec();
 			if (!user)
 				return res
 					.status(500)
@@ -60,10 +57,21 @@ export async function completeSignUp(req: Request, res: Response) {
 				gender: data.gender,
 				elo: DEFAULT_ELO
 			});
-
-			const token = await createTokenAndSession(userAuth.user, userAuth.hmacKey);
-			res.status(200).json({ message: 'Sign up completed', code: 'SIGNUP_SUCCESSFUL', error: false, token });
 		}
+
+		// Establish session - user is now logged in
+		const updatedUser = await User.findById(user._id).exec();
+		if (!updatedUser) {
+			return res.status(500).json({ message: 'User not found after update', error: true, code: 'SIGN_UP_FAILED' });
+		}
+
+		req.login(updatedUser, (loginErr) => {
+			if (loginErr) {
+				LogError(__dirname, 'POST', req.originalUrl, loginErr);
+				return res.status(500).json({ message: 'Login failed after signup', error: true, code: 'SIGN_UP_FAILED' });
+			}
+			res.status(200).json({ message: 'Sign up completed', code: 'SIGNUP_SUCCESSFUL', error: false });
+		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	} catch (error: any) {
 		LogError(__dirname, 'POST', req.originalUrl, error);

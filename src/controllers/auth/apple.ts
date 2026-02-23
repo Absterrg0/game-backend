@@ -2,48 +2,49 @@ import passport from 'passport';
 import type { Request, Response, NextFunction } from 'express';
 import User from '../../models/User';
 import UserAuth from '../../models/UserAuth';
-import { createTokenAndSession, isSignupComplete } from './session';
+import { isSignupComplete } from './session';
 import type { AppleProfile } from './types';
 
 export const appleAuth = passport.authenticate('apple', {
-	scope: ['profile', 'email']
+	scope: ['name', 'email']
 });
 
 export const appleAuthCallback = (req: Request, res: Response, next: NextFunction) => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	passport.authenticate('apple', async (err: any, profile: AppleProfile) => {
+	passport.authenticate('apple', async (err: any, user: Express.User | false) => {
 		if (err) {
-			if (err == 'AuthorizationError') {
-				res.send("Oops! Looks like you didn't allow the app to proceed.");
-			} else if (err == 'TokenError') {
-				res.send("Oops! Couldn't get a valid token from Apple's servers!");
-			} else {
-				res.send(err);
+			if (err === 'AuthorizationError') {
+				return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=denied`);
 			}
-			return;
-		}
-
-		if (!profile?.sub) {
+			if (err === 'TokenError') {
+				return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=token`);
+			}
 			return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
 		}
 
-		const userAuth = await UserAuth.findOne({ appleId: profile.sub }).exec();
-		if (!userAuth) {
-			return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
-		}
-
-		const user = await User.findById(userAuth.user).exec();
 		if (!user) {
 			return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
 		}
 
-		if (!isSignupComplete(user)) {
+		const userDoc = user as InstanceType<typeof User>;
+		const userAuth = await UserAuth.findOne({ user: userDoc._id }).exec();
+		if (!userAuth) {
+			return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
+		}
+
+		if (!isSignupComplete(userDoc)) {
+			const email = userDoc.email ?? '';
+			const appleId = userAuth.appleId ?? '';
 			return res.redirect(
-				`${process.env.REQUEST_ORIGIN}/auth/callback?signup=true&apple_id=${userAuth.appleId ?? ''}&email=${profile?.email ?? user.email}`
+				`${process.env.REQUEST_ORIGIN}/auth/callback?signup=true&apple_id=${encodeURIComponent(appleId)}&email=${encodeURIComponent(email)}`
 			);
 		}
 
-		const token = await createTokenAndSession(user._id, userAuth.hmacKey);
-		res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?token=${token}`);
+		req.login(user, (loginErr) => {
+			if (loginErr) {
+				return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
+			}
+			res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?success=true`);
+		});
 	})(req, res, next);
 };

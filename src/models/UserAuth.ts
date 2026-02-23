@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema, model, models } from "mongoose";
+import mongoose, { Document, Schema, model } from "mongoose";
 import crypto from "crypto";
 
 /**
@@ -30,13 +30,11 @@ const userAuthSchema = new Schema<IUserAuth>(
 		},
 		googleId: {
 			type: String,
-			default: null,
-			sparse: true
+			default: null
 		},
 		appleId: {
 			type: String,
-			default: null,
-			sparse: true
+			default: null
 		},
 		hmacKey: {
 			type: String,
@@ -53,6 +51,6 @@ const userAuthSchema = new Schema<IUserAuth>(
 userAuthSchema.index({ googleId: 1 }, { sparse: true });
 userAuthSchema.index({ appleId: 1 }, { sparse: true });
 
-const UserAuth = models.UserAuth ?? model<IUserAuth>("UserAuth", userAuthSchema);
+const UserAuth = mongoose.models.UserAuth ?? mongoose.model<IUserAuth>("UserAuth", userAuthSchema);
 
 export default UserAuth;

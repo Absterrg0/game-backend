@@ -1,4 +1,4 @@
-import mongoose, { Document, model, models } from "mongoose";
+import mongoose, { Document, model } from "mongoose";
 
 export interface IElo {
 	rating: number;
@@ -106,6 +106,6 @@ const userSchema = new mongoose.Schema<IUser>(
 
 
 
-const User = models.User || model<IUser>('User', userSchema);
+const User = mongoose.models.User || mongoose.model<IUser>('User', userSchema);
 
 export default User;
