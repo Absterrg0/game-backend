@@ -26,12 +26,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.
 					return done(new Error('No email found in Google profile'), undefined);
 				}
 
+				// Sign-in: existing user by googleId
 				let userAuth = await UserAuth.findOne({ googleId: id }).populate('user');
 				if (userAuth?.user) {
 					return done(null, userAuth.user);
 				}
 
-				// Check if user exists by email (e.g. signed up with Apple first)
+				// Sign-in: existing user by email (e.g. signed up with Apple first)
 				const existingUser = await User.findOne({ email });
 				if (existingUser) {
 					userAuth = await UserAuth.findOne({ user: existingUser._id });
@@ -48,7 +49,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.
 					return done(null, existingUser);
 				}
 
-				// New user: create User and UserAuth
+				// Sign-up: first-time user — create User and UserAuth (callback will redirect to UserInformation)
 				const newUser = new User({ email });
 				await newUser.save();
 
@@ -103,12 +104,13 @@ if (
 				const { sub, email } = decoded;
 				const appleEmail = profile?.email ?? email;
 
+				// Sign-in: existing user by appleId
 				let userAuth = await UserAuth.findOne({ appleId: sub }).populate('user');
 				if (userAuth?.user) {
 					return done(null, userAuth.user);
 				}
 
-				// Check if user exists by email (e.g. signed up with Google first)
+				// Sign-in: existing user by email (e.g. signed up with Google first)
 				const effectiveEmail = appleEmail || `apple_${sub}@placeholder.local`;
 				const existingUser = effectiveEmail && !effectiveEmail.includes('@placeholder.local')
 					? await User.findOne({ email: effectiveEmail })
@@ -128,7 +130,7 @@ if (
 					return done(null, existingUser);
 				}
 
-				// New user: create User and UserAuth (Apple may not provide email on first callback)
+				// Sign-up: first-time user — create User and UserAuth (callback will redirect to UserInformation)
 				const newUser = new User({
 					email: effectiveEmail
 				});

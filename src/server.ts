@@ -28,51 +28,44 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 
-// Session store - uses MongoDB connection string (avoids mongoose/mongodb version mismatch)
-const getSessionStore = () => {
-	const mongoUrl = process.env.MONGODB_URI;
-	if (!mongoUrl) throw new Error('MONGODB_URI is required for session store');
-	return MongoStore.create({
-		mongoUrl,
-		...(process.env.MONGODB_DB_NAME && { dbName: process.env.MONGODB_DB_NAME }),
-		collectionName: 'sessions',
-		ttl: 60 * 60 * 24 * 7, // 7 days
-		autoRemove: 'native'
-	});
-};
-
-// Session middleware - must run before passport
-app.use(
-	session({
-		secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
-		resave: false,
-		saveUninitialized: false,
-		store: getSessionStore(),
-		name: 'connect.sid',
-		cookie: {
-			httpOnly: true,
-			secure: cookieSameSite === 'none' || isProd,
-			sameSite: cookieSameSite,
-			maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-			path: '/'
-		}
-	})
-);
-
-app.use(passport.initialize());
-app.use(passport.session());
-
 app.get('/', (req, res) => {
 	res.send('Hello World');
 });
 
-// Auth routes
-app.use('/api/auth', authRoutes);
-
 async function start() {
 	try {
 		await connectToDatabase();
-		console.log('Database connected');
+
+		const mongoUrl = process.env.MONGODB_URI;
+		if (!mongoUrl) throw new Error('MONGODB_URI is required');
+		const store = MongoStore.create({
+			mongoUrl,
+			dbName: process.env.MONGODB_DB_NAME || 'game',
+			collectionName: 'sessions',
+			ttl: 60 * 60 * 24 * 7, // 7 days
+			autoRemove: 'native'
+		});
+
+		app.use(
+			session({
+				secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
+				resave: false,
+				saveUninitialized: true, // Required for OAuth state + ensures session is persisted
+				store,
+				name: 'connect.sid',
+				cookie: {
+					httpOnly: true,
+					secure: cookieSameSite === 'none' || isProd,
+					sameSite: cookieSameSite,
+					maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+					path: '/'
+				}
+			})
+		);
+
+		app.use(passport.initialize());
+		app.use(passport.session());
+		app.use('/api/auth', authRoutes);
 
 		app.listen(PORT, () => {
 			console.log(`Server is running on port ${PORT}`);

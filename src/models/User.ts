@@ -15,6 +15,8 @@ export interface IUser extends Document {
 	dateOfBirth?: Date | null;
 	gender: "male" | "female" | "other" | null;
 	userType: "admin" | "user";
+	/** User's primary club (from signup). */
+	club?: mongoose.Types.ObjectId | null;
 	/** Clubs this user administers. */
 	adminOf: mongoose.Types.ObjectId[];
 	/** Tournaments this user organizes. */
@@ -40,7 +42,7 @@ const userSchema = new mongoose.Schema<IUser>(
 			required: true,
 			validate: {
 				validator: function (value: string) {
-					return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/.test(value);
+					return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 				},
 				message: 'Invalid email format'
 			}
@@ -65,6 +67,11 @@ const userSchema = new mongoose.Schema<IUser>(
 			},
 			required: true,
 			default: "user"
+		},
+		club: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Club",
+			default: null
 		},
 		adminOf: {
 			type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Club" }],
@@ -98,7 +105,8 @@ const userSchema = new mongoose.Schema<IUser>(
 		}
 	},
 	{
-		timestamps: true // Automatically adds createdAt and updatedAt fields
+		timestamps: true,
+		collection: 'users'
 	}
 );
 

@@ -3,12 +3,17 @@ import type { Request, Response, NextFunction } from 'express';
 import User from '../../models/User';
 import UserAuth from '../../models/UserAuth';
 import { isSignupComplete } from './session';
-import type { AppleProfile } from './types';
 
 export const appleAuth = passport.authenticate('apple', {
 	scope: ['name', 'email']
 });
 
+/**
+ * Apple OAuth callback. Two paths:
+ * - Sign-in (existing user, signup complete): Create session only, redirect home.
+ * - Sign-up (first-time user): User+UserAuth already created by passport. Do NOT create session.
+ *   Redirect to /auth/callback?signup=true&apple_id=...&email=... so frontend routes to UserInformation.
+ */
 export const appleAuthCallback = (req: Request, res: Response, next: NextFunction) => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	passport.authenticate('apple', async (err: any, user: Express.User | false) => {
@@ -32,6 +37,7 @@ export const appleAuthCallback = (req: Request, res: Response, next: NextFunctio
 			return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
 		}
 
+		// Sign-up: first-time user needs to complete UserInformation form. No session yet.
 		if (!isSignupComplete(userDoc)) {
 			const email = userDoc.email ?? '';
 			const appleId = userAuth.appleId ?? '';
@@ -40,11 +46,15 @@ export const appleAuthCallback = (req: Request, res: Response, next: NextFunctio
 			);
 		}
 
+		// Sign-in: existing user. Create session and persist before redirect.
 		req.login(user, (loginErr) => {
 			if (loginErr) {
 				return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
 			}
-			res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?success=true`);
+			req.session.save((saveErr) => {
+				if (saveErr) return res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?error=true`);
+				res.redirect(`${process.env.REQUEST_ORIGIN}/auth/callback?success=true`);
+			});
 		});
 	})(req, res, next);
 };

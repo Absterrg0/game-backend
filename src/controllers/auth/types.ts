@@ -5,6 +5,7 @@ export interface ICompleteSignup {
 	name?: string;
 	dateOfBirth?: Date | null;
 	gender?: string | null;
+	club?: string | null;
 	appleId?: string;
 }
 

@@ -44,7 +44,7 @@ const userAuthSchema = new Schema<IUserAuth>(
 			}
 		}
 	},
-	{ timestamps: true }
+	{ timestamps: true, collection: 'userauths' }
 );
 
 // Lookup by provider id when authenticating
