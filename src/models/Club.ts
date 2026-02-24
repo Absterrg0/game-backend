@@ -1,6 +1,7 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
+import type { HydratedDocument } from 'mongoose';
 
-export interface IClub extends Document {
+export interface IClub {
 	name: string;
 	address: string;
 	coordinates: {
@@ -12,7 +13,6 @@ export interface IClub extends Document {
 	createdAt: Date;
 	updatedAt: Date;
 }
-
 const clubSchema = new Schema<IClub>(
 	{
 		name: {
@@ -25,6 +25,7 @@ const clubSchema = new Schema<IClub>(
 			required: true
 		},
 		coordinates: {
+			required: true,
 			type: {
 				type: String,
 				enum: ['Point'],
@@ -73,6 +74,6 @@ const clubSchema = new Schema<IClub>(
 
 clubSchema.index({ coordinates: '2dsphere' });
 
-const Club = mongoose.models.Club ?? mongoose.model<IClub>('Club', clubSchema);
+const Club = mongoose.model<IClub>('Club', clubSchema);
 
 export default Club;

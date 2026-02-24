@@ -56,9 +56,9 @@ if (
 					// 1. Existing user by googleId
 					const byGoogleId = await UserAuth.findOne({ googleId }).populate('user').session(session);
 					if (byGoogleId?.user) {
-						await session.commitTransaction();
+						await session.abortTransaction();
 						logger.info('Google sign-in by googleId', { googleId });
-						return done(null, byGoogleId.user as Express.User);
+						return done(null, byGoogleId.user as unknown as Express.User);
 					}
 
 					// 2. Existing user by email (e.g. previously signed up with Apple)
@@ -118,7 +118,8 @@ if (
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} as any,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			async (_accessToken: string, _refreshToken: string, idToken: string, _profile: any, done: (err: Error | null, user?: any) => void) => {
+			(async (...args: unknown[]) => {
+				const [_accessToken, _refreshToken, idToken, _profile, done] = args as [string, string, string, any, (err: Error | null, user?: any) => void];
 				const session = await mongoose.startSession();
 				session.startTransaction();
 
@@ -134,9 +135,9 @@ if (
 					// 1. Existing user by appleId
 					const byAppleId = await UserAuth.findOne({ appleId }).populate('user').session(session);
 					if (byAppleId?.user) {
-						await session.commitTransaction();
+						await session.abortTransaction();
 						logger.info('Apple sign-in by appleId', { appleId });
-						return done(null, byAppleId.user as Express.User);
+						return done(null, byAppleId.user as unknown as Express.User);
 					}
 
 					// 2. Apple only provides email on the FIRST login
@@ -171,7 +172,7 @@ if (
 				} finally {
 					await session.endSession();
 				}
-			}
+			})
 		)
 	);
 } else {

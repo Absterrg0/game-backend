@@ -17,7 +17,7 @@ export interface ITournament extends Document {
 	maxMember: number;
 	playTime: string;
 	pauseTime: string;
-	courts: Schema.Types.ObjectId[];
+	courts: mongoose.Types.ObjectId[];
 	foodInfo: string;
 	descriptionInfo: string;
 	numberOfRounds: number;
@@ -25,8 +25,8 @@ export interface ITournament extends Document {
 	status: 'active' | 'draft' | 'inactive';
 	createdAt?: Date;
 	updatedAt?: Date;
-	participants: Schema.Types.ObjectId[]; // contains list of participants
-	dropouts: Schema.Types.ObjectId[]; // contains list of dropouts a dropout can only exist after the tournament starts (i.e for injury etc)
+	participants: mongoose.Types.ObjectId[]; // contains list of participants
+	dropouts: mongoose.Types.ObjectId[]; // contains list of dropouts a dropout can only exist after the tournament starts (i.e for injury etc)
 }
 
 // Define the Tournament schema
@@ -104,8 +104,13 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 			type: String
 		},
 		courts: {
-			type: [Schema.Types.ObjectId], // Array of ObjectIds
-			ref: 'Court'
+			type: [
+				{
+					type: Schema.Types.ObjectId,
+					ref: 'Court'
+				}
+			],
+			default: []
 		},
 		foodInfo: {
 			type: String,
@@ -163,20 +168,19 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 	}
 );
 
-// Create schedule document if it doesn't already exist
-tournamentSchema.pre('save', async function () {
-	if (!this.schedule) {
-		// console.log('Trying to save before insert')
-		try {
-			const _schedule = await mongoose.model('Schedule').create({ tournament: this._id, currentRound: 0 });
-			// console.log('Created schedule', _schedule._id)
-			this.schedule = _schedule._id;
-		} catch (e) {
-			throw e;
-		}
+tournamentSchema.pre('validate', function () {
+	if (this.maxMember != null && this.minMember != null && this.maxMember < this.minMember) {
+		this.invalidate('maxMember', 'maxMember must be greater than or equal to minMember');
 	}
 });
 
-const Tournament = mongoose.models.Tournament ?? mongoose.model<ITournament>('Tournament', tournamentSchema);
+tournamentSchema.pre('save', async function () {
+	if (!this.schedule) {
+		const _schedule = await mongoose.model('Schedule').create({ tournament: this._id, currentRound: 0 });
+		this.schedule = _schedule._id;
+	}
+});
+
+const Tournament = mongoose.model<ITournament>('Tournament', tournamentSchema);
 
 export default Tournament;

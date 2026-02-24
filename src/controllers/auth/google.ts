@@ -4,7 +4,7 @@ import User from '../../models/User';
 import UserAuth from '../../models/UserAuth';
 import { isSignupComplete } from './utils';
 import { createPendingSignupToken } from './pendingToken';
-import { getErrorRedirect, getSuccessRedirect, getSignupRedirect } from './utils';
+import { getErrorRedirect, getSignupRedirect, loginAndRedirect } from './utils';
 import { logger } from '../../lib/logger';
 
 export const googleAuth = (req: Request, res: Response, next: NextFunction) => {
@@ -33,32 +33,14 @@ export const googleAuthCallback = (req: Request, res: Response, next: NextFuncti
 				const googleId = userAuth.googleId ?? '';
 				const pendingToken = createPendingSignupToken({
 					pendingEmail: email,
-					googleId: googleId || undefined,
+					...(googleId && { googleId }),
 				});
 				return res.redirect(getSignupRedirect(pendingToken));
 			}
 
-			req.session.regenerate((regenErr) => {
-				if (regenErr) {
-					logger.error("Error in googleAuthCallback session regenerate", { regenErr });
-					return res.redirect(getErrorRedirect());
-				}
-				req.login(user, (loginErr) => {
-					if (loginErr) {
-						logger.error("Error in googleAuthCallback login", { loginErr });
-						return res.redirect(getErrorRedirect());
-					}
-					req.session.save((saveErr) => {
-						if (saveErr) {
-							logger.error("Error in googleAuthCallback session save", { saveErr });
-							return res.redirect(getErrorRedirect());
-						}
-						res.redirect(getSuccessRedirect());
-					});
-				});
-			});
-		} catch {
-			logger.error("Error in googleAuthCallback");
+			loginAndRedirect(req, res, user);
+		} catch (err) {
+			logger.error('Error in googleAuthCallback', { err });
 			return res.redirect(getErrorRedirect('unknown'));
 		}
 	})(req, res, next);

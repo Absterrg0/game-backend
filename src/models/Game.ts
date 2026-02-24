@@ -29,8 +29,24 @@ const gameSchema = new mongoose.Schema<IGame>(
 		court: { type: mongoose.Schema.Types.ObjectId },
 		tournament: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament' },
 		score: {
-			playerOneScores: { type: [mongoose.Schema.Types.Mixed], default: [] }, // Allows numbers or "wo"
-			playerTwoScores: { type: [mongoose.Schema.Types.Mixed], default: [] } // Allows numbers or "wo"
+			playerOneScores: {
+				type: [mongoose.Schema.Types.Mixed],
+				default: [],
+				validate: {
+					validator: (v: unknown[]) =>
+						Array.isArray(v) && v.every((el) => el === 'wo' || (typeof el === 'number' && Number.isFinite(el))),
+					message: 'Each score must be a finite number or "wo"'
+				}
+			},
+			playerTwoScores: {
+				type: [mongoose.Schema.Types.Mixed],
+				default: [],
+				validate: {
+					validator: (v: unknown[]) =>
+						Array.isArray(v) && v.every((el) => el === 'wo' || (typeof el === 'number' && Number.isFinite(el))),
+					message: 'Each score must be a finite number or "wo"'
+				}
+			}
 		},
 		startTime: { type: Date },
 		endTime: { type: Date },
@@ -64,6 +80,6 @@ gameSchema.pre('validate', function () {
 	}
 });
 
-const Game = mongoose.models.Game ?? mongoose.model<IGame>('Game', gameSchema);
+const Game = mongoose.model<IGame>('Game', gameSchema);
 
 export default Game;

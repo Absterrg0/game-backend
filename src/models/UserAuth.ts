@@ -38,7 +38,6 @@ const userAuthSchema = new Schema<IUserAuth>(
 		},
 		hmacKey: {
 			type: String,
-			required: true,
 			default: function () {
 				return crypto.randomBytes(32).toString("hex");
 			}
@@ -51,6 +50,6 @@ const userAuthSchema = new Schema<IUserAuth>(
 userAuthSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userAuthSchema.index({ appleId: 1 }, { unique: true, sparse: true });
 
-const UserAuth = mongoose.models.UserAuth ?? mongoose.model<IUserAuth>("UserAuth", userAuthSchema);
+const UserAuth = mongoose.model<IUserAuth>("UserAuth", userAuthSchema);
 
 export default UserAuth;

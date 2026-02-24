@@ -17,13 +17,13 @@ if (!_sessionSecret) throw new Error('SESSION_SECRET environment variable is req
 const SESSION_SECRET: string = _sessionSecret;
 
 const REQUEST_ORIGIN = process.env.REQUEST_ORIGIN;
-const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || REQUEST_ORIGIN;
+const CORS_ORIGIN = process.env.CORS_ORIGIN ?? REQUEST_ORIGIN;
 
 if (!REQUEST_ORIGIN?.trim()) {
 	throw new Error('REQUEST_ORIGIN environment variable is required (OAuth redirect target)');
 }
 
-if (isProd && !ALLOWED_ORIGIN?.trim()) {
+if (isProd && !CORS_ORIGIN?.trim()) {
 	throw new Error('CORS_ORIGIN or REQUEST_ORIGIN is required in production (credentials: true requires explicit origin)');
 }
 
@@ -31,7 +31,7 @@ const app = express();
 
 app.use(
 	cors({
-		origin: ALLOWED_ORIGIN || (isProd ? false : true),
+		origin: CORS_ORIGIN,
 		credentials: true
 	})
 );
@@ -48,9 +48,10 @@ async function start() {
 		await connectToDatabase();
 		logger.info('Database connected');
 
+		const mongoUri = process.env.MONGODB_URI;
+		if (!mongoUri) throw new Error('MONGODB_URI environment variable is required');
 		const store = MongoStore.create({
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			clientPromise: Promise.resolve(mongoose.connection.getClient()) as any,
+			mongoUrl: mongoUri,
 			dbName: process.env.MONGODB_DB_NAME || 'game',
 			collectionName: 'sessions',
 			ttl: 60 * 60 * 24 * 7, // 7 days
@@ -59,9 +60,9 @@ async function start() {
 
 		app.use(
 			session({
-				secret: SESSION_SECRET as string,
+				secret: SESSION_SECRET,
 				resave: false,
-				saveUninitialized: true, // Required for OAuth state + ensures session is persisted
+				saveUninitialized: true, // Required for OAuth state; session store has TTL/cleanup configured
 				store,
 				name: 'connect.sid',
 				cookie: {

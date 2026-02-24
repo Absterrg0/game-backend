@@ -1,8 +1,10 @@
-import 'dotenv/config';
+import path from 'path';
+import fs from 'fs';
 import winston from 'winston';
+import { isProd } from './config';
 
-
-const isProd = process.env.NODE_ENV === 'production';
+const logDir = process.env.LOG_DIR ?? path.resolve(process.cwd(), 'logs');
+fs.mkdirSync(logDir, { recursive: true });
 
 export const logger = winston.createLogger({
   level: 'info',
@@ -11,15 +13,13 @@ export const logger = winston.createLogger({
     winston.format.json()
   ),
   transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
+    new winston.transports.File({ filename: path.join(logDir, 'error.log'), level: 'error' }),
+    new winston.transports.File({ filename: path.join(logDir, 'combined.log') }),
   ],
 });
 
-const log = logger;
-
 if (!isProd) {
-  log.add(
+  logger.add(
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
@@ -37,7 +37,7 @@ export function LogError(
   endpoint: string,
   error: unknown
 ) {
-  log.error('Request error', {
+  logger.error('Request error', {
     ...pathMeta(path),
     method,
     endpoint,
@@ -47,13 +47,13 @@ export function LogError(
 }
 
 export function LogSuccess(path: string, message: string) {
-  log.info(message, pathMeta(path));
+  logger.info(message, { ...pathMeta(path), success: true });
 }
 
 export function LogInfo(path: string, message: string) {
-  log.info(message, pathMeta(path));
+  logger.info(message, pathMeta(path));
 }
 
 export function LogWarning(path: string, message: string) {
-  log.warn(message, pathMeta(path));
+  logger.warn(message, pathMeta(path));
 }

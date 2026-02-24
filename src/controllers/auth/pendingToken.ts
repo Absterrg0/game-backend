@@ -6,6 +6,8 @@ function getJwtSecret(): string {
 	return secret;
 }
 
+const PENDING_SIGNUP_AUD = 'pending-signup';
+
 export interface PendingSignupPayload {
 	pendingEmail: string;
 	pendingSignup: true;
@@ -18,14 +20,27 @@ export function createPendingSignupToken(payload: Omit<PendingSignupPayload, 'pe
 	return jwt.sign(
 		{ ...payload, pendingSignup: true as const },
 		getJwtSecret(),
-		{ expiresIn: '15m' }
+		{ expiresIn: '15m', audience: PENDING_SIGNUP_AUD, issuer: 'auth-service-pending-signup' }
 	);
+}
+
+function isPendingSignupPayload(decoded: unknown): decoded is PendingSignupPayload {
+	if (decoded === null || typeof decoded !== 'object' || Array.isArray(decoded)) return false;
+	const ps = Object.getOwnPropertyDescriptor(decoded, 'pendingSignup')?.value;
+	const pe = Object.getOwnPropertyDescriptor(decoded, 'pendingEmail')?.value;
+	if (ps !== true || typeof pe !== 'string') return false;
+	const ai = Object.getOwnPropertyDescriptor(decoded, 'appleId')?.value;
+	const gi = Object.getOwnPropertyDescriptor(decoded, 'googleId')?.value;
+	return (ai === undefined || typeof ai === 'string') && (gi === undefined || typeof gi === 'string');
 }
 
 /** Verifies and decodes the pending signup token. */
 export function verifyPendingSignupToken(token: string): PendingSignupPayload {
-	const decoded = jwt.verify(token, getJwtSecret()) as unknown as PendingSignupPayload;
-	if (!decoded.pendingSignup || !decoded.pendingEmail) {
+	const decoded = jwt.verify(token, getJwtSecret(), {
+		audience: PENDING_SIGNUP_AUD,
+		issuer: 'auth-service-pending-signup'
+	});
+	if (!isPendingSignupPayload(decoded)) {
 		throw new Error('Invalid pending signup token');
 	}
 	return decoded;

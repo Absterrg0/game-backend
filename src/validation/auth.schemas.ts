@@ -2,11 +2,15 @@ import { z } from 'zod';
 
 /** Schema for POST /api/auth/complete-signup. Requires pendingToken from OAuth redirect. */
 export const completeSignupSchema = z.object({
-	pendingToken: z.string().min(1, 'Pending token is required'),
-	alias: z.string().min(1, 'Alias is required').trim(),
-	name: z.string().min(1, 'Name is required').trim(),
+	pendingToken: z.string().min(1, { error: 'Pending token is required' }),
+	alias: z.string().min(1, { error: 'Alias is required' }).trim(),
+	name: z.string().min(1, { error: 'Name is required' }).trim(),
 	dateOfBirth: z
-		.union([z.string(), z.date(), z.null()])
+		.union([
+			z.string().refine((s) => !Number.isNaN(new Date(s).getTime()) && s.length >= 10, { error: 'Invalid date format' }),
+			z.date(),
+			z.null()
+		])
 		.optional()
 		.nullable()
 		.transform((val) => {
