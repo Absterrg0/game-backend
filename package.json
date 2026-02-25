@@ -4,7 +4,7 @@
   "description": "Game backend API with Passport OAuth, Mongoose models, and Express sessions",
   "main": "dist/server.js",
   "scripts": {
-    "prestart": "npm run build",
+    "prestart": "yarn build",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
