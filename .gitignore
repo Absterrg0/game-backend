@@ -9,3 +9,4 @@ tsconfig.tsbuildinfo
 *.log
 logs/
 .yarn
+coverage/
