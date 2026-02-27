@@ -15,22 +15,11 @@ const _sessionSecret = process.env.SESSION_SECRET;
 if (!_sessionSecret) throw new Error('SESSION_SECRET environment variable is required');
 const SESSION_SECRET: string = _sessionSecret;
 
-const REQUEST_ORIGIN = process.env.REQUEST_ORIGIN;
-const CORS_ORIGIN = process.env.CORS_ORIGIN ?? REQUEST_ORIGIN;
-
-if (!REQUEST_ORIGIN?.trim()) {
-	throw new Error('REQUEST_ORIGIN environment variable is required (OAuth redirect target)');
-}
-
-if (isProd && !CORS_ORIGIN?.trim()) {
-	throw new Error('CORS_ORIGIN or REQUEST_ORIGIN is required in production (credentials: true requires explicit origin)');
-}
-
 const app = express();
 
 app.use(
 	cors({
-		origin: CORS_ORIGIN,
+		origin: true,
 		credentials: true
 	})
 );

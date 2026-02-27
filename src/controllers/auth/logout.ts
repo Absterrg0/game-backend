@@ -6,7 +6,7 @@ import { logger } from '../../lib/logger';
 export function logout(req: Request, res: Response): void {
 	const token = extractAuthToken(req);
 	if (token) {
-		Session.deleteOne({ token }).exec().catch((err) => {
+		Session.deleteOne({ token }).exec().catch((err: unknown) => {
 			logger.error('Error deleting session on logout', { err });
 		});
 	}
