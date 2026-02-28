@@ -7,6 +7,8 @@ export interface IElo {
 	vol: number;
 }
 
+import type { Role } from '../constants/roles';
+
 /** Identity & access: clubs this user admins, tournaments they organize. */
 export interface IUser {
 	email: string;
@@ -14,7 +16,8 @@ export interface IUser {
 	alias?: string | null;
 	dateOfBirth?: Date | null;
 	gender: "male" | "female" | "other" | null;
-	userType: "admin" | "user";
+	/** RBAC role: Player, Organiser, Club Admin, Super Admin */
+	role: Role;
 	status: "active" | "inactive" | "banned";
 	/** Clubs this user administers. */
 	adminOf: mongoose.Types.ObjectId[];
@@ -69,14 +72,14 @@ const userSchema = new mongoose.Schema<IUser>(
 			default: "active",
 			required: true,
 		},
-		userType: {
+		role: {
 			type: String,
 			enum: {
-				values: ["user", "admin"],
+				values: ["player", "organiser", "club_admin", "super_admin"],
 				message: "{VALUE} is not supported"
 			},
 			required: true,
-			default: "user"
+			default: "player"
 		},
 		adminOf: {
 			type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Club" }],

@@ -23,7 +23,7 @@ export async function getMe(req: Request, res: Response) {
 			alias: user.alias,
 			dateOfBirth: user.dateOfBirth,
 			gender: user.gender,
-			userType: user.userType,
+			role: user.role,
 			adminOf: user.adminOf,
 			organizerOf: user.organizerOf
 		}

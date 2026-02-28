@@ -198,7 +198,7 @@ passport.serializeUser((user: Express.User, done) => {
 passport.deserializeUser(async (id: string, done) => {
 	try {
 		const user = await User.findById(id)
-			.select('_id email name alias userType')
+			.select('_id email name alias role adminOf organizerOf')
 			.lean();
 		if (!user) {
 			// User deleted after session was created

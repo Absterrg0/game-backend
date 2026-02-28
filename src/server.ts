@@ -10,6 +10,7 @@ import './lib/passport';
 import passport from 'passport';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
+import adminRoutes from './routes/admin.routes';
 
 const PORT = process.env.PORT || 4000;
 const _sessionSecret = process.env.SESSION_SECRET;
@@ -59,6 +60,7 @@ async function start() {
 		app.use(passport.session());
 		app.use('/api/auth', authRoutes);
 		app.use('/api/user', userRoutes);
+		app.use('/api/admin', adminRoutes);
 
 		app.listen(PORT, () => {
 			logger.info(`Server is running on port ${PORT}`);
