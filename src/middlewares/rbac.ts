@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { ROLES, type Role, hasRoleOrAbove, hasAnyRole } from '../constants/roles';
 
 /**
+ * RBAC middleware factory.
  * Require user to have at least one of the given roles (hierarchy-aware).
  * Must be used after authenticate middleware.
  */
@@ -39,7 +40,7 @@ export function requireExactRoles(...allowedRoles: Role[]) {
 			return;
 		}
 
-		const userRole = (user as { role?: string }).role;
+		const userRole = user.role;
 		if (!hasAnyRole(userRole, allowedRoles)) {
 			res.status(403).json({
 				message: 'Insufficient permissions',
