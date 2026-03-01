@@ -23,9 +23,15 @@ export interface IUser {
 	adminOf: mongoose.Types.ObjectId[];
 	/** Tournaments this user organizes. */
 	organizerOf: mongoose.Types.ObjectId[];
+/** Clubs this user has favorited. */
+	favoriteClubs: mongoose.Types.ObjectId[];
+	/** User's designated home club (must be in favoriteClubs). */
+	homeClub: mongoose.Types.ObjectId | null;
 	elo: IElo;
 	createdAt: Date;
 	updatedAt: Date;
+	/** Soft delete: when set, user is considered deleted and excluded from queries. */
+	deletedAt?: Date | null;
 }
 
 export type UserDocument = HydratedDocument<IUser>;
@@ -89,6 +95,15 @@ const userSchema = new mongoose.Schema<IUser>(
 			type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tournament" }],
 			default: []
 		},
+		favoriteClubs: {
+			type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Club" }],
+			default: []
+		},
+		homeClub: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Club",
+			default: null
+		},
 		elo: {
 			_id: false,
 			rating: {
@@ -111,6 +126,10 @@ const userSchema = new mongoose.Schema<IUser>(
 				default: 0.06,
 				required: true
 			}
+		},
+		deletedAt: {
+			type: Date,
+			default: null
 		}
 	},
 	{
@@ -118,6 +137,14 @@ const userSchema = new mongoose.Schema<IUser>(
 		collection: 'users'
 	}
 );
+
+/** Excludes soft-deleted users from find queries. Use query.setOptions({ includeDeleted: true }) to bypass. */
+userSchema.pre(/^find/, function (this: mongoose.Query<unknown, HydratedDocument<IUser>>, next) {
+	const opts = this.getOptions() as { includeDeleted?: boolean };
+	if (!opts?.includeDeleted) {
+		this.where({ $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] });
+	}
+});
 
 const User = mongoose.model<IUser>('User', userSchema);
 

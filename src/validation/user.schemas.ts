@@ -27,3 +27,13 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/** Schema for POST /api/user/favorite-clubs - add club to favorites. */
+export const addFavoriteClubSchema = z.object({
+	clubId: z.string().min(1, 'Club ID is required'),
+});
+
+/** Schema for PATCH /api/user/home-club - set home club. */
+export const setHomeClubSchema = z.object({
+	clubId: z.string().min(1, 'Club ID is required'),
+});

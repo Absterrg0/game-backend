@@ -32,8 +32,12 @@ export async function deleteAccount(req: Request, res: Response) {
 						{ session }
 					);
 
-					// 4. Delete the user
-					const result = await User.findByIdAndDelete(userId).session(session);
+					// 4. Soft-delete the user (set deletedAt)
+					const result = await User.findByIdAndUpdate(
+						userId,
+						{ deletedAt: new Date() },
+						{ new: true }
+					).session(session);
 					if (!result) {
 						throw new Error('User not found');
 					}

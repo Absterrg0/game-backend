@@ -4,9 +4,9 @@ FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bullseye as builder
 WORKDIR /usr/src/app
 
 # Install app dependencies
-COPY package.json yarn.lock ./
-RUN corepack enable && corepack prepare yarn@1.22.22 --activate
-RUN yarn install --frozen-lockfile 
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN corepack enable && corepack prepare yarn@4.12.0 --activate
+RUN yarn install --immutable 
 
 COPY . .
 
@@ -18,9 +18,9 @@ ENV NODE_ENV=production
 
 # Create app directory and install deps as root (corepack needs root)
 WORKDIR /usr/src/app
-COPY package.json yarn.lock ./
-RUN corepack enable && corepack prepare yarn@1.22.22 --activate && \
-    yarn install --production --frozen-lockfile
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN corepack enable && corepack prepare yarn@4.12.0 --activate && \
+    yarn install --immutable
 
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/.env ./.env

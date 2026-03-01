@@ -1,4 +1,5 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, type HydratedDocument } from 'mongoose';
+
 export interface IClub {
 	name: string;
 	address: string;
@@ -6,11 +7,15 @@ export interface IClub {
 		type: 'Point';
 		coordinates: [number, number]; // [longitude, latitude]
 	};
-	website: string | null;
+	website?: string | null;
+	bookingSystemUrl?: string | null;
 	status: 'active' | 'archive';
 	createdAt: Date;
 	updatedAt: Date;
 }
+
+export type ClubDocument = HydratedDocument<IClub>;
+
 const clubSchema = new Schema<IClub>(
 	{
 		name: {
@@ -23,26 +28,25 @@ const clubSchema = new Schema<IClub>(
 			required: true
 		},
 		coordinates: {
-			required: true,
 			type: {
 				type: String,
 				enum: ['Point'],
+				required: true,
 				default: 'Point'
 			},
 			coordinates: {
-				type: [Number], // [longitude, latitude]
+				type: [Number],
 				required: true,
+				default: [0, 0],
 				validate: {
-					validator: (value: number[]) => {
-						if (value.length !== 2) return false;
-						const lon = value[0];
-						const lat = value[1];
-						if (lon === undefined || lat === undefined) return false;
+					validator: function (value: number[]) {
+						if (!Array.isArray(value) || value.length !== 2) return false;
+						const [lon, lat] = value;
 						return (
-							lon >= -180 &&
-							lon <= 180 &&
-							lat >= -90 &&
-							lat <= 90
+							typeof lon === 'number' &&
+							typeof lat === 'number' &&
+							lon >= -180 && lon <= 180 &&
+							lat >= -90 && lat <= 90
 						);
 					},
 					message:
@@ -52,7 +56,10 @@ const clubSchema = new Schema<IClub>(
 		},
 		website: {
 			type: String,
-			required: false,
+			default: null
+		},
+		bookingSystemUrl: {
+			type: String,
 			default: null
 		},
 		status: {
