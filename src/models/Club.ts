@@ -1,5 +1,8 @@
 import mongoose, { Schema, type HydratedDocument } from 'mongoose';
 
+export type ClubPlan = 'free' | 'premium';
+export type ClubSubscriptionStatus = 'renewal_needed' | 'subscribed' ;
+
 export interface IClub {
 	name: string;
 	address: string;
@@ -14,6 +17,12 @@ export interface IClub {
 	organiserIds: mongoose.Types.ObjectId[];
 	/** The default admin for this club (first in admin list). */
 	defaultAdminId: mongoose.Types.ObjectId | null;
+	/** Subscription plan: free or premium. */
+	plan: ClubPlan;
+	/** When the subscription expires. Null for free plans with no expiry. */
+	expiresAt: Date | null;
+	/** Subscription status: renewal_needed, subscribed, or atc (awaiting confirmation). */
+	subscriptionStatus: ClubSubscriptionStatus;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -83,6 +92,23 @@ const clubSchema = new Schema<IClub>(
 			type: Schema.Types.ObjectId,
 			ref: 'User',
 			default: null
+		},
+		plan: {
+			type: String,
+			enum: { values: ['free', 'premium'], message: '{VALUE} is not supported' },
+			default: 'free'
+		},
+		expiresAt: {
+			type: Date,
+			default: null
+		},
+		subscriptionStatus: {
+			type: String,
+			enum: {
+				values: ['renewal_needed', 'subscribed'],
+				message: '{VALUE} is not supported'
+			},
+			default: 'subscribed'
 		}
 	},
 	{

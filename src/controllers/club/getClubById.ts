@@ -45,7 +45,10 @@ export async function getClubById(req: Request, res: Response) {
 			name: club.name,
 			address: club.address,
 			website: club.website ?? null,
-			bookingSystemUrl: club.bookingSystemUrl ?? null
+			bookingSystemUrl: club.bookingSystemUrl ?? null,
+			plan: club.plan ?? 'free',
+			expiresAt: club.expiresAt ?? null,
+			subscriptionStatus: club.subscriptionStatus ?? 'subscribed'
 		},
 		courts: courts.map((c) => ({
 			id: c._id,

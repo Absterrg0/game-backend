@@ -7,10 +7,17 @@ import {
 	addClubStaff,
 	updateClub
 } from '../controllers/club/controller';
+import {
+	getClubSponsors,
+	createSponsor,
+	updateSponsor,
+	deleteSponsor
+} from '../controllers/sponsor/controller';
 import authenticate from '../middlewares/auth';
 import { requireClubAdminOrAbove } from '../middlewares/rbac';
 import { validateBody } from '../lib/validation';
 import { createClubSchema, updateClubSchema, addClubStaffSchema } from '../validation/club.schemas';
+import { createSponsorSchema, updateSponsorSchema } from '../validation/sponsor.schemas';
 
 const router = express.Router();
 
@@ -47,5 +54,21 @@ router.patch(
 	validateBody(updateClubSchema),
 	updateClub
 );
+
+// Sponsors - user must be admin of club; premium required for create/activate
+router.get('/:clubId/sponsors', authenticate, getClubSponsors);
+router.post(
+	'/:clubId/sponsors',
+	authenticate,
+	validateBody(createSponsorSchema),
+	createSponsor
+);
+router.patch(
+	'/:clubId/sponsors/:sponsorId',
+	authenticate,
+	validateBody(updateSponsorSchema),
+	updateSponsor
+);
+router.delete('/:clubId/sponsors/:sponsorId', authenticate, deleteSponsor);
 
 export default router;

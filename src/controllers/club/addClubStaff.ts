@@ -40,9 +40,16 @@ export async function addClubStaff(req: Request, res: Response) {
 		return;
 	}
 
-	const club = await Club.findById(clubId).exec();
+	const club = await Club.findById(clubId).select('plan').exec();
 	if (!club) {
 		res.status(404).json({ message: 'Club not found' });
+		return;
+	}
+
+	if (club.plan === 'free') {
+		res.status(403).json({
+			message: 'Cannot add admins or organisers on a free plan. Upgrade to premium.'
+		});
 		return;
 	}
 

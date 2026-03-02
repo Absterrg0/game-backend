@@ -37,7 +37,10 @@ export async function getClubStaff(req: Request, res: Response) {
 		return;
 	}
 
-	const club = await Club.findById(clubId).select('defaultAdminId organiserIds').lean().exec();
+	const club = await Club.findById(clubId)
+		.select('defaultAdminId organiserIds plan expiresAt subscriptionStatus')
+		.lean()
+		.exec();
 	if (!club) {
 		res.status(404).json({ message: 'Club not found' });
 		return;
@@ -102,5 +105,12 @@ export async function getClubStaff(req: Request, res: Response) {
 		});
 	}
 
-	res.json({ staff });
+	res.json({
+		staff,
+		subscription: {
+			plan: club.plan ?? 'free',
+			expiresAt: club.expiresAt ?? null,
+			subscriptionStatus: club.subscriptionStatus ?? 'subscribed'
+		}
+	});
 }

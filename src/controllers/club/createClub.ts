@@ -52,7 +52,10 @@ export async function createClub(req: Request, res: Response) {
 		website: website?.trim() || null,
 		bookingSystemUrl: bookingSystemUrl?.trim() || null,
 		coordinates: { type: 'Point', coordinates: [0, 0] },
-		defaultAdminId: sessionUser._id
+		defaultAdminId: sessionUser._id,
+		plan: 'free',
+		expiresAt: null,
+		subscriptionStatus: 'subscribed'
 	});
 
 	const courtDocs = courts
