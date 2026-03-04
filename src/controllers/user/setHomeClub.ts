@@ -16,21 +16,22 @@ export async function setHomeClub(req: Request, res: Response) {
 		return;
 	}
 
-	const user = await User.findById(sessionUser._id);
-	if (!user) {
-		res.status(404).json({ message: 'User not found' });
-		return;
-	}
-
 	const clubObjId = new mongoose.Types.ObjectId(clubId);
-	const isInFavorites = user.favoriteClubs.some((id) => id.equals(clubObjId));
-	if (!isInFavorites) {
+	const updated = await User.findOneAndUpdate(
+		{ _id: sessionUser._id, favoriteClubs: clubObjId },
+		{ $set: { homeClub: clubObjId } },
+		{ new: true }
+	);
+
+	if (!updated) {
+		const userExists = await User.findById(sessionUser._id);
+		if (!userExists) {
+			res.status(404).json({ message: 'User not found' });
+			return;
+		}
 		res.status(400).json({ message: 'Club must be in favorites to set as home club' });
 		return;
 	}
-
-	user.homeClub = clubObjId;
-	await user.save();
 
 	res.json({ message: 'Home club updated' });
 }

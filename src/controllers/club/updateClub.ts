@@ -67,39 +67,68 @@ export async function updateClub(req: Request, res: Response) {
 		}
 	}
 
-	await club.save();
+	const session = await mongoose.startSession();
+	session.startTransaction();
+	try {
+		await club.save({ session });
 
-	if (Array.isArray(body.courts)) {
-		const existingCourtIds = body.courts
-			.map((c) => c.id)
-			.filter((id): id is string => !!id && mongoose.Types.ObjectId.isValid(id));
+		if (Array.isArray(body.courts)) {
+			const suppliedCourtIds = body.courts
+				.map((c) => c.id)
+				.filter((id): id is string => !!id && mongoose.Types.ObjectId.isValid(id));
 
-		await Court.deleteMany({
-			club: clubId,
-			_id: { $nin: existingCourtIds }
-		});
+			// Use DB-validated IDs: only keep courts that both match supplied IDs and belong to this club.
+			// Prevents deletion of this club's courts when client sends IDs from other clubs.
+			const canonicalCourtIds =
+				suppliedCourtIds.length > 0
+					? (
+							await Court.find(
+								{ _id: { $in: suppliedCourtIds }, club: clubId },
+								{ _id: 1 }
+							)
+								.session(session)
+								.lean()
+						).map((doc) => doc._id.toString())
+					: [];
 
-		for (const c of body.courts) {
-			if (!c?.name?.trim()) continue;
-
-			const courtData = {
-				name: c.name.trim(),
-				type: c.type || 'concrete',
-				placement: c.placement || 'outdoor'
-			};
-
-			if (c.id && mongoose.Types.ObjectId.isValid(c.id)) {
-				await Court.findOneAndUpdate(
-					{ _id: c.id, club: clubId },
-					{ $set: courtData }
-				);
-			} else {
-				await Court.create({
+			await Court.deleteMany(
+				{
 					club: clubId,
-					...courtData
-				});
+					_id: { $nin: canonicalCourtIds }
+				},
+				{ session }
+			);
+
+			for (const c of body.courts) {
+				if (!c?.name?.trim()) continue;
+
+				const courtData = {
+					name: c.name.trim(),
+					type: c.type || 'concrete',
+					placement: c.placement || 'outdoor'
+				};
+
+				if (c.id && mongoose.Types.ObjectId.isValid(c.id)) {
+					await Court.findOneAndUpdate(
+						{ _id: c.id, club: clubId },
+						{ $set: courtData },
+						{ session }
+					);
+				} else {
+					await Court.create(
+						[{ club: clubId, ...courtData }],
+						{ session }
+					);
+				}
 			}
 		}
+
+		await session.commitTransaction();
+	} catch (err) {
+		await session.abortTransaction();
+		throw err;
+	} finally {
+		await session.endSession();
 	}
 
 	const courtCount = await Court.countDocuments({ club: clubId });

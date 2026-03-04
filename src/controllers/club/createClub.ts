@@ -117,7 +117,7 @@ export async function createClub(req: Request, res: Response) {
 	} catch (err: unknown) {
 		await session.abortTransaction();
 		const mongoErr = err as { code?: number; name?: string };
-		if (mongoErr?.code === 11000 || mongoErr?.name === 'MongoServerError') {
+		if (mongoErr?.code === 11000 || mongoErr?.name === 'MongoServerError' || mongoErr?.name === 'MongoError') {
 			res.status(409).json({ message: 'A club with this name already exists' });
 			return;
 		}

@@ -23,20 +23,26 @@ export async function addFavoriteClub(req: Request, res: Response) {
 		return;
 	}
 
-	const user = await User.findById(sessionUser._id);
-	if (!user) {
+	const userObjId = new mongoose.Types.ObjectId(sessionUser._id);
+	const clubObjId = new mongoose.Types.ObjectId(clubId);
+
+	const result = await User.updateOne(
+		{
+			_id: userObjId,
+			$or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+		},
+		{ $addToSet: { favoriteClubs: clubObjId } }
+	);
+
+	if (result.matchedCount === 0) {
 		res.status(404).json({ message: 'User not found' });
 		return;
 	}
 
-	const clubObjId = new mongoose.Types.ObjectId(clubId);
-	if (user.favoriteClubs.some((id) => id.equals(clubObjId))) {
+	if (result.modifiedCount === 0) {
 		res.status(400).json({ message: 'Club already in favorites' });
 		return;
 	}
-
-	user.favoriteClubs.push(clubObjId);
-	await user.save();
 
 	res.json({ message: 'Club added to favorites' });
 }

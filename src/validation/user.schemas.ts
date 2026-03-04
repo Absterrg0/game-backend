@@ -12,7 +12,8 @@ export const updateProfileSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => {
-			if (val == null) return null;
+			if (val === undefined) return undefined;
+			if (val === null) return null;
 			if (typeof val === 'string') {
 				const d = new Date(val);
 				if (Number.isNaN(d.getTime())) throw new Error('Invalid date value');
@@ -23,7 +24,11 @@ export const updateProfileSchema = z.object({
 	gender: z
 		.union([z.enum(['male', 'female', 'other']), z.literal(''), z.null()])
 		.optional()
-		.transform((val) => (val === '' || val == null ? null : val)),
+		.transform((val) => {
+			if (val === undefined) return undefined;
+			if (val === '' || val === null) return null;
+			return val;
+		}),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
