@@ -3,10 +3,10 @@ import type { Request, Response, NextFunction } from 'express';
 import UserAuth from '../../models/UserAuth';
 import { createPendingSignupToken } from './pendingToken';
 import {
-	isSignupComplete,
+	getErrorRedirect,
 	getSignupRedirect,
+	isSignupComplete,
 	loginAndRedirect,
-	renderAppleErrorPage,
 	sanitizeApplePayload,
 } from './utils';
 import { logger } from '../../lib/logger';
@@ -39,7 +39,11 @@ export const appleFormPostFix = (req: Request, _res: Response, next: NextFunctio
 };
 
 export const appleAuth = (req: Request, res: Response, next: NextFunction) => {
-	passport.authenticate('apple', { scope: ['name', 'email'] })(req, res, next);
+	// state: {} forces passport-oauth2 to use our AppleCookieStateStore instead of
+	// passport-apple's built-in 10-char state. Our store uses a SameSite=None cookie
+	// so state survives Apple's cross-site form POST callback.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	passport.authenticate('apple', { scope: ['name', 'email', 'profile'], state: {} } as any)(req, res, next);
 };
 
 /**
@@ -47,7 +51,7 @@ export const appleAuth = (req: Request, res: Response, next: NextFunction) => {
  * - Sign-in (existing user, signup complete): Create session only, redirect home.
  * - Sign-up (first-time user): Redirect with signed pendingToken for complete-signup.
  *
- * On error: renders HTML debug page with error + Apple payload (no redirect).
+ * On error: redirects to frontend with error details and Apple payload for display.
  */
 export const appleAuthCallback = (req: Request, res: Response, next: NextFunction) => {
 	let applePayload: Record<string, unknown> = {};
@@ -60,10 +64,10 @@ export const appleAuthCallback = (req: Request, res: Response, next: NextFunctio
 		applePayload = { _captureError: String(e), body: req.body, query: req.query };
 	}
 
-	const showError = (kind: string, err?: unknown) => {
+	const redirectOnError = (kind: string, err?: unknown) => {
 		logger.warn('Apple auth error', { kind, err, applePayload });
 		const errorMessage = err ? getErrorMessage(err) : kind;
-		renderAppleErrorPage(res, errorMessage, applePayload, kind);
+		res.redirect(getErrorRedirect(kind, { errorMessage, applePayload }));
 	};
 
 	try {
@@ -71,14 +75,14 @@ export const appleAuthCallback = (req: Request, res: Response, next: NextFunctio
 		passport.authenticate('apple', async (err: Error | string | null, user: Express.User | false) => {
 		try {
 			if (err) {
-				if (err === 'AuthorizationError') return showError('denied', err);
-				if (err === 'TokenError') return showError('token', err);
-				return showError('auth', err);
+				if (err === 'AuthorizationError') return redirectOnError('denied', err);
+				if (err === 'TokenError') return redirectOnError('token', err);
+				return redirectOnError('auth', err);
 			}
 
-			if (!user) return showError('no_user');
+			if (!user) return redirectOnError('no_user');
 			const userAuth = await UserAuth.findOne({ user: user._id }).exec();
-			if (!userAuth) return showError('no_user_auth');
+			if (!userAuth) return redirectOnError('no_user_auth');
 
 			if (!isSignupComplete(user)) {
 				const email = user.email ?? '';
@@ -94,16 +98,16 @@ export const appleAuthCallback = (req: Request, res: Response, next: NextFunctio
 			await loginAndRedirect(req, res, user);
 		} catch (caught) {
 			logger.error('Error in appleAuthCallback', { err: caught, applePayload });
-			showError('unknown', caught);
+			redirectOnError('unknown', caught);
 		}
 		})(req, res, (passportErr: unknown) => {
 			if (passportErr) {
-				showError('passport', passportErr);
+				redirectOnError('passport', passportErr);
 			} else {
 				next();
 			}
 		});
 	} catch (e) {
-		showError('crash', e);
+		redirectOnError('crash', e);
 	}
 };

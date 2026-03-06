@@ -190,19 +190,19 @@ if (
 				privateKeyString: normalizeApplePrivateKey(process.env.APPLE_PRIVATE_KEY),
 				callbackURL: process.env.APPLE_CALLBACK_URL,
 				responseType: 'code id_token',
-				scope: ['name', 'email'],
+				scope: ['name', 'email', 'profile'],
 				passReqToCallback: true,
 				store: new AppleCookieStateStore(),
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} as any,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			async (...args: unknown[]) => {
-				const [req, _accessToken, _refreshToken, idToken, _profile, done] = args as [
+				const [req, _accessToken, _refreshToken, idToken, profile, done] = args as [
 					{ appleProfile?: { email?: string } },
 					string,
 					string,
 					string,
-					unknown,
+					{ id?: string } | undefined,
 					(err: Error | null, user?: unknown) => void
 				];
 				const session = await mongoose.startSession();
@@ -214,7 +214,8 @@ if (
 						await session.abortTransaction();
 						return done(new Error('Apple id_token could not be decoded'));
 					}
-					const appleId = decoded.sub;
+					// Use profile.id (first login) or decoded.sub (subsequent logins) - per backup-branch
+					const appleId = (profile?.id ?? decoded.sub) as string;
 					const appleProfile = req?.appleProfile as { email?: string } | undefined;
 					const emailFromToken = decoded.email;
 					const emailFromProfile = appleProfile?.email;
