@@ -2,6 +2,7 @@ import express from 'express';
 import {
 	appleAuth,
 	appleAuthCallback,
+	appleFormPostFix,
 	completeSignUp,
 	getMe,
 	googleAuth,
@@ -18,7 +19,8 @@ const router = express.Router();
 router.get('/google', googleAuth);
 router.get('/google/callback', googleAuthCallback);
 router.get('/apple', appleAuth);
-router.route('/apple/callback').get(appleAuthCallback).post(appleAuthCallback);
+router.get('/callback/apple', appleAuthCallback);
+router.post('/callback/apple', appleFormPostFix, appleAuthCallback);
 router.post('/complete-signup', validateBody(completeSignupSchema), completeSignUp);
 router.post('/logout', logout);
 
