@@ -29,7 +29,7 @@ export async function getAdminClubs(req: Request, res: Response) {
 		return;
 	}
 
-	const adminClubsRaw = user.adminOf as { _id: unknown; name?: string }[] | undefined;
+	const adminClubsRaw = user.adminOf as unknown as { _id: unknown; name?: string }[] | undefined;
 	const clubList = (Array.isArray(adminClubsRaw) ? adminClubsRaw : []).filter(
 		(c) => c && typeof c === 'object' && c.name != null
 	);

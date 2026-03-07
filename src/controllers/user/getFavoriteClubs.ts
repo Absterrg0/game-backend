@@ -21,7 +21,7 @@ export async function getFavoriteClubs(req: Request, res: Response) {
 		return;
 	}
 
-	const favClubsRaw = user.favoriteClubs as { _id: unknown; name?: string }[] | undefined;
+	const favClubsRaw = user.favoriteClubs as unknown as { _id: unknown; name?: string }[] | undefined;
 	const favoriteClubs = (Array.isArray(favClubsRaw) ? favClubsRaw : [])
 		.filter((c) => c && typeof c === 'object' && c.name != null)
 		.map((c) => ({ id: c._id, name: c.name as string }));

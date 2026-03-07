@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
-/** Schema for POST /api/auth/complete-signup. Requires pendingToken from OAuth redirect. */
+/** Schema for POST /api/session/complete-signup. Requires an authenticated Better Auth session. */
 export const completeSignupSchema = z.object({
-	pendingToken: z.string().min(1, { error: 'Pending token is required' }),
 	alias: z.string().min(1, { error: 'Alias is required' }).trim(),
 	name: z.string().min(1, { error: 'Name is required' }).trim(),
 	email: z.string().email({ message: 'Valid email is required' }).trim().optional(),

@@ -11,6 +11,9 @@ declare global {
 			adminOf?: import('mongoose').Types.ObjectId[];
 			organizerOf?: import('mongoose').Types.ObjectId[];
 		}
+		interface Request {
+			user?: User;
+		}
 	}
 }
 

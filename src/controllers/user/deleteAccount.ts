@@ -1,9 +1,8 @@
 import { type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import User from '../../models/User';
-import Session from '../../models/Session';
-import UserAuth from '../../models/UserAuth';
 import Tournament from '../../models/Tournament';
+import { getAuthCollectionNames, getAuthSession } from '../../lib/auth';
 
 /** Requires authenticate middleware - req.user is guaranteed. Deletes the authenticated user's account and all related data. */
 export async function deleteAccount(req: Request, res: Response) {
@@ -16,36 +15,52 @@ export async function deleteAccount(req: Request, res: Response) {
 	const userId = sessionUser._id;
 
 	try {
-		await mongoose.connection.startSession().then(async (session) => {
-			try {
-				await session.withTransaction(async () => {
-					// 1. Delete all sessions for this user
-					await Session.deleteMany({ user: userId }).session(session);
+		const authSession = await getAuthSession(req);
+		if (!authSession) {
+			res.status(401).json({ message: 'Not authenticated' });
+			return;
+		}
 
-					// 2. Delete UserAuth (OAuth credentials)
-					await UserAuth.deleteOne({ user: userId }).session(session);
+		const db = mongoose.connection.db;
+		if (!db) {
+			throw new Error('Database connection not ready');
+		}
+		const authCollections = getAuthCollectionNames();
+		const session = await mongoose.connection.startSession();
 
-					// 3. Remove user from tournament participants and dropouts
-					await Tournament.updateMany(
-						{ $or: [{ participants: userId }, { dropouts: userId }] },
-						{ $pull: { participants: userId, dropouts: userId } },
-						{ session }
-					);
+		try {
+			await session.withTransaction(async () => {
+				await db.collection(authCollections.session).deleteMany(
+					{ userId: authSession.user.id },
+					{ session }
+				);
+				await db.collection(authCollections.account).deleteMany(
+					{ userId: authSession.user.id },
+					{ session }
+				);
+				await db.collection(authCollections.user).deleteOne(
+					{ id: authSession.user.id },
+					{ session }
+				);
 
-					// 4. Soft-delete the user (set deletedAt)
-					const result = await User.findByIdAndUpdate(
-						userId,
-						{ deletedAt: new Date() },
-						{ new: true }
-					).session(session);
-					if (!result) {
-						throw new Error('User not found');
-					}
-				});
-			} finally {
-				await session.endSession();
-			}
-		});
+				await Tournament.updateMany(
+					{ $or: [{ participants: userId }, { dropouts: userId }] },
+					{ $pull: { participants: userId, dropouts: userId } },
+					{ session }
+				);
+
+				const result = await User.findByIdAndUpdate(
+					userId,
+					{ deletedAt: new Date() },
+					{ new: true }
+				).session(session);
+				if (!result) {
+					throw new Error('User not found');
+				}
+			});
+		} finally {
+			await session.endSession();
+		}
 
 		res.json({ message: 'Account deleted successfully' });
 	} catch (err) {

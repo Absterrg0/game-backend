@@ -1,5 +1,5 @@
 import {z} from 'zod';
-/** Schema for PATCH /api/auth/me - update profile (authenticated users only). */
+/** Schema for authenticated user profile updates. */
 export const updateProfileSchema = z.object({
 	alias: z.string().trim().optional(),
 	name: z.string().trim().optional(),
