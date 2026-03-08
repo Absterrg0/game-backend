@@ -18,14 +18,18 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN?.trim();
 const app = express();
 app.set('trust proxy', 1);
 
-const allowedOrigins = new Set(
-	[CORS_ORIGIN, REQUEST_ORIGIN]
-		.flatMap((value) => value?.split(',') ?? [])
-		.map((value) => value.trim())
-		.filter(Boolean)
-);
+const configuredOrigins = [CORS_ORIGIN, REQUEST_ORIGIN]
+	.flatMap((value) => value?.split(',') ?? [])
+	.map((value) => value.trim())
+	.filter(Boolean);
 
-if (allowedOrigins.size === 0) {
+const allowedOrigins = new Set([
+	...configuredOrigins,
+	// Apple Sign-In uses a form POST from appleid.apple.com; the browser sends that as Origin
+	'https://appleid.apple.com',
+]);
+
+if (configuredOrigins.length === 0) {
 	throw new Error('CORS_ORIGIN or REQUEST_ORIGIN must be set for authenticated requests');
 }
 
