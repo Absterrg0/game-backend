@@ -2,7 +2,6 @@ import type { Request, Response } from 'express';
 import { logger } from '../../lib/logger';
 import { createAuthToken, setAuthCookie } from '../../lib/jwtAuth';
 import type { UserDocument } from '../../models/User';
-import { encodeAppleFlowTrace } from './appleFlow';
 
 export const AUTH_CALLBACK_PATH = '/auth/callback';
 
@@ -69,9 +68,9 @@ export async function loginAndRedirect(req: Request, res: Response, user: Expres
 	try {
 		const token = await createAuthToken(user as UserDocument);
 		setAuthCookie(res, token);
-		res.redirect(getSuccessRedirect(encodeAppleFlowTrace(req)));
+		res.redirect(getSuccessRedirect());
 	} catch (err) {
 		logger.error('Error in loginAndRedirect', { err });
-		res.redirect(getErrorRedirect('session', { errorMessage: 'Failed to create an authenticated session', flowTrace: encodeAppleFlowTrace(req) }));
+		res.redirect(getErrorRedirect('session', { errorMessage: 'Failed to create an authenticated session' }));
 	}
 }
