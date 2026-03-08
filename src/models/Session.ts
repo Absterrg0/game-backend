@@ -6,8 +6,7 @@ const sessionSchema = new mongoose.Schema(
 	{
 		tokenHash: {
 			type: String,
-			required: true,
-			unique: true
+			required: true
 		},
 		// Legacy raw session tokens may still exist in older documents until they expire.
 		token: {
@@ -29,6 +28,9 @@ const sessionSchema = new mongoose.Schema(
 	},
 	{ collection: 'sessions' }
 );
+
+// Sparse unique index: only documents with tokenHash are indexed; legacy docs without tokenHash are ignored.
+sessionSchema.index({ tokenHash: 1 }, { unique: true, sparse: true });
 
 const Session = mongoose.model('Session', sessionSchema);
 export default Session;

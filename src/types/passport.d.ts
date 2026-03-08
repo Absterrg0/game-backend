@@ -7,6 +7,23 @@ declare module 'passport-google-oauth20' {
 declare module 'passport-apple' {
 	import type { Strategy } from 'passport';
 
+	/** State store contract matching passport-oauth2's state-store interface. */
+	export interface OAuthStore {
+		store(
+			req: unknown,
+			verifier: string | undefined,
+			state: unknown,
+			meta: unknown,
+			cb: (err: Error | null, stateHandle?: string) => void
+		): void;
+		verify(
+			req: unknown,
+			providedState: string,
+			meta: unknown,
+			cb: (err: Error | null, ok: boolean | string, state?: unknown) => void
+		): void;
+	}
+
 	export interface AppleStrategyOptions {
 		clientID: string;
 		teamID: string;
@@ -17,7 +34,7 @@ declare module 'passport-apple' {
 		passReqToCallback?: boolean;
 		responseType?: string;
 		scope?: string[];
-		store?: object;
+		store?: OAuthStore;
 	}
 
 	export type VerifyCallback = (err: Error | null, user?: unknown) => void;

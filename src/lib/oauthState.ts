@@ -90,7 +90,13 @@ export function createOAuthStateStore(provider: OAuthProvider) {
 	const cookieName = getCookieName(provider);
 
 	return {
-		store(req: Request, _meta: unknown, callback: (err: Error | null, state?: string) => void) {
+		store(
+			req: Request,
+			_verifier: string | undefined,
+			_state: unknown,
+			_meta: unknown,
+			callback: (err: Error | null, stateHandle?: string) => void
+		) {
 			try {
 				const stateToken = createStateToken(provider);
 				req.res?.cookie(cookieName, hashStateToken(stateToken), getOAuthStateCookieOptions(req));
@@ -102,7 +108,8 @@ export function createOAuthStateStore(provider: OAuthProvider) {
 		verify(
 			req: Request,
 			providedState: string,
-			callback: (err: Error | null, ok?: boolean, state?: { message: string }) => void
+			_meta: unknown,
+			callback: (err: Error | null, ok: boolean | string, state?: unknown) => void
 		) {
 			try {
 				const expectedHash = req.cookies?.[cookieName];
