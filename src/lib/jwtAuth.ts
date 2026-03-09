@@ -46,9 +46,6 @@ export async function createAuthToken(user: UserDocument): Promise<string> {
 	);
 	const tokenHash = hashSessionToken(token);
 	await Session.create({
-		tokenHash,
-		// Keep token populated for legacy non-sparse unique indexes in older deployments.
-		// We store the hash (not raw JWT) to avoid persisting bearer secrets.
 		token: tokenHash,
 		user: user._id,
 		expireAt: getTokenExpiryDate(token),
