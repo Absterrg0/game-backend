@@ -8,7 +8,7 @@ const sessionSchema = new mongoose.Schema(
 			type: String,
 			required: true
 		},
-		// Legacy raw session tokens may still exist in older documents until they expire.
+		// Legacy docs may have raw JWTs here; newer docs store a hash for index compatibility.
 		token: {
 			type: String,
 			unique: true,
