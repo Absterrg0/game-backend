@@ -44,8 +44,9 @@ export async function createAuthToken(user: UserDocument): Promise<string> {
 			subject: user._id.toString(),
 		}
 	);
+	const tokenHash = hashSessionToken(token);
 	await Session.create({
-		tokenHash: hashSessionToken(token),
+		token: tokenHash,
 		user: user._id,
 		expireAt: getTokenExpiryDate(token),
 	});

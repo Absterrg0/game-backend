@@ -33,7 +33,8 @@ const authenticate = async (req: Request, res: Response, next: NextFunction): Pr
 		});
 
 		const session = await Session.findOne({
-			$or: [{ tokenHash: hashSessionToken(token) }, { token }],
+			// Temporary migration fallback: support legacy raw-token rows and new hashed-token rows.
+			$or: [{ token }, { token: hashSessionToken(token) }],
 		}).exec();
 		if (!session?.user) {
 			res.status(401).json({ message: 'Session expired, login again' });

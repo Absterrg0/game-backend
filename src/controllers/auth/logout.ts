@@ -11,7 +11,8 @@ export function clearExistingSession(req: Request, res: Response): void {
 	const token = extractAuthToken(req);
 	if (token) {
 		Session.deleteOne({
-			$or: [{ tokenHash: hashSessionToken(token) }, { token }],
+			// Temporary migration fallback: match both legacy raw-token rows and hashed-token rows.
+			$or: [{ token }, { token: hashSessionToken(token) }],
 		}).exec().catch((err: unknown) => {
 			logger.error('Error deleting session when clearing for new login', { err });
 		});
@@ -23,7 +24,8 @@ export function logout(req: Request, res: Response): void {
 	const token = extractAuthToken(req);
 	if (token) {
 		Session.deleteOne({
-			$or: [{ tokenHash: hashSessionToken(token) }, { token }],
+			// Temporary migration fallback: match both legacy raw-token rows and hashed-token rows.
+			$or: [{ token }, { token: hashSessionToken(token) }],
 		}).exec().catch((err: unknown) => {
 			logger.error('Error deleting session on logout', { err });
 		});
