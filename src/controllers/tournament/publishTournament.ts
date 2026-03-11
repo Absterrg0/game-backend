@@ -98,7 +98,6 @@ export async function publishTournament(req: Request, res: Response) {
 		createdAt: undefined,
 		updatedAt: undefined,
 		participants: undefined,
-		dropouts: undefined,
 		schedule: undefined
 	};
 

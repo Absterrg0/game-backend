@@ -27,7 +27,6 @@ export interface ITournament extends Document {
 	createdAt?: Date;
 	updatedAt?: Date;
 	participants: mongoose.Types.ObjectId[];
-	dropouts: mongoose.Types.ObjectId[];
 }
 
 // Define the Tournament schema
@@ -155,15 +154,6 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 			default: 'draft'
 		},
 		participants: {
-			type: [
-				{
-					type: Schema.Types.ObjectId,
-					ref: 'User'
-				}
-			],
-			default: []
-		},
-		dropouts: {
 			type: [
 				{
 					type: Schema.Types.ObjectId,
