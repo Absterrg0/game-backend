@@ -1,8 +1,21 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import Tournament from '../../models/Tournament';
-import Club from '../../models/Club';
+import Tournament, { type ITournament } from '../../models/Tournament';
 import Sponsor from '../../models/Sponsor';
+import { userCanManageClub } from '../../lib/tournamentPermissions';
+
+/** Full tournament with populated club/sponsorId – used with .lean<TournamentPopulated>() */
+type TournamentPopulated = Omit<ITournament, 'club' | 'sponsorId' | 'courts' | 'participants'> & {
+	club?: { _id: mongoose.Types.ObjectId; name?: string } | null;
+	sponsorId?: {
+		_id: mongoose.Types.ObjectId;
+		name?: string;
+		logoUrl?: string | null;
+		link?: string | null;
+	} | null;
+	courts?: Array<{ _id: mongoose.Types.ObjectId; name?: string; type?: string; placement?: string }>;
+	participants?: Array<{ _id: mongoose.Types.ObjectId; name?: string | null; alias?: string | null }>;
+};
 
 /**
  * GET /api/tournaments/:id
@@ -26,7 +39,7 @@ export async function getTournamentById(req: Request, res: Response) {
 		.populate('sponsorId', 'name logoUrl link')
 		.populate('courts', 'name type placement')
 		.populate('participants', 'name alias')
-		.lean()
+		.lean<TournamentPopulated>()
 		.exec();
 
 	if (!tournament) {
@@ -34,24 +47,22 @@ export async function getTournamentById(req: Request, res: Response) {
 		return;
 	}
 
-	const clubId = (tournament.club as { _id?: unknown })?._id ?? tournament.club;
-	const clubIdStr = typeof clubId === 'string' ? clubId : (clubId as mongoose.Types.ObjectId)?.toString();
+	const clubIdStr = tournament.club?._id?.toString() ?? '';
 
 	// Check permission:
 	// - active tournaments: any authenticated user can view
 	// - draft/inactive tournaments: only club managers can view
-	const adminClubs = (sessionUser.adminOf ?? []) as mongoose.Types.ObjectId[];
-	const isAdmin = adminClubs.some((cid) => cid.toString() === clubIdStr);
-	let isOrganiser = false;
-	if (!isAdmin && sessionUser.role !== 'super_admin') {
-		const club = await Club.findById(clubIdStr).select('organiserIds').lean().exec();
-		const organiserIds = (club?.organiserIds ?? []) as Array<mongoose.Types.ObjectId | string>;
-		isOrganiser = organiserIds.some((oid) => oid.toString() === sessionUser._id.toString());
-	}
-	const isManager = isAdmin || isOrganiser || sessionUser.role === 'super_admin';
+	const isManager = await userCanManageClub(
+		{
+			userId: new mongoose.Types.ObjectId(sessionUser._id),
+			userRole: sessionUser.role,
+			adminOf: (sessionUser.adminOf ?? []) as mongoose.Types.ObjectId[]
+		},
+		clubIdStr
+	);
 	if (tournament.status !== 'active' && !isManager) {
-			res.status(403).json({ message: 'You do not have permission to view this tournament' });
-			return;
+		res.status(403).json({ message: 'You do not have permission to view this tournament' });
+		return;
 	}
 
 	const participants = (tournament.participants ?? []) as Array<{
@@ -76,14 +87,7 @@ export async function getTournamentById(req: Request, res: Response) {
 	const isParticipant = participantIdSet.has(sessionUser._id.toString());
 	const canJoin = tournament.status === 'active' && !isManager && !isParticipant && spotsFilled < spotsTotal;
 
-	const clubObj =
-		tournament.club && typeof tournament.club === 'object'
-			? (tournament.club as { _id?: unknown; name?: string })
-			: null;
-	const sponsorObj =
-		tournament.sponsorId && typeof tournament.sponsorId === 'object'
-			? (tournament.sponsorId as { _id?: unknown; name?: string; logoUrl?: string | null; link?: string | null })
-			: null;
+	
 	const courts = ((tournament.courts ?? []) as Array<{
 		_id?: mongoose.Types.ObjectId | string;
 		name?: string;
@@ -117,18 +121,18 @@ export async function getTournamentById(req: Request, res: Response) {
 			id: tournament._id.toString(),
 			name: tournament.name,
 			logo: tournament.logo ?? null,
-			club: clubObj
+			club: tournament.club
 				? {
-						id: String(clubObj._id),
-						name: clubObj.name ?? ''
+						id: String(tournament.club._id),
+						name: tournament.club.name ?? ''
 					}
 				: null,
-			sponsor: sponsorObj
+			sponsor: tournament.sponsorId
 				? {
-						id: String(sponsorObj._id),
-						name: sponsorObj.name ?? '',
-						logoUrl: sponsorObj.logoUrl ?? null,
-						link: sponsorObj.link ?? null
+						id: String(tournament.sponsorId._id),
+						name: tournament.sponsorId.name ?? '',
+						logoUrl: tournament.sponsorId.logoUrl ?? null,
+						link: tournament.sponsorId.link ?? null
 					}
 				: null,
 			clubSponsors: clubSponsorsList,

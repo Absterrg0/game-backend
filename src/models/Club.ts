@@ -39,6 +39,8 @@ const clubSchema = new Schema<IClub>(
 		},
 		description: {
 			type: String,
+			trim:true,
+			maxLength:1000,
 			default: null
 		},
 		address: {

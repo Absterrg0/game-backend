@@ -82,13 +82,13 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 		memberFee: {
 			type: Number,
 			required: false,
-			min: [0, 'Member fee must be a positive number'],
+			min: [0, 'Member fee must be a non-negative number'],
 			default: 0
 		},
 		externalFee: {
 			type: Number,
 			required: false,
-			min: [0, 'External fee must be a positive number'],
+			min: [0, 'External fee must be a non-negative number'],
 			default: 0
 		},
 		minMember: {
@@ -133,7 +133,8 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 		numberOfRounds: {
 			type: Number,
 			required: false,
-			default: 1
+			default: 1,
+			min:[1, 'Number of rounds must be at least 1']
 		},
 		roundTimings: {
 			type: [

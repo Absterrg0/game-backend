@@ -59,6 +59,7 @@ export async function createSponsor(req: Request, res: Response) {
 	res.status(201).json({
 		id: sponsor._id.toString(),
 		name: sponsor.name,
+		description: sponsor.description ?? null,
 		logoUrl: sponsor.logoUrl ?? null,
 		link: sponsor.link ?? null,
 		status: sponsor.status

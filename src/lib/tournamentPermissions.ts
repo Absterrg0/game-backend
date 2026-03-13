@@ -15,7 +15,7 @@ export interface TournamentPermissionContext {
 export async function userCanManageClub(
 	ctx: TournamentPermissionContext,
 	clubId: string
-): Promise<boolean> {
+) {
 	if (ctx.userRole === 'super_admin') return true;
 	if (!mongoose.Types.ObjectId.isValid(clubId)) return false;
 
@@ -25,8 +25,8 @@ export async function userCanManageClub(
 
 	const club = await Club.findById(clubId).select('organiserIds').lean().exec();
 	if (!club) return false;
-	const organiserIds = (club.organiserIds ?? []) as mongoose.Types.ObjectId[];
-	return organiserIds.some((id) => id.equals(ctx.userId));
+	const organiserIds = club.organiserIds ?? [];
+	return organiserIds.some((id) => String(id) === String(ctx.userId));
 }
 
 /**
@@ -36,7 +36,7 @@ export async function userCanManageClub(
 export async function sponsorBelongsToClub(
 	sponsorId: string | null | undefined,
 	clubId: string
-): Promise<boolean> {
+){
 	if (!sponsorId) return true;
 	if (!mongoose.Types.ObjectId.isValid(sponsorId)) return false;
 

@@ -5,6 +5,8 @@ import Club from '../../models/Club';
 import { escapeRegex } from '../../lib/validation';
 import { hasRoleOrAbove } from '../../constants/roles';
 import { ROLES } from '../../constants/roles';
+import { getTournamentQuerySchema } from '../../validation/tournament.schemas';
+import { TournamentListDoc } from './types';
 
 /**
  * GET /api/tournaments
@@ -19,12 +21,19 @@ export async function getTournaments(req: Request, res: Response) {
 		return;
 	}
 
-	const page = Math.max(1, parseInt(String(req.query.page), 10) || 1);
-	const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit), 10) || 10));
-	const status = req.query.status as string | undefined;
-	const clubId = req.query.clubId as string | undefined;
-	const q = req.query.q as string | undefined;
-	const view = req.query.view as string | undefined; // 'published' | 'drafts' (organiser only)
+
+	const query = getTournamentQuerySchema.safeParse(req.query);
+	if (!query.success) {
+		res.status(400).json({ message: query.error.message });
+		return;
+	}
+
+	const page = query.data.page;
+	const limit = query.data.limit;
+	const status = query.data.status;
+	const clubId = query.data.clubId;
+	const q = query.data.q;
+	const view = query.data.view; // 'published' | 'drafts' (organiser only)
 
 	const skip = (page - 1) * limit;
 	const isOrganiserOrAbove = hasRoleOrAbove(sessionUser.role, ROLES.ORGANISER);
@@ -41,9 +50,9 @@ export async function getTournaments(req: Request, res: Response) {
 			.lean()
 			.exec();
 		const organiserClubIds = organiserClubs.map((c) => c._id);
-		manageableClubIds = [
-			...new Set([...adminClubs.map((id) => id.toString()), ...organiserClubIds.map((id) => id.toString())])
-		].map((id) => new mongoose.Types.ObjectId(id));
+		manageableClubIds = Array.from(new Set([...adminClubs, ...organiserClubIds].map(String))).map((id) =>
+			new mongoose.Types.ObjectId(id)
+		);
 	}
 
 	const filter: Record<string, unknown> = {};
@@ -97,22 +106,19 @@ export async function getTournaments(req: Request, res: Response) {
 			.sort({ date: -1, createdAt: -1 })
 			.skip(skip)
 			.limit(limit)
-			.lean()
+			.lean<TournamentListDoc[]>()
 			.exec(),
 		Tournament.countDocuments(filter)
 	]);
 
-	const items = tournaments.map((t) => {
-		const clubObj = t.club && typeof t.club === 'object' ? (t.club as { _id?: unknown; name?: string }) : null;
-		return {
-			id: t._id,
-			name: t.name,
-			club: clubObj ? { id: clubObj._id, name: clubObj.name } : null,
-			date: t.date ? (t.date as Date).toISOString?.() ?? String(t.date) : null,
-			status: t.status,
-			sponsorId: t.sponsorId
-		};
-	});
+	const items = tournaments.map((t) => ({
+		id: t._id,
+		name: t.name,
+		club: t.club ? { id: t.club._id, name: t.club.name } : null,
+		date: t.date ? new Date(t.date).toISOString() : null,
+		status: t.status,
+		sponsorId: t.sponsorId
+	}));
 
 	res.json({
 		tournaments: items,

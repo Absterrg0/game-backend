@@ -61,7 +61,7 @@ export async function getClubPublic(req: Request, res: Response) {
 	}
 
 	const [courts, sponsors] = await Promise.all([
-		Court.find({ club: clubId }).select('type placement').lean().exec(),
+		Court.find({ club: new mongoose.Types.ObjectId(clubId) }).select('type placement').lean().exec(),
 		Sponsor.find({
 			scope: 'club',
 			clubId: new mongoose.Types.ObjectId(clubId),
@@ -87,7 +87,7 @@ export async function getClubPublic(req: Request, res: Response) {
 	courtGroups.set('indoor', new Map());
 
 	for (const c of courts) {
-		const placement = c.placement as 'outdoor' | 'indoor';
+		const placement = c.placement;
 		const surface = SURFACE_LABELS[c.type] ?? c.type;
 		const map = courtGroups.get(placement)!;
 		map.set(surface, (map.get(surface) ?? 0) + 1);
