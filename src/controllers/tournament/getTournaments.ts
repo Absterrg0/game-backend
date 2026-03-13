@@ -3,11 +3,14 @@ import mongoose from 'mongoose';
 import Tournament from '../../models/Tournament';
 import Club from '../../models/Club';
 import { escapeRegex } from '../../lib/validation';
+import { hasRoleOrAbove } from '../../constants/roles';
+import { ROLES } from '../../constants/roles';
 
 /**
  * GET /api/tournaments
- * List tournaments for clubs the user can manage.
- * Query: page, limit, status, clubId, q (search)
+ * - Players: list published tournaments only (active, inactive).
+ * - Organisers+: list tournaments for clubs they manage; supports view=published|drafts.
+ * Query: page, limit, status, clubId, q (search), view (published|drafts, organiser only)
  */
 export async function getTournaments(req: Request, res: Response) {
 	const sessionUser = req.user;
@@ -21,49 +24,66 @@ export async function getTournaments(req: Request, res: Response) {
 	const status = req.query.status as string | undefined;
 	const clubId = req.query.clubId as string | undefined;
 	const q = req.query.q as string | undefined;
+	const view = req.query.view as string | undefined; // 'published' | 'drafts' (organiser only)
 
 	const skip = (page - 1) * limit;
+	const isOrganiserOrAbove = hasRoleOrAbove(sessionUser.role, ROLES.ORGANISER);
 
-	// Get clubs user can manage (admin or organiser)
-	const adminClubs = (sessionUser.adminOf ?? []) as mongoose.Types.ObjectId[];
-	const organiserClubs = await Club.find({
-		organiserIds: sessionUser._id,
-		status: 'active'
-	})
-		.select('_id')
-		.lean()
-		.exec();
-	const organiserClubIds = organiserClubs.map((c) => c._id);
-	const manageableClubIds = [
-		...new Set([...adminClubs.map((id) => id.toString()), ...organiserClubIds.map((id) => id.toString())])
-	].map((id) => new mongoose.Types.ObjectId(id));
-
-	// If clubId filter provided, ensure user can manage it
-	if (clubId) {
-		if (!mongoose.Types.ObjectId.isValid(clubId)) {
-			res.status(400).json({ message: 'Invalid club ID' });
-			return;
-		}
-		const inManageable = manageableClubIds.some((id) => id.toString() === clubId);
-		if (!inManageable) {
-			res.status(403).json({ message: 'You do not have permission to view tournaments for this club' });
-			return;
-		}
+	// Get clubs user can manage (admin or organiser) - only used for organisers
+	let manageableClubIds: mongoose.Types.ObjectId[] = [];
+	if (isOrganiserOrAbove) {
+		const adminClubs = (sessionUser.adminOf ?? []) as mongoose.Types.ObjectId[];
+		const organiserClubs = await Club.find({
+			organiserIds: sessionUser._id,
+			status: 'active'
+		})
+			.select('_id')
+			.lean()
+			.exec();
+		const organiserClubIds = organiserClubs.map((c) => c._id);
+		manageableClubIds = [
+			...new Set([...adminClubs.map((id) => id.toString()), ...organiserClubIds.map((id) => id.toString())])
+		].map((id) => new mongoose.Types.ObjectId(id));
 	}
 
-	if (manageableClubIds.length === 0 && !clubId) {
-		return res.json({
-			tournaments: [],
-			pagination: { total: 0, page: 1, limit, totalPages: 0 }
-		});
-	}
+	const filter: Record<string, unknown> = {};
 
-	const filter: Record<string, unknown> = {
-		club: clubId ? new mongoose.Types.ObjectId(clubId) : { $in: manageableClubIds }
-	};
+	if (isOrganiserOrAbove) {
+		// Organiser: filter by manageable clubs
+		if (clubId) {
+			if (!mongoose.Types.ObjectId.isValid(clubId)) {
+				res.status(400).json({ message: 'Invalid club ID' });
+				return;
+			}
+			const inManageable = manageableClubIds.some((id) => id.toString() === clubId);
+			if (!inManageable) {
+				res.status(403).json({ message: 'You do not have permission to view tournaments for this club' });
+				return;
+			}
+			filter.club = new mongoose.Types.ObjectId(clubId);
+		} else {
+			if (manageableClubIds.length === 0) {
+				return res.json({
+					tournaments: [],
+					pagination: { total: 0, page: 1, limit, totalPages: 0 }
+				});
+			}
+			filter.club = { $in: manageableClubIds };
+		}
 
-	if (status && ['active', 'draft', 'inactive'].includes(status)) {
-		filter.status = status;
+		// View param: published = active+inactive, drafts = draft only
+		if (view === 'drafts') {
+			filter.status = 'draft';
+		} else {
+			// published tab or default
+			filter.status = status && ['active', 'inactive'].includes(status)
+				? status
+				: { $in: ['active', 'inactive'] };
+		}
+	} else {
+		// Player: only published tournaments from all clubs
+		filter.status =
+			status && ['active', 'inactive'].includes(status) ? status : { $in: ['active', 'inactive'] };
 	}
 
 	if (q && q.trim()) {

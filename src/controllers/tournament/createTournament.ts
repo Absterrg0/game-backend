@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import Tournament from '../../models/Tournament';
+import Court from '../../models/Court';
 import { createOrUpdateDraftSchema, publishSchema } from '../../validation/tournament.schemas';
 import { userCanManageClub, sponsorBelongsToClub } from '../../lib/tournamentPermissions';
 
@@ -55,8 +56,32 @@ export async function createTournament(req: Request, res: Response) {
 		return;
 	}
 
+	const validationInput: Record<string, unknown> = { ...rawBody };
+	if (status === 'active' && validationInput.tournamentMode === 'singleDay') {
+		const selectedCourts = Array.isArray(validationInput.courts) ? validationInput.courts : [];
+		const selectedClubId = typeof validationInput.club === 'string' ? validationInput.club : undefined;
+
+		if (selectedCourts.length === 0 && selectedClubId && mongoose.Types.ObjectId.isValid(selectedClubId)) {
+			const clubCourts = await Court.find({
+				club: new mongoose.Types.ObjectId(selectedClubId)
+			})
+				.select('_id')
+				.lean()
+				.exec();
+
+			if (clubCourts.length === 0) {
+				res.status(400).json({
+					message: 'Selected club has no courts. Add at least one court before publishing this tournament.'
+				});
+				return;
+			}
+
+			validationInput.courts = clubCourts.map((c) => c._id.toString());
+		}
+	}
+
 	const schema = status === 'draft' ? createOrUpdateDraftSchema : publishSchema;
-	const parsed = schema.safeParse(rawBody);
+	const parsed = schema.safeParse(validationInput);
 	if (!parsed.success) {
 		const msg = parsed.error.issues.map((i) => i.message).join('; ');
 		res.status(400).json({ message: msg, error: true, code: 'VALIDATION_ERROR', details: parsed.error.issues });

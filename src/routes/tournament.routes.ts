@@ -12,7 +12,7 @@ import { requireOrganiserOrAbove, requirePlayerOrAbove } from '../middlewares/rb
 
 const router = express.Router();
 
-router.get('/', authenticate, requireOrganiserOrAbove, getTournaments);
+router.get('/', authenticate, requirePlayerOrAbove, getTournaments);
 router.get('/:id', authenticate, requirePlayerOrAbove, getTournamentById);
 router.post('/:id/join', authenticate, requirePlayerOrAbove, joinTournament);
 router.post('/', authenticate, requireOrganiserOrAbove, createTournament);

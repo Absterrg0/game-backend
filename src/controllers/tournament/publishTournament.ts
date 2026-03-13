@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import Tournament from '../../models/Tournament';
+import Court from '../../models/Court';
 import { publishSchema } from '../../validation/tournament.schemas';
 import { userCanManageClub, sponsorBelongsToClub } from '../../lib/tournamentPermissions';
 
@@ -90,6 +91,12 @@ export async function publishTournament(req: Request, res: Response) {
 	}
 
 	// Merge existing tournament with body for validation
+	const toStr = (v: mongoose.Types.ObjectId | string | null | undefined): string | undefined => {
+		if (v == null) return undefined;
+		if (typeof v === 'string') return v;
+		return v.toString();
+	};
+
 	const merged = {
 		...tournament,
 		...req.body,
@@ -100,6 +107,16 @@ export async function publishTournament(req: Request, res: Response) {
 		participants: undefined,
 		schedule: undefined
 	};
+
+	// Convert ObjectId refs to strings for schema validation
+	if (merged.sponsorId != null && typeof merged.sponsorId !== 'string') {
+		merged.sponsorId = toStr(merged.sponsorId) ?? null;
+	}
+	if (Array.isArray(merged.courts)) {
+		merged.courts = merged.courts
+			.map((c: mongoose.Types.ObjectId | string) => toStr(c))
+			.filter((s: string | undefined): s is string => !!s);
+	}
 
 	// Ensure we have required fields from existing doc if not in body
 	if (!merged.name) merged.name = tournament.name;
@@ -113,6 +130,29 @@ export async function publishTournament(req: Request, res: Response) {
 	if (merged.playMode == null) merged.playMode = tournament.playMode;
 	if (merged.tournamentMode == null) merged.tournamentMode = tournament.tournamentMode;
 	if (merged.roundTimings == null) merged.roundTimings = tournament.roundTimings ?? [];
+
+	// If no explicit tournament courts were selected, fall back to all active club courts.
+	if (merged.tournamentMode === 'singleDay') {
+		const selectedCourts = Array.isArray(merged.courts) ? merged.courts : [];
+		if (selectedCourts.length === 0) {
+			const clubCourts = await Court.find({
+				club: new mongoose.Types.ObjectId(clubId)
+			})
+				.select('_id')
+				.lean()
+				.exec();
+
+			if (clubCourts.length === 0) {
+				res.status(400).json({
+					message: 'Selected club has no courts. Add at least one court before publishing this tournament.'
+				});
+				return;
+			}
+
+			merged.courts = clubCourts.map((c) => c._id.toString());
+		}
+	}
+
 	merged.status = 'active';
 
 	const parsed = publishSchema.safeParse(merged);
