@@ -9,10 +9,18 @@ const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 const objectIdSchema = z.string().regex(objectIdRegex, 'Invalid ID');
 const nullableNonEmptyString = z.union([z.string().trim().min(1), z.null()]);
 
-const roundTimingSchema = z.object({
-	startDate: z.coerce.date().optional().nullable(),
-	endDate: z.coerce.date().optional().nullable()
-});
+const roundTimingSchema = z
+	.object({
+		startDate: z.coerce.date().optional().nullable(),
+		endDate: z.coerce.date().optional().nullable()
+	})
+	.refine(
+		(r) => {
+			if (r.startDate == null || r.endDate == null) return true;
+			return r.startDate.getTime() <= r.endDate.getTime();
+		},
+		{ message: 'startDate must be before or equal to endDate', path: ['endDate'] }
+	);
 
 /** Relaxed schema for draft create/update. Allows partial fields. */
 export const createOrUpdateDraftSchema = z

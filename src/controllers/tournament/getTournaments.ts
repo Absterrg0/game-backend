@@ -59,13 +59,20 @@ export async function getTournaments(req: Request, res: Response) {
 	const filter: Record<string, unknown> = {};
 
 	if (isSuperAdmin) {
-		// Super admin: no club restrictions, but can use view/status filters
+		// Super admin: no club restrictions, but can use view/status filters and optional clubId
 		if (view === 'drafts') {
 			filter.status = 'draft';
 		} else {
 			filter.status = status && ['active', 'inactive'].includes(status)
 				? status
 				: { $in: ['active', 'inactive'] };
+		}
+		if (clubId) {
+			if (!mongoose.Types.ObjectId.isValid(clubId)) {
+				res.status(400).json({ message: 'Invalid club ID' });
+				return;
+			}
+			filter.club = new mongoose.Types.ObjectId(clubId);
 		}
 	} else if (isOrganiserOrAbove) {
 		// Organiser: filter by manageable clubs
@@ -84,7 +91,7 @@ export async function getTournaments(req: Request, res: Response) {
 			if (manageableClubIds.length === 0) {
 				return res.json({
 					tournaments: [],
-					pagination: { total: 0, page: 1, limit, totalPages: 0 }
+					pagination: { total: 0, page, limit, totalPages: 0 }
 				});
 			}
 			filter.club = { $in: manageableClubIds };

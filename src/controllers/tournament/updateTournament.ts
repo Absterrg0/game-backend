@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import Tournament from '../../models/Tournament';
+import Club from '../../models/Club';
+import Court from '../../models/Court';
 import { createOrUpdateDraftSchema } from '../../validation/tournament.schemas';
 import { userCanManageClub, sponsorBelongsToClub } from '../../lib/tournamentPermissions';
 import { toDbPayload } from '../../lib/tournamentPayload';
@@ -57,6 +59,15 @@ export async function updateTournament(req: Request<{ id: string }>, res: Respon
 
 		const data = bodyParse.data;
 		const updateClubId = data.club ?? clubId;
+		const isChangingClub = Boolean(data.club && data.club !== clubId);
+
+		// Validate destination club exists (prevents orphan refs; super_admin can pass userCanManageClub without club existing)
+		const club = await Club.findById(updateClubId).select('_id').lean().exec();
+		if (!club) {
+			res.status(404).json({ message: 'Club not found' });
+			return;
+		}
+
 		if (data.sponsorId) {
 			const sponsorOk = await sponsorBelongsToClub(data.sponsorId, updateClubId);
 			if (!sponsorOk) {
@@ -66,15 +77,50 @@ export async function updateTournament(req: Request<{ id: string }>, res: Respon
 		}
 
 		// If changing club, verify permission for new club
-		if (data.club && data.club !== clubId) {
-			const canManageNew = await userCanManageClub(ctx, data.club);
+		if (isChangingClub) {
+			const canManageNew = await userCanManageClub(ctx, data.club!);
 			if (!canManageNew) {
 				res.status(403).json({ message: 'You do not have permission to assign this tournament to that club' });
 				return;
 			}
 		}
 
+		// Validate courts belong to destination club when provided
+		if (Array.isArray(data.courts) && data.courts.length > 0) {
+			const invalidCourtIds = data.courts.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+			if (invalidCourtIds.length > 0) {
+				res.status(400).json({ message: 'Invalid court ID(s). All court IDs must be valid.' });
+				return;
+			}
+			const uniqueValidObjectIds = [...new Set(data.courts)].map((id) => new mongoose.Types.ObjectId(id));
+			const courtsInClub = await Court.find({
+				_id: { $in: uniqueValidObjectIds },
+				club: new mongoose.Types.ObjectId(updateClubId)
+			})
+				.select('_id')
+				.lean()
+				.exec();
+			if (courtsInClub.length !== uniqueValidObjectIds.length) {
+				res.status(400).json({
+					message: 'Invalid or out-of-club court ID(s). Each court must exist and belong to the selected club.'
+				});
+				return;
+			}
+		}
+
+		// Reject client-supplied status; only server-controlled transitions (e.g. publish) may set it.
+		if ('status' in data && data.status !== undefined) {
+			res.status(400).json({ message: 'status cannot be set via update; use publish to activate' });
+			return;
+		}
+
 		const payload = toDbPayload(data);
+
+		// When changing club, clear club-scoped refs not explicitly provided (prevents old sponsor/courts from old club)
+		if (isChangingClub) {
+			if (!('sponsorId' in data)) payload.sponsorId = null;
+			if (!('courts' in data)) payload.courts = [];
+		}
 
 		// Mirror Tournament pre('validate') invariant for query updates.
 		const effectiveMinMember = data.minMember ?? tournament.minMember;

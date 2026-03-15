@@ -29,7 +29,7 @@ export async function getAllSponsors(_req: Request, res: Response) {
 	const unique: SponsorPublicItem[] = [];
 
 	for (const s of sponsors) {
-		const key = `${s.name}|${s.link ?? ''}`;
+		const key = JSON.stringify([s.name, s.link ?? '']);
 		if (seen.has(key)) continue;
 		seen.add(key);
 		unique.push({

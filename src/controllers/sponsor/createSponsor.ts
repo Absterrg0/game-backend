@@ -47,7 +47,7 @@ export async function createSponsor(req: Request, res: Response) {
 		res.status(400).json({
 			message: 'Invalid request body',
 		});
-		logger.error('Invalid request body', { body: req.body, errors: parsed.error.issues });	
+		logger.error('Invalid request body', { errors: parsed.error.issues });	
 		return;
 	}
 

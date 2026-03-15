@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { z } from 'zod';
 import Tournament from '../../models/Tournament';
 import Court from '../../models/Court';
 import Club from '../../models/Club';
@@ -8,37 +9,47 @@ import { userCanManageClub, sponsorBelongsToClub } from '../../lib/tournamentPer
 import { toDbPayload } from '../../lib/tournamentPayload';
 import { logger } from '../../lib/logger';
 
+const createStatusSchema = z.enum(['draft', 'active']);
+const createTournamentRequestSchema = z.object({
+	...createDraftSchema.shape,
+	status: createStatusSchema
+});
+
+
 /**
  * POST /api/tournaments
  * Create tournament as draft or publish. Body must include status: 'draft' | 'active'.
  */
 export async function createTournament(req: Request, res: Response) {
-	const sessionUser = req.user;
-	if (!sessionUser?._id) {
-		res.status(401).json({ message: 'Not authenticated' });
+	try{
+
+		const sessionUser = req.user;
+		if (!sessionUser?._id) {
+			res.status(401).json({ message: 'Not authenticated' });
+			return;
+		}
+		
+	const parsedRequest = createTournamentRequestSchema.safeParse(req.body);
+	if (!parsedRequest.success) {
+		const msg = parsedRequest.error.issues.map((i) => i.message).join('; ');
+		res.status(400).json({ message: msg });
+		logger.error('Invalid tournament creation request', { body: req.body, errors: msg });
 		return;
 	}
-
-	const rawBody = req.body as Record<string, unknown>;
-	const status = rawBody.status as string | undefined;
-
-	if (!status || !['draft', 'active'].includes(status)) {
-		res.status(400).json({ message: 'status must be "draft" or "active"' });
-		return;
-	}
-
-	const validationInput: Record<string, unknown> = { ...rawBody };
-
+	const { status } = parsedRequest.data;
+	
+	const validationInput = { ...parsedRequest.data };
+	
 	const ctx = {
 		userId: sessionUser._id,
 		userRole: sessionUser.role,
-		adminOf: (sessionUser.adminOf ?? []) as mongoose.Types.ObjectId[]
+		adminOf: sessionUser.adminOf ?? []
 	};
 
 	if (status === 'active' && validationInput.tournamentMode === 'singleDay') {
-		const selectedCourts = Array.isArray(validationInput.courts) ? validationInput.courts : [];
-		const selectedClubId = typeof validationInput.club === 'string' ? validationInput.club : undefined;
-
+		const selectedCourts = validationInput.courts ?? [];
+		const selectedClubId = validationInput.club;
+		
 		if (selectedCourts.length === 0 && selectedClubId) {
 			if (!mongoose.Types.ObjectId.isValid(selectedClubId)) {
 				// Let schema validation report invalid club format; just don't auto-fetch courts.
@@ -50,23 +61,56 @@ export async function createTournament(req: Request, res: Response) {
 					});
 					return;
 				}
+				
+				const clubCourts = await Court.find({
+					club: new mongoose.Types.ObjectId(selectedClubId)
+				})
+					.select('_id')
+					.lean()
+					.exec();
 
-			const clubCourts = await Court.find({
+				if (clubCourts.length === 0) {
+					res.status(400).json({
+						message: 'Selected club has no courts. Add at least one court before publishing this tournament.'
+					});
+					return;
+				}
+				
+				validationInput.courts = clubCourts.map((c) => c._id.toString());
+			}
+		} else if (selectedClubId && selectedCourts.length > 0) {
+			const canManageSelectedClub = await userCanManageClub(ctx, selectedClubId);
+			if (!canManageSelectedClub) {
+				res.status(403).json({
+					message: 'You do not have permission to create tournaments for this club'
+				});
+				return;
+			}
+			const invalidCourtIds = selectedCourts.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+			if (invalidCourtIds.length > 0) {
+				res.status(400).json({
+					message: 'Invalid court ID(s). All court IDs must be valid.'
+				});
+				return;
+			}
+			
+			const uniqueValidObjectIds = [...new Set(selectedCourts)].map((id) => new mongoose.Types.ObjectId(id));
+			const courtsInClub = await Court.find({
+				_id: { $in: uniqueValidObjectIds },
 				club: new mongoose.Types.ObjectId(selectedClubId)
 			})
 				.select('_id')
 				.lean()
 				.exec();
 
-			if (clubCourts.length === 0) {
+				if (courtsInClub.length !== uniqueValidObjectIds.length) {
 				res.status(400).json({
-					message: 'Selected club has no courts. Add at least one court before publishing this tournament.'
+					message: 'Invalid or out-of-club court ID(s). Each court must exist and belong to the selected club.'
 				});
 				return;
 			}
-
-			validationInput.courts = clubCourts.map((c) => c._id.toString());
-			}
+			
+			validationInput.courts = uniqueValidObjectIds.map((id) => id.toString());
 		}
 	}
 
@@ -78,22 +122,22 @@ export async function createTournament(req: Request, res: Response) {
 		logger.error('Invalid tournament creation request', { body: req.body, errors: msg });
 		return;
 	}
-
+	
 	const data = parsed.data;
 	const clubId = data.club;
-
+	
 	const canManage = await userCanManageClub(ctx, clubId);
 	if (!canManage) {
 		res.status(403).json({ message: 'You do not have permission to create tournaments for this club' });
 		return;
 	}
-
+	
 	const club = await Club.findById(clubId).select('_id').lean().exec();
 	if (!club) {
 		res.status(404).json({ message: 'Club not found' });
 		return;
 	}
-
+	
 	if (data.sponsorId) {
 		const sponsorOk = await sponsorBelongsToClub(data.sponsorId, clubId);
 		if (!sponsorOk) {
@@ -101,14 +145,13 @@ export async function createTournament(req: Request, res: Response) {
 			return;
 		}
 	}
-
+	
 	const payload = toDbPayload({ ...data, status });
 	payload.club = new mongoose.Types.ObjectId(clubId);
 	payload.status = status;
-
+	
 	try {
-		const doc = await Tournament.create([payload]);
-		const tournament = doc[0];
+		const tournament = await Tournament.create(payload);
 		res.status(201).json({
 			message: status === 'draft' ? 'Draft saved' : 'Tournament published',
 			tournament: {
@@ -120,14 +163,12 @@ export async function createTournament(req: Request, res: Response) {
 				createdAt: tournament.createdAt
 			}
 		});
-	} catch (err: unknown) {
-		const mongoErr = err as { code?: number; message?: string };
-		if (mongoErr?.code === 11000) {
-			res.status(400).json({ message: 'Tournament already exists'});
-			logger.error('Tournament already exists', { err });
-			return;
-		}
-		res.status(500).json({ message: 'Failed to create tournament' });
+	} catch (err) {
 		logger.error('Failed to create tournament', { err });
+		res.status(500).json({ message: 'Failed to create tournament' });
+	}
+	}catch (err: unknown) {
+		logger.error('Internal server error', { err });
+		res.status(500).json({ message: 'Internal server error' });
 	}
 }
