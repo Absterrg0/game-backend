@@ -1,3 +1,4 @@
+import { logger } from '../../lib/logger';
 import type { Request, Response } from 'express';
 import { LogError } from '../../lib/logger';
 import User, { type UserDocument } from '../../models/User';
@@ -27,6 +28,8 @@ async function reactivateUserIfDeleted(user: UserDocument): Promise<UserDocument
 	if (!reactivatedUser) {
 		throw new Error('Failed to reactivate deleted user');
 	}
+
+	logger.info('Reactivated user', { userId: reactivatedUser._id });
 
 	return reactivatedUser;
 }
