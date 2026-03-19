@@ -3,64 +3,61 @@ import type { UpdateClubSubscriptionInput } from './validation';
 import { findClubSubscriptionByIdForUpdate } from './queries';
 
 export async function updateClubSubscriptionFlow(
-  clubId: string,
-  payload: UpdateClubSubscriptionInput
+	clubId: string,
+	payload: UpdateClubSubscriptionInput
 ) {
-  const club = await findClubSubscriptionByIdForUpdate(clubId);
+	const club = await findClubSubscriptionByIdForUpdate(clubId);
 
-  if (!club) {
-    return error(404, 'Club not found');
-  }
+	if (!club) {
+		return error(404, 'Club not found');
+	}
 
-  /**
-   * STEP 1: Apply explicit payload fields
-   */
-  if (payload.plan !== undefined) {
-    club.plan = payload.plan;
-  }
+	const newPlan = payload.plan;
+	const newExpiresAt = payload.expiresAt;
 
-  if (payload.expiresAt !== undefined) {
-    club.expiresAt = payload.expiresAt;
-  }
+	let finalPlan: 'free' | 'premium';
+	let finalExpiresAt: Date | null;
 
-  /**
-   * STEP 2: Resolve invariants with correct precedence
-   */
+	if (newPlan === 'free') {
+		finalPlan = 'free';
+		finalExpiresAt = null;
+	} else if (newPlan === 'premium') {
+		if (newExpiresAt === undefined || newExpiresAt === null) {
+			return error(400, 'Premium plan requires a future expiration date');
+		}
+		finalPlan = 'premium';
+		finalExpiresAt = newExpiresAt;
+	} else {
+		if (newExpiresAt !== undefined) {
+			if (newExpiresAt === null) {
+				finalPlan = 'free';
+				finalExpiresAt = null;
+			} else {
+				finalPlan = 'premium';
+				finalExpiresAt = newExpiresAt;
+			}
+		} else if (club.expiresAt != null) {
+			finalPlan = 'premium';
+			finalExpiresAt = club.expiresAt;
+		} else {
+			finalPlan = 'free';
+			finalExpiresAt = null;
+		}
+	}
 
-  // ✅ Explicit downgrade ALWAYS wins
-  if (payload.plan === 'free') {
-    club.plan = 'free';
-    club.expiresAt = null;
-  } else {
-    // If expiresAt is explicitly provided (including null), respect it
-    if (payload.expiresAt !== undefined) {
-      if (payload.expiresAt === null) {
-        club.plan = 'free';
-        club.expiresAt = null;
-      } else {
-        club.plan = 'premium';
-        club.expiresAt = payload.expiresAt;
-      }
-    } else {
-      // No expiresAt in payload → derive from existing state
-      if (club.expiresAt !== null) {
-        club.plan = 'premium';
-      } else {
-        club.plan = 'free';
-      }
-    }
-  }
+	club.plan = finalPlan;
+	club.expiresAt = finalExpiresAt;
 
-  await club.save();
+	await club.save();
 
-  return ok(
-    {
-      club: {
-        id: club._id,
-        plan: club.plan,
-        expiresAt: club.expiresAt,
-      },
-    },
-    { status: 200, message: 'Club subscription updated successfully' }
-  );
+	return ok(
+		{
+			club: {
+				id: club._id,
+				plan: club.plan,
+				expiresAt: club.expiresAt,
+			},
+		},
+		{ status: 200, message: 'Club subscription updated successfully' }
+	);
 }
