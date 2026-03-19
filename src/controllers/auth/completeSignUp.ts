@@ -12,6 +12,24 @@ import { isApplePlaceholderEmail } from '../../lib/passport';
 function normalizeEmail(email: string): string {
 	return email.trim().toLowerCase();
 }
+
+async function reactivateUserIfDeleted(user: UserDocument): Promise<UserDocument> {
+	if (!user.deletedAt) return user;
+
+	const reactivatedUser = await User.findByIdAndUpdate(
+		user._id,
+		{ deletedAt: null, status: 'active' },
+		{ returnDocument: 'after' }
+	)
+		.setOptions({ includeDeleted: true })
+		.exec();
+
+	if (!reactivatedUser) {
+		throw new Error('Failed to reactivate deleted user');
+	}
+
+	return reactivatedUser;
+}
 /**
  * Completes first-time signup. Requires a valid pendingToken from the OAuth redirect.
  * Updates the User with profile info and creates JWT + Session (auth cookie).
@@ -49,7 +67,7 @@ export async function completeSignUp(req: Request, res: Response) {
 					.status(404)
 					.json({ message: 'No user found. Please login with Apple.', error: true, code: 'NO_USER_FOUND' });
 
-			user = (await User.findById(userAuth.user).exec()) ?? null;
+			user = (await User.findById(userAuth.user).setOptions({ includeDeleted: true }).exec()) ?? null;
 		} else if (payload.googleId) {
 			const userAuth = await UserAuth.findOne({ googleId: payload.googleId }).exec();
 			if (!userAuth)
@@ -57,14 +75,18 @@ export async function completeSignUp(req: Request, res: Response) {
 					.status(404)
 					.json({ message: 'No user found. Please login with Google.', error: true, code: 'NO_USER_FOUND' });
 
-			user = (await User.findById(userAuth.user).exec()) ?? null;
+			user = (await User.findById(userAuth.user).setOptions({ includeDeleted: true }).exec()) ?? null;
 		} else {
-			user = (await User.findOne({ email: normalizeEmail(payload.pendingEmail) }).exec()) ?? null;
+			user = (await User.findOne({ email: normalizeEmail(payload.pendingEmail) })
+				.setOptions({ includeDeleted: true })
+				.exec()) ?? null;
 		}
 
 		if (!user) {
 			return res.status(404).json({ message: 'No user found. Please login again.', error: true, code: 'NO_USER_FOUND' });
 		}
+
+		user = await reactivateUserIfDeleted(user);
 
 		// Idempotent: if user was already complete (e.g. double submit), create JWT session and return
 		if (isSignupComplete(user)) {
@@ -99,7 +121,9 @@ export async function completeSignUp(req: Request, res: Response) {
 
 		// Check if email is already taken by another user (exclude current user)
 		if (emailToSet) {
-			const existingByEmail = await User.findOne({ email: emailToSet, _id: { $ne: user._id } }).exec();
+			const existingByEmail = await User.findOne({ email: emailToSet, _id: { $ne: user._id } })
+				.setOptions({ includeDeleted: true })
+				.exec();
 			if (existingByEmail) {
 				return res.status(409).json({
 					message: 'An account with this email address already exists.',

@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { error, ok } from '../../../shared/helpers';
 import {
-	deleteUserAuth,
 	deleteUserSessions,
 	removeUserFromTournamentParticipants,
 	softDeleteUser
@@ -18,7 +17,6 @@ export async function deleteAccountFlow(userId: string) {
 		try {
 			await session.withTransaction(async () => {
 				await deleteUserSessions(userId, session);
-				await deleteUserAuth(userId, session);
 				await removeUserFromTournamentParticipants(userId, session);
 				
 				const result = await softDeleteUser(userId, session);
