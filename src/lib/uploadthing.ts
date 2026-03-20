@@ -1,15 +1,12 @@
 import { createUploadthing, type FileRouter } from 'uploadthing/express';
+import { UploadThingError } from 'uploadthing/server';
 
 const f = createUploadthing();
 
 export const uploadRouter = {
 	sponsorLogoUploader: f({
 		image: {
-			maxFileSize: '16MB',
-			maxFileCount: 1,
-		},
-		pdf: {
-			maxFileSize: '16MB',
+			maxFileSize: '8MB',
 			maxFileCount: 1,
 		}
 	})
@@ -17,7 +14,7 @@ export const uploadRouter = {
 			const user = req.user;
 
 			if (!user) {
-				throw new Error('Unauthorized');
+				throw new UploadThingError('Unauthorized');
 			}
 
 			return {

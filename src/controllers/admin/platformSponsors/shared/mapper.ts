@@ -1,10 +1,11 @@
+import type { SponsorStatus } from "../../../../types/domain";
 export interface PlatformSponsorLeanDoc {
 	_id: string | { toString(): string };
 	name: string;
 	description?: string | null;
 	logoUrl?: string | null;
 	link?: string | null;
-	status: 'active' | 'paused';
+	status: SponsorStatus;
 }
 
 export function mapPlatformSponsor(sponsor: PlatformSponsorLeanDoc) {

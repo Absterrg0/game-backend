@@ -16,7 +16,10 @@ export async function createPlatformSponsorFlow(input: CreatePlatformSponsorInpu
 		);
 	} catch (err) {
 		const mongoErr = err as { code?: number; name?: string };
-		if (mongoErr.name === 'MongoError' && mongoErr.code === 11000) {
+		if (
+			mongoErr.code === 11000 &&
+			(mongoErr.name === 'MongoServerError' || mongoErr.name === 'MongoError')
+		) {
 			return error(409, 'Sponsor already exists');
 		}
 		return error(500, 'Internal server error');
