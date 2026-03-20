@@ -44,8 +44,14 @@ export async function updateClubSubscriptionFlow(
 
 	club.plan = finalPlan;
 	club.expiresAt = finalExpiresAt;
-
-	await club.save();
+	try{
+		await club.save();
+	} catch (err) {
+		const mongoErr = err as { name?: string };
+		if (mongoErr.name === 'VersionError') {
+			return error(409, 'Club was modified concurrently. Please retry.');
+		}
+	}
 
 	return ok(
 		{
