@@ -15,14 +15,23 @@ function normalizeEmail(email: string): string {
 	return email.trim().toLowerCase();
 }
 
-async function findOrCreateUserByEmail(email: string, session: mongoose.ClientSession) {
-	const normalizedEmail = normalizeEmail(email);
-	const existing = await User.findOne({ email: normalizedEmail }).session(session);
-	if (existing) return { user: existing, created: false };
+async function reactivateUserIfDeleted(user: UserDocument, session: mongoose.ClientSession): Promise<UserDocument> {
+	if (!user.deletedAt) return user;
 
-	const [newUser] = await User.create([{ email: normalizedEmail }], { session });
-	if (!newUser) throw new Error('User creation failed');
-	return { user: newUser, created: true };
+	const reactivatedUser = await User.findByIdAndUpdate(
+		user._id,
+		{ deletedAt: null, status: 'active' },
+		{ new: true }
+	)
+		.setOptions({ includeDeleted: true })
+		.session(session);
+
+	if (!reactivatedUser) {
+		throw new Error('Failed to reactivate deleted user');
+	}
+
+	logger.info('Reactivated soft-deleted user during OAuth callback', { userId: user._id });
+	return reactivatedUser;
 }
 
 // --- Apple-specific helpers ---
@@ -148,44 +157,67 @@ async function handleOAuthCallback(
 	try {
 		const lookup = { [config.providerIdField]: config.providerId } as { googleId?: string; appleId?: string };
 		const byProviderId = await UserAuth.findOne(lookup)
-			.populate<{ user: UserDocument }>('user')
+			.populate<{ user: UserDocument }>({ path: 'user', options: { includeDeleted: true } })
 			.session(session);
 
 		if (byProviderId?.user) {
-			await session.abortTransaction();
+			const reactivatedUser = await reactivateUserIfDeleted(byProviderId.user, session);
+			await session.commitTransaction();
 			logger.info(config.signInByProviderMessage, { [config.providerIdField]: config.providerId });
-			return done(null, byProviderId.user);
+			return done(null, reactivatedUser);
 		}
 
-		const { user, created } = await findOrCreateUserByEmail(config.email, session);
-		const existingAuth = await UserAuth.findOne({ user: user._id }).session(session);
+		const normalizedEmail = normalizeEmail(config.email);
+		const existingUser = await User.findOne({ email: normalizedEmail })
+			.setOptions({ includeDeleted: true })
+			.session(session);
 
-		if (existingAuth) {
-			const existingProviderId = existingAuth[config.providerIdField];
-			if (existingProviderId && existingProviderId !== config.providerId) {
+		if (existingUser) {
+			if (existingUser.deletedAt) {
 				await session.abortTransaction();
-				return done(new Error(config.conflictMessage));
+				return done(new Error('This account was deleted. Sign in with the originally linked OAuth provider to restore access.'));
 			}
 
-			if (!existingProviderId) {
-				if (config.providerIdField === 'googleId') {
-					existingAuth.googleId = config.providerId;
-				} else {
-					existingAuth.appleId = config.providerId;
+			const existingAuth = await UserAuth.findOne({ user: existingUser._id }).session(session);
+
+			if (existingAuth) {
+				const existingProviderId = existingAuth[config.providerIdField];
+				if (existingProviderId && existingProviderId !== config.providerId) {
+					await session.abortTransaction();
+					return done(new Error(config.conflictMessage));
 				}
-				await existingAuth.save({ session });
-				logger.info(config.linkMessage, { userId: user._id });
+
+				if (!existingProviderId) {
+					if (config.providerIdField === 'googleId') {
+						existingAuth.googleId = config.providerId;
+					} else {
+						existingAuth.appleId = config.providerId;
+					}
+					await existingAuth.save({ session });
+					logger.info(config.linkMessage, { userId: existingUser._id });
+				}
+			} else {
+				await UserAuth.create([{ user: existingUser._id, [config.providerIdField]: config.providerId }], { session });
 			}
-		} else {
-			await UserAuth.create([{ user: user._id, [config.providerIdField]: config.providerId }], { session });
+
+			await session.commitTransaction();
+			logger.info(`${config.providerName} sign-in by email`, {
+				userId: existingUser._id,
+				...config.extraLogFields,
+			});
+			return done(null, existingUser);
 		}
+
+		const [newUser] = await User.create([{ email: normalizedEmail }], { session });
+		if (!newUser) throw new Error('User creation failed');
+		await UserAuth.create([{ user: newUser._id, [config.providerIdField]: config.providerId }], { session });
 
 		await session.commitTransaction();
-		logger.info(created ? `${config.providerName} sign-up: new user created` : `${config.providerName} sign-in by email`, {
-			userId: user._id,
+		logger.info(`${config.providerName} sign-up: new user created`, {
+			userId: newUser._id,
 			...config.extraLogFields,
 		});
-		return done(null, user);
+		return done(null, newUser);
 	} catch (error) {
 		await session.abortTransaction();
 		logger.error(`${config.providerName} strategy error`, { error });
