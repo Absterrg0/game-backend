@@ -22,11 +22,8 @@ export async function updateClubSubscriptionFlow(
 		finalPlan = 'free';
 		finalExpiresAt = null;
 	} else if (newPlan === 'premium') {
-		if (newExpiresAt === undefined || newExpiresAt === null) {
-			return error(400, 'Premium plan requires a future expiration date');
-		}
 		finalPlan = 'premium';
-		finalExpiresAt = newExpiresAt;
+		finalExpiresAt = newExpiresAt!;
 	} else {
 		if (newExpiresAt !== undefined) {
 			if (newExpiresAt === null) {
@@ -36,7 +33,7 @@ export async function updateClubSubscriptionFlow(
 				finalPlan = 'premium';
 				finalExpiresAt = newExpiresAt;
 			}
-		} else if (club.expiresAt != null) {
+		} else if (club.expiresAt != null && club.expiresAt.getTime() > Date.now()) {
 			finalPlan = 'premium';
 			finalExpiresAt = club.expiresAt;
 		} else {

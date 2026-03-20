@@ -21,7 +21,7 @@ router.patch('/update-profile', authenticate, updateProfile);
 router.delete('/delete-account', authenticate, deleteAccount);
 router.get('/favorite-clubs', authenticate, getFavoriteClubs);
 router.get('/admin-clubs', authenticate, getAdminClubs);
-router.get('/search', authenticate,requireClubAdminOrAbove, searchUsers);
+router.get('/search', authenticate, requireClubAdminOrAbove, searchUsers);
 router.post('/favorite-clubs', authenticate, addFavoriteClub);
 router.delete('/favorite-clubs/:clubId', authenticate, removeFavoriteClub);
 router.patch('/home-club', authenticate, setHomeClub);

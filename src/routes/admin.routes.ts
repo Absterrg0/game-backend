@@ -11,10 +11,11 @@ router.get('/ping', authenticate, requireSuperAdmin, (_req, res) => {
 });
 
 /**
- * Super Admin only: promote a user to super_admin by username with promotion password.
+ * Super Admin only: update a club's subscription.
+ *
+ * PATCH /clubs/:clubId/subscription
+ * Requires authentication and Super Admin privileges.
  */
-
-// Todo: Add requireSuperAdmin middleware once we have at least one super_admin to prevent lockout. Currently left open for initial setup/testing of promoteUserToSuperAdmin functionality.
 router.patch('/clubs/:clubId/subscription', authenticate, requireSuperAdmin, updateClubSubscription);
 
 export default router;
