@@ -25,7 +25,7 @@ export async function updatePlatformSponsorFlow(sponsorId: string, input: Update
 		if (mongoErr.name === 'VersionError') {
 			return error(409, 'Sponsor was modified concurrently. Please retry.');
 		}
-		return error(500, err instanceof Error ? err.message : 'Internal server error');
+		return error(500, 'Internal server error');
 	}
 
 	return ok(

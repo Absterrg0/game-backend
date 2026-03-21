@@ -7,8 +7,10 @@ const optionalText = z
 	.optional()
 	.nullable()
 	.transform((v) => {
-		if (v == null) return null;
-		return v === '' ? null : v;
+		if (v === undefined) return undefined;
+		if (v === null) return null;
+		if (v === '') return null;
+		return v;
 	});
 
 const optionalUrl = z
