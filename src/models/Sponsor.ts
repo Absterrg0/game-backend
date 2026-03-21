@@ -1,14 +1,18 @@
 import mongoose, { Schema, type HydratedDocument } from 'mongoose';
-
-export type SponsorScope = 'global' | 'club';
-export type SponsorStatus = 'active' | 'paused';
+import {
+	SPONSOR_SCOPES,
+	SPONSOR_STATUSES,
+	type SponsorScope,
+	type SponsorStatus
+} from '../types/domain/sponsor';
 
 export interface ISponsor {
 	name: string;
+	description?: string | null;
 	logoUrl?: string | null;
 	link?: string | null;
 	scope: SponsorScope;
-	clubId: mongoose.Types.ObjectId | null;
+	club: mongoose.Types.ObjectId | null;
 	status: SponsorStatus;
 	createdAt: Date;
 	updatedAt: Date;
@@ -20,7 +24,12 @@ const sponsorSchema = new Schema<ISponsor>(
 	{
 		name: {
 			type: String,
-			required: true
+			required: true,
+			trim: true
+		},
+		description: {
+			type: String,
+			default: null
 		},
 		logoUrl: {
 			type: String,
@@ -33,13 +42,13 @@ const sponsorSchema = new Schema<ISponsor>(
 		scope: {
 			type: String,
 			enum: {
-				values: ['global', 'club'],
+				values: SPONSOR_SCOPES,
 				message: '{VALUE} is not supported'
 			},
 			required: true,
 			default: 'club'
 		},
-		clubId: {
+		club: {
 			type: Schema.Types.ObjectId,
 			ref: 'Club',
 			default: null
@@ -47,7 +56,7 @@ const sponsorSchema = new Schema<ISponsor>(
 		status: {
 			type: String,
 			enum: {
-				values: ['active', 'paused'],
+				values: SPONSOR_STATUSES,
 				message: '{VALUE} is not supported'
 			},
 			required: true,
@@ -60,13 +69,14 @@ const sponsorSchema = new Schema<ISponsor>(
 );
 
 sponsorSchema.pre('save', function () {
-	if (this.scope === 'club' && !this.clubId) {
-		throw new Error('clubId is required when scope is "club"');
+	if (this.scope === 'club' && !this.club) {
+		throw new Error('club is required when scope is "club"');
 	}
 });
 
-sponsorSchema.index({ clubId: 1 });
-sponsorSchema.index({ scope: 1, clubId: 1 });
+sponsorSchema.index({ club: 1 });
+sponsorSchema.index({ scope: 1, club: 1 });
+sponsorSchema.index({ scope: 1, club: 1, name: 1 }, { unique: true });
 
 const Sponsor = mongoose.model<ISponsor>('Sponsor', sponsorSchema);
 

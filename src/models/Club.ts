@@ -1,10 +1,10 @@
 import mongoose, { Schema, type HydratedDocument } from 'mongoose';
 
 export type ClubPlan = 'free' | 'premium';
-export type ClubSubscriptionStatus = 'renewal_needed' | 'subscribed' ;
 
 export interface IClub {
 	name: string;
+	description?: string | null;
 	address: string;
 	coordinates: {
 		type: 'Point';
@@ -21,8 +21,6 @@ export interface IClub {
 	plan: ClubPlan;
 	/** When the subscription expires. Null for free plans with no expiry. */
 	expiresAt: Date | null;
-	/** Subscription status: renewal_needed or subscribed. */
-	subscriptionStatus: ClubSubscriptionStatus;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -35,6 +33,12 @@ const clubSchema = new Schema<IClub>(
 			type: String,
 			unique: true,
 			required: true
+		},
+		description: {
+			type: String,
+			trim:true,
+			maxLength:1000,
+			default: null
 		},
 		address: {
 			type: String,
@@ -100,14 +104,6 @@ const clubSchema = new Schema<IClub>(
 		expiresAt: {
 			type: Date,
 			default: null
-		},
-		subscriptionStatus: {
-			type: String,
-			enum: {
-				values: ['renewal_needed', 'subscribed'],
-				message: '{VALUE} is not supported'
-			},
-			default: 'subscribed'
 		}
 	},
 	{
