@@ -28,7 +28,7 @@ const coordinatesSchema = z
 const noDuplicateCourts = (courts: Array<{ name: string }>) => {
 	const seen = new Set<string>();
 	for (const c of courts) {
-		const key = c.name.trim();
+		const key = c.name.trim().toLowerCase();
 		if (seen.has(key)) return false;
 		seen.add(key);
 	}
