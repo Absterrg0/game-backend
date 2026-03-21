@@ -7,8 +7,6 @@ import {
 	updateSponsor
 } from '../controllers/sponsor/controller';
 import authenticate from '../middlewares/auth';
-import { validateBody } from '../lib/validation';
-import { createSponsorSchema, updateSponsorSchema } from '../validation/sponsor.schemas';
 
 const router = express.Router();
 

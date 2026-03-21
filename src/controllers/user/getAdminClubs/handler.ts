@@ -1,6 +1,11 @@
 import { error, ok } from '../../../shared/helpers';
 import { mapAdminClubsResponse } from './mapper';
-import { findCourtCountsByClub, findUserAdminClubs } from './queries';
+import {
+	findCourtCountsByClub,
+	findFavoriteMemberCountsByClub,
+	findTournamentCountsByClub,
+	findUserAdminClubs
+} from './queries';
 
 export async function getAdminClubsFlow(userId: string) {
 	try {
@@ -10,8 +15,12 @@ export async function getAdminClubsFlow(userId: string) {
 		}
 
 		const clubIds = adminClubs.map((club) => club._id);
-		const courtCountMap = await findCourtCountsByClub(clubIds);
-		const response = mapAdminClubsResponse(adminClubs, courtCountMap);
+		const [courtCountMap, membersCountMap, eventsCountMap] = await Promise.all([
+			findCourtCountsByClub(clubIds),
+			findFavoriteMemberCountsByClub(clubIds),
+			findTournamentCountsByClub(clubIds)
+		]);
+		const response = mapAdminClubsResponse(adminClubs, courtCountMap, membersCountMap, eventsCountMap);
 
 		return ok(response, { status: 200, message: 'Admin clubs fetched successfully' });
 	} catch (err) {

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Court from '../../../models/Court';
 import Club from '../../../models/Club';
+import Tournament from '../../../models/Tournament';
 import User from '../../../models/User';
 import type { AdminClubDoc, CourtCountRow, UserAdminClubsDoc } from './types';
 
@@ -57,4 +58,42 @@ export async function findCourtCountsByClub(clubIds: mongoose.Types.ObjectId[]) 
 	]).exec();
 
 	return new Map(courtCounts.map((item) => [item._id.toString(), item.count]));
+}
+
+/** Users who favorited the club (excludes soft-deleted accounts). */
+export async function findFavoriteMemberCountsByClub(clubIds: mongoose.Types.ObjectId[]) {
+	if (!clubIds.length) {
+		return new Map<string, number>();
+	}
+
+	const notDeleted = {
+		$or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+	};
+
+	const memberCounts = await User.aggregate<CourtCountRow>([
+		{
+			$match: {
+				...notDeleted,
+				favoriteClubs: { $in: clubIds }
+			}
+		},
+		{ $unwind: '$favoriteClubs' },
+		{ $match: { favoriteClubs: { $in: clubIds } } },
+		{ $group: { _id: '$favoriteClubs', count: { $sum: 1 } } }
+	]).exec();
+
+	return new Map(memberCounts.map((item) => [item._id.toString(), item.count]));
+}
+
+export async function findTournamentCountsByClub(clubIds: mongoose.Types.ObjectId[]) {
+	if (!clubIds.length) {
+		return new Map<string, number>();
+	}
+
+	const tournamentCounts = await Tournament.aggregate<CourtCountRow>([
+		{ $match: { club: { $in: clubIds } } },
+		{ $group: { _id: '$club', count: { $sum: 1 } } }
+	]).exec();
+
+	return new Map(tournamentCounts.map((item) => [item._id.toString(), item.count]));
 }
