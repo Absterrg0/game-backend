@@ -76,7 +76,7 @@ sponsorSchema.pre('save', function () {
 
 sponsorSchema.index({ club: 1 });
 sponsorSchema.index({ scope: 1, club: 1 });
-sponsorSchema.index({ scope: 1, name: 1 }, { unique: true });
+sponsorSchema.index({ scope: 1, club: 1, name: 1 }, { unique: true });
 
 const Sponsor = mongoose.model<ISponsor>('Sponsor', sponsorSchema);
 

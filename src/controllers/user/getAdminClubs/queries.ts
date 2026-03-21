@@ -35,7 +35,15 @@ export async function findUserAdminClubs(userId: string) {
 		merged.set(club._id.toString(), club);
 	}
 
-	return Array.from(merged.values());
+	return Array.from(merged.values()).sort((left, right) => {
+		const byName = left.name.localeCompare(right.name);
+
+		if (byName !== 0) {
+			return byName;
+		}
+
+		return left._id.toString().localeCompare(right._id.toString());
+	});
 }
 
 export async function findCourtCountsByClub(clubIds: mongoose.Types.ObjectId[]) {
