@@ -25,10 +25,10 @@ const coordinatesSchema = z
 		{ message: 'Coordinates must be [longitude, latitude] within valid ranges' }
 	);
 
-const noDuplicateCourts = (courts: Array<{ name: string; type: string; placement: string }>) => {
+const noDuplicateCourts = (courts: Array<{ name: string }>) => {
 	const seen = new Set<string>();
 	for (const c of courts) {
-		const key = `${c.name.trim()}|${c.type}|${c.placement}`;
+		const key = c.name.trim().toLowerCase();
 		if (seen.has(key)) return false;
 		seen.add(key);
 	}
@@ -45,7 +45,7 @@ export const createClubSchema = z
 		courts: z.array(courtSchema).optional().default([])
 	})
 	.refine((data) => noDuplicateCourts(data.courts ?? []), {
-		message: 'Duplicate courts are not allowed. Two courts cannot have the same name, type, and placement.',
+		message: 'Duplicate courts are not allowed. Two courts cannot have the same name.',
 		path: ['courts']
 	});
 
@@ -67,7 +67,7 @@ export const updateClubSchema = z
 	.refine(
 		(data) => !data.courts || noDuplicateCourts(data.courts),
 		{
-			message: 'Duplicate courts are not allowed. Two courts cannot have the same name, type, and placement.',
+			message: 'Duplicate courts are not allowed. Two courts cannot have the same name.',
 			path: ['courts']
 		}
 	);
