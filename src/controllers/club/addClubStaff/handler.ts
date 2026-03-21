@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import type { Request } from 'express';
 import type { AddClubStaffInput } from '../../../validation/club.schemas';
-import { userCanManageClubAsAdmin } from '../../../lib/permissions';
+import { userCanManageClub, userCanManageClubAsAdmin } from '../../../lib/permissions';
 import { buildPermissionContext } from '../../../shared/authContext';
 import { error, ok } from '../../../shared/helpers';
 import { addUserAdminOfClub, addUserAsClubOrganiser, findClubPlanById, findUserById } from './queries';
@@ -10,8 +10,12 @@ type Session = NonNullable<Request['user']>;
 
 export async function addClubStaffFlow(clubId: string, payload: AddClubStaffInput, session: Session) {
 	const ctx = buildPermissionContext(session);
-	if (!userCanManageClubAsAdmin(ctx, clubId)) {
+	if (!(await userCanManageClub(ctx, clubId))) {
 		return error(403, 'You do not have permission to manage this club');
+	}
+
+	if (payload.role === 'admin' && !userCanManageClubAsAdmin(ctx, clubId)) {
+		return error(403, 'Only club admins can add new admins');
 	}
 
 	const club = await findClubPlanById(clubId);

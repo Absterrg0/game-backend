@@ -1,11 +1,20 @@
 import type { AdminClubDoc } from './types';
 
-export function mapAdminClubsResponse(clubs: AdminClubDoc[], courtCountMap: Map<string, number>) {
+export function mapAdminClubsResponse(
+	clubs: AdminClubDoc[],
+	courtCountMap: Map<string, number>,
+	membersCountMap: Map<string, number>,
+	eventsCountMap: Map<string, number>
+) {
+	const id = (club: AdminClubDoc) => club._id.toString();
+
 	return {
 		clubs: clubs.map((club) => ({
-			id: club._id.toString(),
+			id: id(club),
 			name: club.name,
-			courtCount: courtCountMap.get(club._id.toString()) ?? 0
+			courtCount: courtCountMap.get(id(club)) ?? 0,
+			membersCount: membersCountMap.get(id(club)) ?? 0,
+			eventsCount: eventsCountMap.get(id(club)) ?? 0
 		}))
 	};
 }
