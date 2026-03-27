@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Club from '../../../models/Club';
 import { error } from '../../../shared/helpers';
 import type { RemoveClubStaffAccess } from './authenticate';
 import {
@@ -17,7 +18,10 @@ export type RemoveClubStaffTransactionResult = { ok: true } | ReturnType<typeof 
 export async function removeClubStaffTransaction(
 	clubId: string,
 	staffId: string,
-	access: Pick<RemoveClubStaffAccess, 'canRemoveAdmins'>
+	access: Pick<
+		RemoveClubStaffAccess,
+		'canManageOrganisers' | 'canManageAdmins' | 'canRemoveDefaultAdmin'
+	>
 ): Promise<RemoveClubStaffTransactionResult> {
 	const session = await mongoose.startSession();
 	try {
@@ -28,9 +32,7 @@ export async function removeClubStaffTransaction(
 			}
 
 			const defaultAdminId = club.defaultAdminId?.toString() ?? null;
-			if (defaultAdminId === staffId) {
-				return error(400, 'Cannot remove the default admin');
-			}
+			const isDefaultAdminTarget = defaultAdminId === staffId;
 
 			const organiserIds = (club.organiserIds ?? []).map((id) => id.toString());
 			const user = await findClubStaffUserSnapshotById(staffId, session);
@@ -45,12 +47,29 @@ export async function removeClubStaffTransaction(
 				return error(404, 'Staff member not found in this club');
 			}
 
-			if (isAdmin && !access.canRemoveAdmins) {
-				return error(403, 'Only club admins can remove admins');
+			if (isAdmin && isDefaultAdminTarget && !access.canRemoveDefaultAdmin) {
+				return error(403, 'Only super admins can remove the default admin');
+			}
+
+			if (isAdmin && !isDefaultAdminTarget && !access.canManageAdmins) {
+				return error(403, 'Only the main admin can remove other admins');
+			}
+
+			if (isOrganiser && !access.canManageOrganisers) {
+				return error(403, 'Only club admins can remove organisers');
 			}
 
 			if (isAdmin) {
 				await removeUserAdminOfClub(clubId, staffId, session);
+
+				if (isDefaultAdminTarget) {
+					await Club.updateOne(
+						{ _id: clubId, defaultAdminId: new mongoose.Types.ObjectId(staffId) },
+						{ $set: { defaultAdminId: null } }
+					)
+						.session(session)
+						.exec();
+				}
 			}
 
 			if (isOrganiser) {

@@ -3,7 +3,9 @@ import { error, ok } from '../../../shared/helpers';
 import { findClubStaffSnapshotById } from '../shared/queries';
 
 export interface RemoveClubStaffAccess {
-	canRemoveAdmins: boolean;
+	canManageOrganisers: boolean;
+	canManageAdmins: boolean;
+	canRemoveDefaultAdmin: boolean;
 }
 
 export async function authenticateRemoveClubStaff(clubId: string, session: AuthenticatedSession) {
@@ -14,16 +16,21 @@ export async function authenticateRemoveClubStaff(clubId: string, session: Authe
 
 	const currentUserId = session._id.toString();
 	const organiserIds = (club.organiserIds ?? []).map((id) => id.toString());
+	const defaultAdminId = club.defaultAdminId?.toString() ?? null;
 	const isSuperAdmin = session.role === 'super_admin';
 	const isClubAdmin = (session.adminOf ?? []).some((id) => id.toString() === clubId);
-	const isClubOrganiser = organiserIds.includes(currentUserId);
+	const isDefaultAdmin = defaultAdminId === currentUserId;
 
-	if (!isSuperAdmin && !isClubAdmin && !isClubOrganiser) {
+	if (!isSuperAdmin && !isClubAdmin) {
 		return error(403, 'You do not have permission to manage this club');
 	}
 
 	return ok(
-		{ canRemoveAdmins: isSuperAdmin || isClubAdmin },
+		{
+			canManageOrganisers: isSuperAdmin || isClubAdmin,
+			canManageAdmins: isSuperAdmin || isDefaultAdmin,
+			canRemoveDefaultAdmin: isSuperAdmin
+		},
 		{ status: 200, message: 'Authorized for club staff removal' }
 	);
 }

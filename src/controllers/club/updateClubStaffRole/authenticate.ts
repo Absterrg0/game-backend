@@ -3,9 +3,8 @@ import { error, ok } from '../../../shared/helpers';
 import { findClubStaffSnapshotById } from '../shared/queries';
 
 export interface UpdateClubStaffRoleAccess {
-	canAssignAdminRole: boolean;
-	defaultAdminId: string | null;
-	organiserIds: string[];
+	canManageOrganisers: boolean;
+	canManageAdmins: boolean;
 }
 
 export async function authenticateUpdateClubStaffRole(clubId: string, session: AuthenticatedSession) {
@@ -15,20 +14,19 @@ export async function authenticateUpdateClubStaffRole(clubId: string, session: A
 	}
 
 	const currentUserId = session._id.toString();
-	const organiserIds = (club.organiserIds ?? []).map((id) => id.toString());
+	const defaultAdminId = club.defaultAdminId?.toString() ?? null;
 	const isSuperAdmin = session.role === 'super_admin';
 	const isClubAdmin = (session.adminOf ?? []).some((id) => id.toString() === clubId);
-	const isClubOrganiser = organiserIds.includes(currentUserId);
+	const isDefaultAdmin = defaultAdminId === currentUserId;
 
-	if (!isSuperAdmin && !isClubAdmin && !isClubOrganiser) {
+	if (!isSuperAdmin && !isClubAdmin) {
 		return error(403, 'You do not have permission to manage this club');
 	}
 
 	return ok(
 		{
-			canAssignAdminRole: isSuperAdmin || isClubAdmin,
-			defaultAdminId: club.defaultAdminId?.toString() ?? null,
-			organiserIds
+			canManageOrganisers: isSuperAdmin || isClubAdmin,
+			canManageAdmins: isSuperAdmin || isDefaultAdmin
 		},
 		{ status: 200, message: 'Authorized for club staff role update' }
 	);

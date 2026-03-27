@@ -1,12 +1,64 @@
 import mongoose, { type ClientSession } from 'mongoose';
 import Club from '../../../models/Club';
 import User from '../../../models/User';
+import { ROLES } from '../../../constants/roles';
 
 export type TransferClubDefaultAdminIfExpectedCode =
 	| 'ok'
 	| 'club_not_found'
 	| 'stale_main_admin'
 	| 'target_not_admin';
+
+function deriveRoleFromAssignments(user: {
+	role: string;
+	adminOf?: unknown[];
+}, hasClubOrganiserAssignment: boolean) {
+	if (user.role === ROLES.SUPER_ADMIN) {
+		return ROLES.SUPER_ADMIN;
+	}
+
+	if ((user.adminOf ?? []).length > 0) {
+		return ROLES.CLUB_ADMIN;
+	}
+
+	if (hasClubOrganiserAssignment) {
+		return ROLES.ORGANISER;
+	}
+
+	return ROLES.PLAYER;
+}
+
+async function syncUserRoleFromAssignments(userId: string, session?: ClientSession | null) {
+	let q = User.findById(userId).select('_id role adminOf');
+	if (session) {
+		q = q.session(session);
+	}
+
+	const user = await q.exec();
+	if (!user) {
+		return;
+	}
+
+	let organiserClubQuery = Club.exists({ organiserIds: userId });
+	if (session) {
+		organiserClubQuery = organiserClubQuery.session(session);
+	}
+
+	const hasClubOrganiserAssignment = !!(await organiserClubQuery.exec());
+
+	const nextRole = deriveRoleFromAssignments(user, hasClubOrganiserAssignment);
+	if (user.role === nextRole) {
+		return;
+	}
+
+	user.role = nextRole;
+	if (session) {
+		await user.save({ session });
+		return;
+	}
+
+	await user.save();
+}
 
 export async function findClubStaffSnapshotById(clubId: string, session?: ClientSession | null) {
 	let q = Club.findById(clubId).select('defaultAdminId organiserIds').lean();
@@ -43,7 +95,9 @@ export async function addUserAdminOfClub(
 	if (session) {
 		q = q.session(session);
 	}
-	return q.exec();
+	const result = await q.exec();
+	await syncUserRoleFromAssignments(userId, session);
+	return result;
 }
 
 export async function removeUserAdminOfClub(
@@ -55,7 +109,9 @@ export async function removeUserAdminOfClub(
 	if (session) {
 		q = q.session(session);
 	}
-	return q.exec();
+	const result = await q.exec();
+	await syncUserRoleFromAssignments(userId, session);
+	return result;
 }
 
 export async function addUserAsClubOrganiser(
@@ -67,7 +123,9 @@ export async function addUserAsClubOrganiser(
 	if (session) {
 		q = q.session(session);
 	}
-	return q.exec();
+	const result = await q.exec();
+	await syncUserRoleFromAssignments(userId, session);
+	return result;
 }
 
 export async function removeUserAsClubOrganiser(
@@ -79,7 +137,9 @@ export async function removeUserAsClubOrganiser(
 	if (session) {
 		q = q.session(session);
 	}
-	return q.exec();
+	const result = await q.exec();
+	await syncUserRoleFromAssignments(userId, session);
+	return result;
 }
 
 export async function updateClubDefaultAdmin(clubId: string, userId: string) {
