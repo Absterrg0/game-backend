@@ -28,7 +28,7 @@ export async function updateSponsorFlow(
 			mongoErr.code === 11000 &&
 			(mongoErr.name === 'MongoServerError' || mongoErr.name === 'MongoError')
 		) {
-			return error(409, 'Sponsor name already exists for this club');
+			return error(409, 'A sponsor with this name already exists');
 		}
 
 		if (mongoErr.name === 'VersionError') {
