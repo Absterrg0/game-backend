@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import Club from '../../../models/Club';
 import User from '../../../models/User';
 import { computeClubStaffPermissionsForActor } from '../../../shared/clubStaffPermissions';
 import { error } from '../../../shared/helpers';
@@ -51,8 +50,7 @@ export async function removeClubStaffTransaction(
 
 			const access = {
 				canManageOrganisers: base.canManageOrganisers,
-				canManageAdmins: base.canManageAdmins,
-				canRemoveDefaultAdmin: actorDoc.role === 'super_admin'
+				canManageAdmins: base.canManageAdmins
 			};
 
 			const isDefaultAdminTarget = defaultAdminId === staffId;
@@ -70,12 +68,23 @@ export async function removeClubStaffTransaction(
 				return error(404, 'Staff member not found in this club');
 			}
 
-			if (isAdmin && isDefaultAdminTarget && !access.canRemoveDefaultAdmin) {
-				return error(403, 'Only super admins can remove the default admin');
+			if (isAdmin && isDefaultAdminTarget) {
+				return error(
+					403,
+					'Cannot remove the default admin. Assign a new default admin first, then remove this user.'
+				);
 			}
 
-			if (isAdmin && !isDefaultAdminTarget && !access.canManageAdmins) {
-				return error(403, 'Only the main admin can remove other admins');
+			if (
+				isAdmin &&
+				!isDefaultAdminTarget &&
+				!access.canManageAdmins &&
+				actorUserId !== staffId
+			) {
+				return error(
+					403,
+					'Only the default admin can remove other club admins. If you transferred that role, ask the current default admin to remove this person, or become default admin again first.'
+				);
 			}
 
 			if (isOrganiser && !access.canManageOrganisers) {
@@ -84,15 +93,6 @@ export async function removeClubStaffTransaction(
 
 			if (isAdmin) {
 				await removeUserAdminOfClub(clubId, staffId, session);
-
-				if (isDefaultAdminTarget) {
-					await Club.updateOne(
-						{ _id: clubId, defaultAdminId: new mongoose.Types.ObjectId(staffId) },
-						{ $set: { defaultAdminId: null } }
-					)
-						.session(session)
-						.exec();
-				}
 			}
 
 			if (isOrganiser) {

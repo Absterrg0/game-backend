@@ -1,5 +1,6 @@
 import type { SponsorDocument } from '../../../models/Sponsor';
 import { error, ok } from '../../../shared/helpers';
+import { isDuplicateKeyError } from '../../../shared/mongoErrors';
 import type { UpdateSponsorInput } from '../../../validation/sponsor.schemas';
 import { mapUpdatedSponsor } from './mapper';
 
@@ -23,14 +24,11 @@ export async function updateSponsorFlow(
 	try {
 		await sponsor.save();
 	} catch (err) {
-		const mongoErr = err as { code?: number; name?: string };
-		if (
-			mongoErr.code === 11000 &&
-			(mongoErr.name === 'MongoServerError' || mongoErr.name === 'MongoError')
-		) {
-			return error(409, 'Sponsor name already exists for this club');
+		if (isDuplicateKeyError(err)) {
+			return error(409, 'A sponsor with this name already exists');
 		}
 
+		const mongoErr = err as { name?: string };
 		if (mongoErr.name === 'VersionError') {
 			return error(409, 'Version conflict');
 		}
