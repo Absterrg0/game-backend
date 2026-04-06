@@ -1,5 +1,6 @@
 
 import Club from "../../../models/Club";
+import User from "../../../models/User";
 import { type AuthenticatedSession } from "../../../shared/authContext";
 import { hasRoleOrAbove } from "../../../constants/roles";
 import { ROLES } from "../../../constants/roles";
@@ -9,6 +10,7 @@ export type ListFilterContext = {
   isOrganiserOrAbove: boolean;
   isSuperAdmin: boolean;
   manageableClubIds: string[];
+  homeClubCoordinates: [number, number] | null;
 };
 
 /**
@@ -32,10 +34,29 @@ export async function authorizeList(
     manageableClubIds = Array.from(new Set([...adminClubs, ...organiserClubIds]));
   }
 
+  let homeClubCoordinates: [number, number] | null = null;
+  const user = await User.findById(session._id).select("homeClub").lean().exec();
+  if (user?.homeClub) {
+    const homeClub = await Club.findById(user.homeClub)
+      .select("coordinates")
+      .lean()
+      .exec();
+    const coords = homeClub?.coordinates?.coordinates;
+    if (
+      Array.isArray(coords) &&
+      coords.length === 2 &&
+      typeof coords[0] === "number" &&
+      typeof coords[1] === "number"
+    ) {
+      homeClubCoordinates = [coords[0], coords[1]];
+    }
+  }
+
   const filterContext: ListFilterContext = {
     isOrganiserOrAbove,
     isSuperAdmin,
     manageableClubIds,
+    homeClubCoordinates,
   };
 
   return ok({ filterContext }, { status: 200, message: "Authorized" });

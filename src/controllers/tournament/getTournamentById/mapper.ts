@@ -1,9 +1,11 @@
 import type { TournamentPopulated } from "../../../types/api/tournament";
+import { ROLES } from "../../../constants/roles";
 import type { DetailViewContext } from "./authorize";
 
 export interface ClubInfo {
   id: string;
   name: string;
+  address: string | null;
 }
 
 export interface SponsorInfo {
@@ -102,9 +104,13 @@ export function mapTournamentDetail(
   const spotsFilled = participantItems.length;
   const spotsTotal = Math.max(1, tournament.maxMember);
   const isParticipant = participantIdSet.has(sessionUserId);
+  const isBlockedRole =
+    context.role === ROLES.CLUB_ADMIN ||
+    context.role === ROLES.SUPER_ADMIN;
   const canJoin =
     tournament.status === "active" &&
-    !context.isManager &&
+    (!context.isManager || context.role === ROLES.ORGANISER) &&
+    !isBlockedRole &&
     !isParticipant &&
     spotsFilled < spotsTotal;
 
@@ -124,6 +130,7 @@ export function mapTournamentDetail(
       ? {
           id: tournament.club._id.toString(),
           name: tournament.club.name,
+          address: tournament.club.address ?? null,
         }
       : null,
     sponsor: tournament.sponsor

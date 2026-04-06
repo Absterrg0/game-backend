@@ -1,4 +1,5 @@
 import { userCanManageClub } from "../../../lib/permissions";
+import { ROLES, type Role } from "../../../constants/roles";
 import type { TournamentPopulated } from "../../../types/api/tournament";
 import { buildPermissionContext, type AuthenticatedSession } from "../../../shared/authContext";
 import { error, ok } from "../../../shared/helpers";
@@ -6,6 +7,7 @@ import { error, ok } from "../../../shared/helpers";
 export interface DetailViewContext {
   isManager: boolean;
   clubIdStr: string;
+  role: Role;
 }
 
 /**
@@ -16,6 +18,7 @@ export async function authorizeGetById(
   tournament: TournamentPopulated,
   session: AuthenticatedSession
 ) {
+  const role = session.role ?? ROLES.PLAYER;
   const clubIdStr = tournament.club?._id?.toString();
   if (!clubIdStr) {
     return error(400, "Tournament has no club");
@@ -29,5 +32,5 @@ export async function authorizeGetById(
     return error(403, "You do not have permission to view this tournament");
   }
 
-  return ok({ context: { isManager, clubIdStr } }, { status: 200, message: "Authorized" });
+  return ok({ context: { isManager, clubIdStr, role } }, { status: 200, message: "Authorized" });
 }

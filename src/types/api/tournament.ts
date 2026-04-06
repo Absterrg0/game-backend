@@ -18,6 +18,7 @@ import type { ITournament } from "../../models/Tournament";
 export interface PopulatedClub {
 	_id: mongoose.Types.ObjectId;
 	name: string;
+  address?: string | null;
 }
 
 export interface PopulatedSponsor {
@@ -40,7 +41,11 @@ export type TournamentPopulated = Omit<
 	ITournament,
 	'club' | 'sponsor' | 'courts' | 'participants'
 > & {
-	club?: { _id: mongoose.Types.ObjectId; name?: string } | null;
+  club?: {
+    _id: mongoose.Types.ObjectId;
+    name?: string;
+    address?: string | null;
+  } | null;
 	sponsor?: {
 		_id: mongoose.Types.ObjectId;
 		name?: string;

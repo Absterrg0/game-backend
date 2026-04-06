@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ROLES } from "../../../constants/roles";
 import { userCanManageClub } from "../../../lib/permissions";
 import { buildPermissionContext, type AuthenticatedSession } from "../../../shared/authContext";
 import { error, ok } from "../../../shared/helpers";
@@ -29,8 +30,13 @@ export async function authorizeJoin(
 
   const ctx = buildPermissionContext(session);
   const isManager = await userCanManageClub(ctx, clubId);
-  if (isManager) {
-    return error(400, "Club managers cannot join this tournament as participants");
+
+  const isBlockedRole =
+    session.role === ROLES.CLUB_ADMIN ||
+    session.role === ROLES.SUPER_ADMIN;
+
+  if (isManager && isBlockedRole) {
+    return error(400, "Club admins cannot join this tournament as participants");
   }
 
   const userId = session._id.toString();
