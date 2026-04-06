@@ -218,7 +218,7 @@ function applyWhenFilter(
       { date: { $lt: startOfToday } },
       {
         date: { $gte: startOfToday, $lt: startOfTomorrow },
-        endTime: { $lt: nowTime },
+        endTime: { $exists: true, $ne: "", $lt: nowTime },
       },
     ],
   };
