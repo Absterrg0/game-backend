@@ -4,9 +4,9 @@ type DistanceBand = "under50" | "between50And80" | "over80";
 
 const METERS_IN_KM = 1000;
 const UNDER_50_KM_MAX = 50 * METERS_IN_KM;
-const BETWEEN_50_AND_80_KM_MIN = 50 * METERS_IN_KM + 1;
+const BETWEEN_50_AND_80_KM_MIN = 50 * METERS_IN_KM;
 const BETWEEN_50_AND_80_KM_MAX = 80 * METERS_IN_KM;
-const OVER_80_KM_MIN = 80 * METERS_IN_KM + 1;
+const OVER_80_KM_MIN = 80 * METERS_IN_KM;
 
 const DISTANCE_BOUNDS: Record<
   DistanceBand,

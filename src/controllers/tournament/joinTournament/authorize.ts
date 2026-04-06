@@ -32,7 +32,7 @@ export async function authorizeJoin(
     session.role === ROLES.SUPER_ADMIN;
 
   if (isBlockedRole) {
-    return error(400, "Club admins cannot join this tournament as participants");
+    return error(400, "Club and super admins cannot join this tournament as participants");
   }
 
   const userId = session._id.toString();

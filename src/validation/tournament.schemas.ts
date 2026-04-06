@@ -13,7 +13,6 @@ const draftFields = {
 	club: objectId.optional(),
 	sponsor: objectId.optional(),
 	name: z.string().trim().min(1, 'Tournament name is required').optional(),
-	logo: nullableNonEmptyString.optional(),
 	date: z.coerce.date().optional().nullable(),
 	startTime: z.union([z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)'), z.null()]).optional(),
 	endTime: z.union([z.string().trim().regex(timeRegex, 'Invalid end time (expected HH:mm)'), z.null()]).optional(),
@@ -27,7 +26,6 @@ const draftFields = {
 	courts: z.array(objectId).optional(),
 	foodInfo: z.string().max(500).optional().nullable(),
 	descriptionInfo: z.string().max(1000).optional().nullable(),
-	status: z.enum(TOURNAMENT_STATUSES).optional()
 } satisfies z.ZodRawShape;
 
 const draftSchemaBase = z

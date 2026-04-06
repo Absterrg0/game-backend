@@ -47,11 +47,13 @@ export async function sponsorBelongsToClub(
 	clubId: string
 ) {
 	if (!sponsorId) return true;
+	if (!mongoose.Types.ObjectId.isValid(sponsorId)) return false;
+	if (!mongoose.Types.ObjectId.isValid(clubId)) return false;
 
 	const sponsor = await Sponsor.findOne({
 		_id: sponsorId,
 		scope: 'club',
-		clubId: clubId,
+		club: clubId,
 		status: 'active'
 	}).lean().exec();
 	return !!sponsor;

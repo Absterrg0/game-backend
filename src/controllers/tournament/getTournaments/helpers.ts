@@ -48,6 +48,7 @@ function toObjectIds(ids: string[]) {
             $or: [
               { endTime: { $exists: false } },
               { endTime: "" },
+              { endTime: null },
               { endTime: { $gte: nowTime } },
             ],
           },
@@ -60,11 +61,12 @@ function toObjectIds(ids: string[]) {
         { date: { $lt: startOfToday } },
         {
           date: { $gte: startOfToday, $lt: startOfTomorrow },
-          endTime: {
-            $exists: true,
-            $ne: "",
-            $lt: nowTime,
-          },
+          $nor: [
+            { endTime: { $exists: false } },
+            { endTime: "" },
+            { endTime: null },
+            { endTime: { $gte: nowTime } },
+          ],
         },
       ],
     };

@@ -161,15 +161,11 @@ export function mapTournamentDetail(
     context.role === ROLES.CLUB_ADMIN ||
     context.role === ROLES.SUPER_ADMIN;
 
-  const isOrganiser = context.role === ROLES.ORGANISER;
-  const isManager = context.isManager;
-
   const isActive = tournament.status === "active";
   const hasAvailableSpots = spotsFilled < spotsTotal;
 
   const canJoin =
     isActive &&
-    (!isManager || isOrganiser) &&
     !isAdminRole &&
     !isParticipant &&
     hasAvailableSpots;
