@@ -35,12 +35,15 @@ export async function authorizeList(
   }
 
   let homeClubCoordinates: [number, number] | null = null;
-  const user = await User.findById(session._id).select("homeClub").lean().exec();
+  const user = await User.findById(session._id)
+    .populate({ path: "homeClub", select: "coordinates" })
+    .select("homeClub")
+    .lean()
+    .exec();
   if (user?.homeClub) {
-    const homeClub = await Club.findById(user.homeClub)
-      .select("coordinates")
-      .lean()
-      .exec();
+    const homeClub = user.homeClub as
+      | { coordinates?: { coordinates?: [number, number] } }
+      | null;
     const coords = homeClub?.coordinates?.coordinates;
     if (
       Array.isArray(coords) &&

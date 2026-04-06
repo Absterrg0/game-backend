@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { ROLES } from "../../../constants/roles";
-import { userCanManageClub } from "../../../lib/permissions";
-import { buildPermissionContext, type AuthenticatedSession } from "../../../shared/authContext";
+import type { AuthenticatedSession } from "../../../shared/authContext";
 import { error, ok } from "../../../shared/helpers";
 
 export interface JoinTournamentDoc {
@@ -28,14 +27,11 @@ export async function authorizeJoin(
     return error(400, "Tournament has no club"); 
   }
 
-  const ctx = buildPermissionContext(session);
-  const isManager = await userCanManageClub(ctx, clubId);
-
   const isBlockedRole =
     session.role === ROLES.CLUB_ADMIN ||
     session.role === ROLES.SUPER_ADMIN;
 
-  if (isManager && isBlockedRole) {
+  if (isBlockedRole) {
     return error(400, "Club admins cannot join this tournament as participants");
   }
 

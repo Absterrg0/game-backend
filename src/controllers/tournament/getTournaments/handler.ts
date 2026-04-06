@@ -24,7 +24,7 @@ enum TournamentStatus {
 
 const PUBLISHED_STATUSES = [TournamentStatus.Active, TournamentStatus.Inactive] as const;
 
-type TournamentFilter = FilterQuery<ITournament>;
+type TournamentFilter = QueryFilter<ITournament>;
 
 type FilterFailureReason = "NO_ACCESS" | "INVALID_FILTER";
 
@@ -35,8 +35,6 @@ type FilterResult =
 type ResolvedTournamentQuery = GetTournamentQuery & {
   distanceClubIds?: string[];
 };
-
-type FilterQuery<TDocument> = QueryFilter<TDocument>;
 
 function isPublishedStatus(status: GetTournamentQuery["status"]): status is TournamentStatus.Active | TournamentStatus.Inactive {
   return status === TournamentStatus.Active || status === TournamentStatus.Inactive;
@@ -162,7 +160,7 @@ function applyDistanceFilter(
 
   const distanceClubIds = query.distanceClubIds;
   if (!distanceClubIds || distanceClubIds.length === 0) {
-    return errFilter("INVALID_FILTER");
+    return okFilter(withClubIds(filter, []));
   }
 
   const currentClubIds = readClubIdInFilter(filter);
@@ -172,7 +170,7 @@ function applyDistanceFilter(
 
   const intersection = currentClubIds.filter((clubId) => distanceClubIds.includes(clubId));
   if (!intersection.length) {
-    return errFilter("NO_ACCESS");
+    return okFilter(withClubIds(filter, []));
   }
 
   return okFilter(withClubIds(filter, intersection));
@@ -290,11 +288,7 @@ export async function getTournamentsFlow(
       return error(400, "A home club is required for distance filtering");
     }
 
-    const distanceBand = query.distance === TournamentDistanceBand.Under50
-      ? TournamentDistanceBand.Under50
-      : query.distance === TournamentDistanceBand.Between50And80
-      ? TournamentDistanceBand.Between50And80
-      : TournamentDistanceBand.Over80;
+    const distanceBand = query.distance as TournamentDistanceBand;
 
     const distanceClubIds = await findClubIdsForDistanceBand(
       ctx.homeClubCoordinates,
