@@ -15,7 +15,6 @@ function toPublishCandidateBase(
 		club: clubId,
 		sponsorId: objectIdToString(normalizedTournament.sponsor) ?? null,
 		name: normalizedTournament.name,
-		logo: normalizedTournament.logo,
 		date: normalizedTournament.date,
 		startTime: normalizedTournament.startTime,
 		endTime: normalizedTournament.endTime,

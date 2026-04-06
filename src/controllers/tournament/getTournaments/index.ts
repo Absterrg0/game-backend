@@ -1,7 +1,7 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { logger } from "../../../lib/logger";
 import { buildErrorPayload } from "../../../shared/errors";
-import { type AuthenticatedSession } from "../../../shared/authContext";
+import { AuthenticatedRequest, withAuthenticated } from "../../../shared/authContext";
 import { getTournamentQuerySchema } from "./validation";
 import { authorizeList } from "./authorize";
 import { getTournamentsFlow } from "./handler";
@@ -13,13 +13,9 @@ import { mapTournamentListItems } from "./mapper";
  * - Organisers+: list tournaments for clubs they manage; supports view=published|drafts.
  * Query: page, limit, status, q (search), view (published|drafts, organiser only)
  */
-export async function getTournaments(req: Request, res: Response) {
+export const getTournaments = async (req:AuthenticatedRequest, res: Response) => {
   try {
     const session = req.user;
-    if (!session?._id) {
-      res.status(401).json(buildErrorPayload("Not authenticated"));
-      return;
-    }
 
     const parsed = getTournamentQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -55,4 +51,4 @@ export async function getTournaments(req: Request, res: Response) {
     logger.error("Error listing tournaments", { err });
     res.status(500).json(buildErrorPayload("Internal server error"));
   }
-}
+};

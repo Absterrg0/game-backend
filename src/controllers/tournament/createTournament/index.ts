@@ -3,19 +3,15 @@ import { logger } from "../../../lib/logger";
 import { buildErrorPayload } from "../../../shared/errors";
 import { createTournamentSchema } from "./validation";
 import { createTournamentFlow } from "./handler";
+import { AuthenticatedRequest } from "../../../shared";
 
 /**
  * POST /api/tournaments
  * Create tournament as draft or publish. Body must match createTournamentSchema
  * (discriminated union on status and tournamentMode).
  */
-export async function createTournament(req: Request, res: Response): Promise<void> {
+export async function createTournament(req: AuthenticatedRequest, res: Response) {
   try {
-    const session = req.user;
-    if (!session?._id) {
-      res.status(401).json(buildErrorPayload("Not authenticated"));
-      return;
-    }
 
     const parsed = createTournamentSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -27,7 +23,7 @@ export async function createTournament(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const result = await createTournamentFlow(parsed.data, session);
+    const result = await createTournamentFlow(parsed.data, req.user);
 
     if (result.status !== 200) {
       res.status(result.status).json(buildErrorPayload(result.message));

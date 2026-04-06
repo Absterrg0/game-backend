@@ -9,6 +9,7 @@ import { ok } from "../../../shared/helpers";
 export type ListFilterContext = {
   isOrganiserOrAbove: boolean;
   isSuperAdmin: boolean;
+  requesterUserId: string;
   manageableClubIds: string[];
   homeClubCoordinates: [number, number] | null;
 };
@@ -38,26 +39,21 @@ export async function authorizeList(
   const user = await User.findById(session._id)
     .populate({ path: "homeClub", select: "coordinates" })
     .select("homeClub")
-    .lean()
+    .lean<{ homeClub: { coordinates?: { coordinates?: [number, number] } } }>()
     .exec();
   if (user?.homeClub) {
-    const homeClub = user.homeClub as
-      | { coordinates?: { coordinates?: [number, number] } }
-      | null;
-    const coords = homeClub?.coordinates?.coordinates;
-    if (
-      Array.isArray(coords) &&
-      coords.length === 2 &&
-      typeof coords[0] === "number" &&
-      typeof coords[1] === "number"
-    ) {
+    const homeClub = user.homeClub 
+    const coords = homeClub?.coordinates?.coordinates;  
+    if (coords) {
       homeClubCoordinates = [coords[0], coords[1]];
     }
+    
   }
 
   const filterContext: ListFilterContext = {
     isOrganiserOrAbove,
     isSuperAdmin,
+    requesterUserId: session._id.toString(),
     manageableClubIds,
     homeClubCoordinates,
   };

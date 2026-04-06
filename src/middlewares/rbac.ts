@@ -1,5 +1,16 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ROLES, type Role, hasRoleOrAbove, hasAnyRole } from '../constants/roles';
+import type { AuthMiddleware } from '../shared/authContext';
+
+export function requireRole(role: string): AuthMiddleware {
+	return (req, res, next) => {
+		if (req.user.role !== role) {
+			res.status(403).json({ message: 'Forbidden' });
+			return;
+		}
+		next();
+	};
+}
 
 /**
  * RBAC middleware factory.

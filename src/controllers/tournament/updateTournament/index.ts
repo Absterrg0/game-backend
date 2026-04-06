@@ -2,23 +2,18 @@ import type { Request, Response } from "express";
 import { logger } from "../../../lib/logger";
 import { guardIdParam } from "../../../shared/guards";
 import { buildErrorPayload } from "../../../shared/errors";
-import { type AuthenticatedSession } from "../../../shared/authContext";
-import { createOrUpdateDraftSchema } from "./validation";
+import { AuthenticatedRequest, type AuthenticatedSession } from "../../../shared/authContext";
+import { updateDraftSchema } from "./validation";
 import { authorizeUpdate } from "./authorize";
-import { fetchTournamentForUpdate } from "./data";
+import { fetchTournamentForUpdate } from "./queries";
 import { updateTournamentFlow } from "./handler";
 
 /**
  * PATCH /api/tournaments/:id
  * Update tournament. Only draft tournaments can be updated. User must have club permission.
  */
-export async function updateTournament(req: Request<{ id: string }>, res: Response){
+export async function updateTournament(req: AuthenticatedRequest ,res: Response){
   try {
-    const session = req.user;
-    if (!session?._id) {
-      res.status(401).json(buildErrorPayload("Not authenticated"));
-      return;
-    }
 
     const idResult = guardIdParam(req.params, "tournament ID");
     if (!idResult.ok) {
@@ -26,7 +21,7 @@ export async function updateTournament(req: Request<{ id: string }>, res: Respon
       return;
     }
 
-    const bodyParse = createOrUpdateDraftSchema.safeParse(req.body);
+    const bodyParse = updateDraftSchema.safeParse(req.body);
     if (!bodyParse.success) {
       const message = bodyParse.error.issues.map((i) => i.message).join("; ");
       res.status(400).json(buildErrorPayload(message));
@@ -43,7 +38,7 @@ export async function updateTournament(req: Request<{ id: string }>, res: Respon
       return;
     }
 
-    const authResult = await authorizeUpdate(tournament.data, bodyParse.data, session);
+    const authResult = await authorizeUpdate(tournament.data, bodyParse.data, req.user);
     if (authResult.status !== 200) {
       res.status(authResult.status).json(buildErrorPayload(authResult.message));
       return;

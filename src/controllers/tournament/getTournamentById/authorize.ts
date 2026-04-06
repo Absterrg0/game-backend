@@ -18,7 +18,7 @@ export async function authorizeGetById(
   tournament: TournamentPopulated,
   session: AuthenticatedSession
 ) {
-  const role = session.role ?? ROLES.PLAYER;
+  const role = session.role;
   const clubIdStr = tournament.club?._id?.toString();
   if (!clubIdStr) {
     return error(400, "Tournament has no club");

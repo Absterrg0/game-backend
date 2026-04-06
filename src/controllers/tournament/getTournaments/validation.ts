@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { ITournament } from "../../../models/Tournament";
+import type { QueryFilter } from "mongoose";
 export const getTournamentQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(50).optional().default(10),
-  status: z.enum(["active", "inactive", "draft"]).optional(),
   q: z.string().optional(),
   view: z.enum(["published", "drafts"]).optional(),
   when: z.enum(["future", "past"]).optional(),
@@ -11,3 +12,17 @@ export const getTournamentQuerySchema = z.object({
 });
 
 export type GetTournamentQuery = z.infer<typeof getTournamentQuerySchema>;
+
+
+export enum TournamentStatus {
+  Active = "active",
+  Draft = "draft",
+}
+
+type TournamentFilter = QueryFilter<ITournament>;
+
+type ResolvedTournamentQuery = GetTournamentQuery & {
+  distanceClubIds?: string[];
+};
+
+export type { TournamentFilter, ResolvedTournamentQuery };

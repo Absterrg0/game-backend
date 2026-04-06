@@ -8,6 +8,7 @@ import {
 	extractAuthToken,
 	hashSessionToken,
 } from '../lib/jwtAuth';
+import { AuthenticatedRequest } from '../shared';
 
 export interface IRequest extends Request {
 	user: UserDocument;
@@ -47,7 +48,7 @@ const authenticate = async (req: Request, res: Response, next: NextFunction): Pr
 			return;
 		}
 
-		(req as IRequest).user = user;
+		(req as AuthenticatedRequest).user = user;
 		next();
 	} catch (error: unknown) {
 		const err = error as { name?: string };

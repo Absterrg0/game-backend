@@ -4,21 +4,17 @@ import { guardIdParam } from "../../../shared/guards";
 import { buildErrorPayload } from "../../../shared/errors";
 import { publishBodySchema } from "./validation";
 import { authorizePublish } from "./authorize";
-import { fetchTournamentForPublish } from "./data";
+import { fetchTournamentForPublish } from "./queries";
 import { publishTournamentFlow } from "./handler";
 import { tournamentPublishSourceSchema } from "../../../types/api";
+import { AuthenticatedRequest } from "../../../shared";
 /**
  * POST /api/tournaments/:id/publish
  * Publish a draft tournament. Body must contain full publish-valid payload (merge with existing).
  * Idempotent if already active.
  */
-export async function publishTournament(req: Request<{ id: string }>, res: Response){
+export async function publishTournament(req: AuthenticatedRequest, res: Response){
   try {
-    const session = req.user;
-    if (!session?._id) {
-      res.status(401).json(buildErrorPayload("Not authenticated"));
-      return;
-    }
 
     const idResult = guardIdParam(req.params, "tournament ID");
     if (!idResult.ok) {
@@ -62,7 +58,7 @@ export async function publishTournament(req: Request<{ id: string }>, res: Respo
       return;
     }
 
-    const authResult = await authorizePublish(tournament, session);
+    const authResult = await authorizePublish(tournament, req.user);
     if (authResult.status !== 200) {
       res.status(authResult.status).json(buildErrorPayload(authResult.message));
       return;

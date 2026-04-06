@@ -4,14 +4,11 @@ import { buildErrorPayload } from '../../../shared/errors';
 import { parseBodyWithSchema, parseRouteObjectId } from '../../../shared/validation';
 import { addClubStaffSchema } from '../../../validation/club.schemas';
 import { addClubStaffFlow } from './handler';
+import { AuthenticatedRequest } from '../../../shared';
 
-export async function addClubStaff(req: Request, res: Response): Promise<void> {
+export async function addClubStaff(req: AuthenticatedRequest, res: Response) {
 	try {
-		const session = req.user;
-		if (!session?._id) {
-			res.status(401).json(buildErrorPayload('Not authenticated'));
-			return;
-		}
+	
 
 		const clubIdResult = parseRouteObjectId(req.params.clubId, 'club ID');
 		if (clubIdResult.status !== 200) {
@@ -25,7 +22,7 @@ export async function addClubStaff(req: Request, res: Response): Promise<void> {
 			return;
 		}
 
-		const result = await addClubStaffFlow(clubIdResult.data, parsed.data, session);
+		const result = await addClubStaffFlow(clubIdResult.data, parsed.data, req.user);
 		if (result.status !== 201) {
 			res.status(result.status).json(buildErrorPayload(result.message));
 			return;

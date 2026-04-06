@@ -3,7 +3,7 @@ import Tournament from "../../../models/Tournament";
 import { logger } from "../../../lib/logger";
 import { guardIdParam } from "../../../shared/guards";
 import { buildErrorPayload } from "../../../shared/errors";
-import { type AuthenticatedSession } from "../../../shared/authContext";
+import { AuthenticatedRequest, type AuthenticatedSession } from "../../../shared/authContext";
 import { authorizeJoin } from "./authorize";
 import { joinTournamentFlow } from "./handler";
 
@@ -11,13 +11,8 @@ import { joinTournamentFlow } from "./handler";
  * POST /api/tournaments/:id/join
  * Join an active tournament.
  */
-export async function joinTournament(req: Request<{ id: string }>, res: Response) {
+export async function joinTournament(req:AuthenticatedRequest, res: Response) {
   try {
-    const session = req.user;
-    if (!session?._id) {
-      res.status(401).json(buildErrorPayload("Not authenticated"));
-      return;
-    }
 
     const idResult = guardIdParam(req.params, "tournament ID");
     if (!idResult.ok) {
@@ -36,13 +31,13 @@ export async function joinTournament(req: Request<{ id: string }>, res: Response
       return;
     }
 
-    const authResult = await authorizeJoin(tournament, session);
+    const authResult = await authorizeJoin(tournament, req.user);
     if (authResult.status !== 200) {
       res.status(authResult.status).json(buildErrorPayload(authResult.message));
       return;
     }
 
-    const result = await joinTournamentFlow(idResult.data, session);
+    const result = await joinTournamentFlow(idResult.data, req.user);
     if (result.status !== 200) {
       res.status(result.status).json(buildErrorPayload(result.message));
       return;

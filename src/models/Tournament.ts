@@ -11,10 +11,10 @@ import {
 // Define the ITournament interface
 export interface ITournament extends Document {
 	club: mongoose.Types.ObjectId;
+	createdBy?: mongoose.Types.ObjectId;
 	schedule?: mongoose.Types.ObjectId;
 	sponsor?: mongoose.Types.ObjectId;
 	name: string;
-	logo?: string;
 	date?: Date;
 	startTime?: string;
 	endTime?: string;
@@ -42,6 +42,11 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 			ref: 'Club',
 			required: true
 		},
+		createdBy: {
+			type: Schema.Types.ObjectId,
+			ref: 'User',
+			required: false
+		},
 		schedule: {
 			type: Schema.Types.ObjectId,
 			ref: 'Schedule'
@@ -54,10 +59,6 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 		name: {
 			type: String,
 			required: true
-		},
-		logo: {
-			type: String,
-			required: false
 		},
 		date: {
 			type: Date
@@ -156,6 +157,7 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 );
 
 tournamentSchema.index({ club: 1, status: 1, date: -1, createdAt: -1 });
+tournamentSchema.index({ createdBy: 1, status: 1, createdAt: -1 });
 tournamentSchema.index({ club: 1, name: 1 }, { unique: true });
 
 tournamentSchema.pre('validate', function () {
