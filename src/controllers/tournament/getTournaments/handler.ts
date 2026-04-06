@@ -77,7 +77,13 @@ function readClubIdInFilter(filter: TournamentFilter) {
 }
 
 function toObjectIds(clubIds: string[]) {
-  return clubIds.map((clubId) => new mongoose.Types.ObjectId(clubId));
+  return clubIds.map((clubId) => {
+    if (!mongoose.Types.ObjectId.isValid(clubId)) {
+      throw new Error(`Invalid club id in tournament filter: ${clubId}`);
+    }
+
+    return new mongoose.Types.ObjectId(clubId);
+  });
 }
 
 function withClubIds(filter: TournamentFilter, clubIds: string[]): TournamentFilter {
@@ -186,13 +192,13 @@ function applyWhenFilter(
 
   const now = new Date();
   const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  startOfToday.setUTCHours(0, 0, 0, 0);
 
   const startOfTomorrow = new Date(startOfToday);
-  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  startOfTomorrow.setUTCDate(startOfTomorrow.getUTCDate() + 1);
 
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const hours = String(now.getUTCHours()).padStart(2, "0");
+  const minutes = String(now.getUTCMinutes()).padStart(2, "0");
   const nowTime = `${hours}:${minutes}`;
 
   if (query.when === "future") {
@@ -323,7 +329,7 @@ export async function getTournamentsFlow(
     .lean<TournamentListDoc[]>()
     .exec();
 
-  const countQuery = Tournament.countDocuments(filter);
+  const countQuery = Tournament.countDocuments(filter).exec();
 
   const [tournaments, total] = await Promise.all([
     tournamentsQuery,
