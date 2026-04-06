@@ -1,4 +1,4 @@
-export { buildPermissionContext, type AuthenticatedSession } from './authContext';
+export { buildPermissionContext, type AuthenticatedRequest, type AuthenticatedSession } from './authContext';
 export { buildErrorPayload } from './errors';
 export {
 	objectIdSchema,

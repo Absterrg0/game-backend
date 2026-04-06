@@ -83,7 +83,6 @@ export const tournamentPublishSourceSchema = z
     status: z.enum(TOURNAMENT_STATUSES),
     name: z.string(),
     sponsor: dbIdLikeSchema.optional().nullable(),
-    logo: z.string().optional().nullable(),
     date: z.coerce.date().optional().nullable(),
     startTime: z.string().optional().nullable(),
     endTime: z.string().optional().nullable(),
@@ -108,7 +107,6 @@ export type NormalizedTournamentPublishSource = {
   status: (typeof TOURNAMENT_STATUSES)[number];
   name: string;
   sponsor: DbIdLike | null;
-  logo: string | null;
   date: Date | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -136,7 +134,6 @@ export function normalizeTournamentPublishSource(
     status: source.status,
     name: source.name,
     sponsor: source.sponsor ?? null,
-    logo: source.logo ?? null,
     date: source.date ?? null,
     startTime: source.startTime,
     endTime: source.endTime,

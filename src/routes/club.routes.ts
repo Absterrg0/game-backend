@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import {
 	searchClubs,
 	listClubs,
@@ -19,90 +19,82 @@ import {
 	updateSponsor,
 	deleteSponsor
 } from '../controllers/sponsor/controller';
-import authenticate from '../middlewares/auth';
 import { validateBody } from '../lib/validation';
 import { createSponsorSchema, updateSponsorSchema } from '../validation/sponsor.schemas';
+import { createAuthedRouter } from './authedRouter';
 
-const router = express.Router();
+const router = Router();
+const authed = createAuthedRouter(router);
 
 // Search clubs - requires auth so users can add to favorites
-router.get('/', authenticate, searchClubs);
+authed.get('/', searchClubs);
 
 // List all clubs (for All Clubs page)
-router.get('/list', authenticate, listClubs);
+authed.get('/list', listClubs);
 
 // Public club details (for club detail page)
-router.get('/public/:clubId',authenticate, getClubPublic);
+authed.get('/public/:clubId', getClubPublic);
 
 // Create club - any authenticated user can create a club
-router.post(
+authed.post(
 	'/',
-	authenticate,
 	createClub
 );
 
 // Get club by ID (for editing) - user must be admin of club
-router.get('/:clubId', authenticate, getClubById);
+authed.get('/:clubId', getClubById);
 
 // Get club staff (admins and organisers) - user must be admin of club
-router.get('/:clubId/staff', authenticate, getClubStaff);
+authed.get('/:clubId/staff', getClubStaff);
 
 // Add admin or organiser - user must be admin of club
-router.post(
+authed.post(
 	'/:clubId/staff',
-	authenticate,
 	addClubStaff
 );
 
 // Set club main admin - only current main admin or super admin
-router.patch(
+authed.patch(
 	'/:clubId/staff/main-admin',
-	authenticate,
 	setClubMainAdmin
 );
 
 // Update admin/organiser role - user must be admin/organiser of club
-router.patch(
+authed.patch(
 	'/:clubId/staff/:staffId',
-	authenticate,
 	updateClubStaffRole
 );
 
 // Remove admin/organiser from club staff
-router.delete(
+authed.delete(
 	'/:clubId/staff/:staffId',
-	authenticate,
 	removeClubStaff
 );
 
 // Update club - user must be admin of club
-router.patch(
+authed.patch(
 	'/:clubId',
-	authenticate,
 	updateClub
 );
 
 // Request subscription renewal - user must be admin/organiser of club
-router.patch(
+authed.patch(
 	'/:clubId/subscription/renewal-request',
-	authenticate,
 	requestClubSubscriptionRenewal
 );
 
 // Sponsors - user must be admin of club; premium required for create/activate
-router.get('/:clubId/sponsors', authenticate, getClubSponsors);
-router.post(
+authed.get('/:clubId/sponsors', getClubSponsors);
+authed.post(
 	'/:clubId/sponsors',
-	authenticate,
 	validateBody(createSponsorSchema),
 	createSponsor
 );
-router.patch(
+authed.patch(
 	'/:clubId/sponsors/:sponsorId',
-	authenticate,
 	validateBody(updateSponsorSchema),
 	updateSponsor
 );
-router.delete('/:clubId/sponsors/:sponsorId', authenticate, deleteSponsor);
+authed.delete('/:clubId/sponsors/:sponsorId', deleteSponsor);
 
 export default router;

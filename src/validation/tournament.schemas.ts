@@ -1,59 +1,38 @@
 import { z } from 'zod';
 import { TOURNAMENT_MODES, TOURNAMENT_PLAY_MODES, TOURNAMENT_STATUSES } from '../types/domain/tournament';
-
+import { objectId } from './base-helpers';
 const timeRegex = /^([0-1]\d|2[0-3]):([0-5]\d)$/;
 const isValidTime = (s: string) => timeRegex.test(s);
 
 const playModeEnum = z.enum(TOURNAMENT_PLAY_MODES);
 const tournamentModeEnum = z.enum(TOURNAMENT_MODES);
-const objectIdRegex = /^[0-9a-fA-F]{24}$/;
-const objectIdSchema = z.string().regex(objectIdRegex, 'Invalid ID');
 const nullableNonEmptyString = z.union([z.string().trim().min(1), z.null()]);
 
-const roundTimingSchema = z
-	.object({
-		startDate: z.coerce.date().optional().nullable(),
-		endDate: z.coerce.date().optional().nullable()
-	})
-	.refine(
-		(r) => {
-			if (r.startDate == null || r.endDate == null) return true;
-			return r.startDate.getTime() <= r.endDate.getTime();
-		},
-		{ message: 'startDate must be before or equal to endDate', path: ['endDate'] }
-	);
 
-/** Relaxed schema for draft create/update. Allows partial fields. */
-export const createOrUpdateDraftSchema = z
-	.object({
-		club: z.string().regex(objectIdRegex, 'Invalid club ID').optional(),
-		sponsor: z
-			.string()
-			.regex(objectIdRegex, 'Invalid sponsor ID')
-			.optional(),
-		name: z.string().trim().min(1, 'Tournament name is required').optional(),
-		logo: nullableNonEmptyString.optional(),
-		date: z.coerce.date().optional().nullable(),
-		startTime: z.union([z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)'), z.null()]).optional(),
-		endTime: z.union([z.string().trim().regex(timeRegex, 'Invalid end time (expected HH:mm)'), z.null()]).optional(),
-		playMode: playModeEnum.optional(),
-		tournamentMode: tournamentModeEnum.optional(),
-		entryFee: z.number().min(0).optional(),
-		minMember: z.number().int().min(1).optional(),
-		maxMember: z.number().int().min(1).optional(),
-		duration: nullableNonEmptyString.optional(),
-		breakDuration: nullableNonEmptyString.optional(),
-		courts: z.array(objectIdSchema).optional(),
-		foodInfo: z.string().max(500).optional().nullable(),
-		descriptionInfo: z.string().max(1000).optional().nullable(),
-		numberOfRounds: z.number().int().min(1).optional(),
-		roundTimings: z.array(roundTimingSchema).optional(),
-		status: z.enum(TOURNAMENT_STATUSES).optional()
-	})
+const draftFields = {
+	club: objectId.optional(),
+	sponsor: objectId.optional(),
+	name: z.string().trim().min(1, 'Tournament name is required').optional(),
+	logo: nullableNonEmptyString.optional(),
+	date: z.coerce.date().optional().nullable(),
+	startTime: z.union([z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)'), z.null()]).optional(),
+	endTime: z.union([z.string().trim().regex(timeRegex, 'Invalid end time (expected HH:mm)'), z.null()]).optional(),
+	playMode: playModeEnum.optional(),
+	tournamentMode: tournamentModeEnum.optional(),
+	entryFee: z.number().min(0).optional(),
+	minMember: z.number().int().min(1).optional(),
+	maxMember: z.number().int().min(1).optional(),
+	duration: nullableNonEmptyString.optional(),
+	breakDuration: nullableNonEmptyString.optional(),
+	courts: z.array(objectId).optional(),
+	foodInfo: z.string().max(500).optional().nullable(),
+	descriptionInfo: z.string().max(1000).optional().nullable(),
+	status: z.enum(TOURNAMENT_STATUSES).optional()
+} satisfies z.ZodRawShape;
+
+const draftSchemaBase = z
+	.object(draftFields)
 	.strict()
-	.refine((d) => Object.keys(d).length > 0, {
-		message: 'At least one field must be provided for update'
-	})
 	.refine((d) => !d.maxMember || !d.minMember || d.maxMember >= d.minMember, {
 		message: 'maxMember must be greater than or equal to minMember',
 		path: ['maxMember']
@@ -70,38 +49,37 @@ export const createOrUpdateDraftSchema = z
 		{ message: 'Start time must be before end time', path: ['startTime'] }
 	);
 
-/** Strict schema for draft create. Requires mandatory fields for new drafts. */
-export const createDraftSchema = createOrUpdateDraftSchema.safeExtend({
-	club: z.string().min(1, 'Club is required').regex(/^[0-9a-fA-F]{24}$/, 'Invalid club ID'),
+/** Strict schema for draft creation. */
+export const createDraftSchema = draftSchemaBase.safeExtend({
+	club: objectId,
 	name: z.string().trim().min(1, 'Tournament name is required')
 });
 
+/** Lenient schema for draft update. Allows partial fields. */
+export const updateDraftSchema = draftSchemaBase.refine((d) => Object.keys(d).length > 0, {
+	message: 'At least one field must be provided for update'
+});
+
+const publishFields = {
+	...draftFields,
+	club: objectId,
+	name: z.string().trim().min(1, 'Tournament name is required'),
+	playMode: playModeEnum,
+	tournamentMode: tournamentModeEnum,
+	entryFee: z.number().min(0),
+	minMember: z.number().int().min(1),
+	maxMember: z.number().int().min(1),
+	status: z.literal('active'),
+	duration: z.string().trim().min(1, 'Playing time is required'),
+	breakDuration: z.string().trim().min(1, 'Game pause time is required'),
+	startTime: z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)').optional().nullable(),
+	endTime: z.string().trim().regex(timeRegex, 'Invalid end time (expected HH:mm)').optional().nullable()
+} satisfies z.ZodRawShape;
+
 /** Strict schema for publish. Requires all tournament-ready fields. */
 export const publishSchema = z
-	.object({
-		club: z.string().min(1, 'Club is required').regex(/^[0-9a-fA-F]{24}$/, 'Invalid club ID'),
-		sponsor: z
-			.string()
-			.regex(/^[0-9a-fA-F]{24}$/, 'Invalid sponsor ID')
-			.optional()
-			.nullable(),
-		name: z.string().trim().min(1, 'Tournament name is required'),
-		logo: z.string().optional().nullable(),
-		date: z.coerce.date().optional().nullable(),
-		startTime: z.string().optional().nullable(),
-		endTime: z.string().optional().nullable(),
-		playMode: playModeEnum,
-		tournamentMode: tournamentModeEnum,
-		entryFee: z.number().min(0),
-		minMember: z.number().int().min(1),
-		maxMember: z.number().int().min(1),
-		duration: z.string().optional().nullable(),
-		breakDuration: z.string().optional().nullable(),
-		courts: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/)).optional(),
-		foodInfo: z.string().max(500).optional().nullable(),
-		descriptionInfo: z.string().max(1000).optional().nullable(),
-		status: z.literal('active')
-	})
+	.object(publishFields)
+	.strict()
 	.refine((d) => d.maxMember >= d.minMember, {
 		message: 'maxMember must be greater than or equal to minMember',
 		path: ['maxMember']
@@ -171,6 +149,7 @@ export const publishBodySchema = z
 
 
 
-export type CreateOrUpdateDraftInput = z.infer<typeof createOrUpdateDraftSchema>;
+export type CreateDraftInput = z.infer<typeof createDraftSchema>;
+export type UpdateDraftInput = z.infer<typeof updateDraftSchema>;
 export type PublishInput = z.infer<typeof publishSchema>;
 export type PublishBodyInput = z.infer<typeof publishBodySchema>;
