@@ -13,7 +13,7 @@ function toPublishCandidateBase(
 
 	return {
 		club: clubId,
-		sponsorId: objectIdToString(normalizedTournament.sponsor) ?? null,
+		sponsor: objectIdToString(normalizedTournament.sponsor) ?? null,
 		name: normalizedTournament.name,
 		date: normalizedTournament.date,
 		startTime: normalizedTournament.startTime,
@@ -36,10 +36,18 @@ function toPublishCandidateBase(
 export function buildPublishCandidate(
 	tournament: Readonly<TournamentPublishSource>,
 	validatedBody: Readonly<PublishBodyInput>,
-	clubId: string
+	clubId: string,
+	isChangingClub: boolean
 ) {
+	const hasSponsorOverride = Object.prototype.hasOwnProperty.call(validatedBody, 'sponsor');
+	const base = toPublishCandidateBase(tournament, clubId);
+
+	if (isChangingClub && !hasSponsorOverride) {
+		base.sponsor = null;
+	}
+
 	return {
-		...toPublishCandidateBase(tournament, clubId),
+		...base,
 		...validatedBody,
 		status: 'active'
 	};

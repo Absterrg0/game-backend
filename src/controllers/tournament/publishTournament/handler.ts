@@ -42,10 +42,16 @@ export async function publishTournamentFlow(
   tournamentId: string,
   tournament: TournamentPublishSource,
   validatedBody: PublishBodyInput,
-  clubId: string
+  targetClubId: string,
+  isChangingClub: boolean
 ) {
-  const publishCandidate = buildPublishCandidate(tournament, validatedBody, clubId);
-  const resolved = await resolveCourtsForPublish(clubId, publishCandidate);
+  const publishCandidate = buildPublishCandidate(
+    tournament,
+    validatedBody,
+    targetClubId,
+    isChangingClub
+  );
+  const resolved = await resolveCourtsForPublish(targetClubId, publishCandidate);
   if (resolved.status !== 200) {
     return resolved;
   }
@@ -58,7 +64,7 @@ export async function publishTournamentFlow(
   }
   const data = parsed.data;
 
-  const sponsorCheck = await validateSponsorForPublish(data, clubId);
+  const sponsorCheck = await validateSponsorForPublish(data, targetClubId);
   if (sponsorCheck.status !== 200) {
     return sponsorCheck;
   }

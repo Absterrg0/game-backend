@@ -11,7 +11,7 @@ const nullableNonEmptyString = z.union([z.string().trim().min(1), z.null()]);
 
 const draftFields = {
 	club: objectId.optional(),
-	sponsor: objectId.optional(),
+	sponsor: objectId.nullable().optional(),
 	name: z.string().trim().min(1, 'Tournament name is required').optional(),
 	date: z.coerce.date().optional().nullable(),
 	startTime: z.union([z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)'), z.null()]).optional(),
@@ -127,7 +127,7 @@ export const publishSchema = z
 /** Partial schema for publish request body. Validates and strips unknown fields. */
 export const publishBodySchema = z
 	.object(publishSchema.shape)
-	.omit({ club: true, status: true })
+	.omit({ status: true })
 	.partial()
 	.strip();
 
