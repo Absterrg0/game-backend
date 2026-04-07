@@ -89,8 +89,8 @@ export const tournamentPublishSourceSchema = z
     playMode: z.enum(TOURNAMENT_PLAY_MODES).optional(),
     tournamentMode: z.enum(TOURNAMENT_MODES).optional(),
     entryFee: z.number().optional(),
-    minMember: z.number().int().optional(),
-    maxMember: z.number().int().optional(),
+    minMember: z.number().int(),
+    maxMember: z.number().int(),
     duration: z.string().optional(),
     breakDuration: z.string().optional(),
     courts: z.array(dbIdLikeSchema).optional(),
@@ -113,8 +113,8 @@ export type NormalizedTournamentPublishSource = {
   playMode: PublishInput["playMode"];
   tournamentMode: PublishInput["tournamentMode"];
   entryFee?: number;
-  minMember?: number;
-  maxMember?: number;
+  minMember: number;
+  maxMember: number;
   duration?: string;
   breakDuration?: string;
   courts: DbIdLike[];

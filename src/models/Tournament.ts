@@ -99,7 +99,7 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 		},
 		maxMember: {
 			type: Number,
-			required: false,
+			required: true,
 			min: [1, 'Maximum members must be at least 1'],
 			default: 1
 		},

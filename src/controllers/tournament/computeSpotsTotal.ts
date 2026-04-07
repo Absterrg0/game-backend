@@ -1,10 +1,12 @@
 /**
  * Normalized capacity from `maxMember` for join rules and detail `permissions.canJoin`.
- * Undefined, null, non-finite, or negative values after truncation yield 0.
+ * Undefined, null, non-finite, or negative values after truncation are treated as unlimited.
  */
 export function computeSpotsTotal(maxMember: number | undefined | null) {
   if (maxMember === undefined || maxMember === null || !Number.isFinite(maxMember)) {
-    return 0;
+    return Infinity;
   }
-  return Math.max(0, Math.trunc(maxMember));
+  const normalized = Math.trunc(maxMember);
+  if (normalized < 0) return Infinity;
+  return normalized;
 }

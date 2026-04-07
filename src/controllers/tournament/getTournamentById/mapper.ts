@@ -164,7 +164,9 @@ export function mapTournamentDetail(
     context.role === ROLES.SUPER_ADMIN;
 
   const isActive = tournament.status === "active";
-  const hasAvailableSpots = spotsFilled < spotsTotal;
+  // Verification: tournaments without maxMember normalize to Infinity and remain joinable.
+  const hasAvailableSpots =
+    spotsTotal === Infinity || spotsFilled < spotsTotal;
 
   const canJoin =
     isActive &&

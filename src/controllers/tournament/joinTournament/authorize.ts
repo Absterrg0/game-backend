@@ -9,7 +9,7 @@ export interface JoinTournamentDoc {
   club?: { _id: mongoose.Types.ObjectId } | null;
   status: string;
   participants?: mongoose.Types.ObjectId[];
-  maxMember?: number;
+  maxMember: number;
 }
 
 /**
