@@ -146,9 +146,18 @@ export function mapTournamentDetail(
   ========================= */
 
   const spotsFilled = participantsRaw.length;
-  const spotsTotal = computeSpotsTotal(tournament.maxMember);
+  const rawSpotsTotal = computeSpotsTotal(tournament.maxMember);
+  const maxMemberNum = Number(tournament.maxMember);
+  const spotsTotalForResponse = Number.isFinite(rawSpotsTotal)
+    ? rawSpotsTotal
+    : Number.isFinite(maxMemberNum) && Math.trunc(maxMemberNum) >= 1
+      ? Math.trunc(maxMemberNum)
+      : 1;
 
-  const percentage = spotsTotal > 0 ? Math.round((spotsFilled / spotsTotal) * 100) : 0;
+  const percentage =
+    rawSpotsTotal > 0 && Number.isFinite(rawSpotsTotal)
+      ? Math.round((spotsFilled / rawSpotsTotal) * 100)
+      : 0;
 
   /* =========================
      Permissions
@@ -166,7 +175,7 @@ export function mapTournamentDetail(
   const isActive = tournament.status === "active";
   // Verification: tournaments without maxMember normalize to Infinity and remain joinable.
   const hasAvailableSpots =
-    spotsTotal === Infinity || spotsFilled < spotsTotal;
+    rawSpotsTotal === Infinity || spotsFilled < rawSpotsTotal;
 
   const canJoin =
     isActive &&
@@ -265,7 +274,7 @@ export function mapTournamentDetail(
         ? Math.trunc(Number(tournament.minMember))
         : 0
     ),
-    maxMember: spotsTotal,
+    maxMember: spotsTotalForResponse,
     duration: tournament.duration ?? null,
     breakDuration: tournament.breakDuration ?? null,
     courts,
@@ -275,7 +284,7 @@ export function mapTournamentDetail(
     participants: participantItems,
     progress: {
       spotsFilled,
-      spotsTotal,
+      spotsTotal: spotsTotalForResponse,
       percentage,
     },
     permissions: {
