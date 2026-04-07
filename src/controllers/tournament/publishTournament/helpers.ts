@@ -1,5 +1,6 @@
 import { DbIdLike } from '../../../types/domain';
-import { normalizeTournamentPublishSource, type TournamentPublishSource, PublishBodyInput } from '../../../types/api';
+import { normalizeTournamentPublishSource, type TournamentPublishSource } from '../../../types/api';
+import type { PublishBodyInput } from './validation';
 function objectIdToString(value: DbIdLike | null | undefined): string | undefined {
 	if (value == null) return undefined;
 	return typeof value === 'string' ? value : value.toString();
@@ -13,9 +14,8 @@ function toPublishCandidateBase(
 
 	return {
 		club: clubId,
-		sponsorId: objectIdToString(normalizedTournament.sponsor) ?? null,
+		sponsor: objectIdToString(normalizedTournament.sponsor) ?? null,
 		name: normalizedTournament.name,
-		logo: normalizedTournament.logo,
 		date: normalizedTournament.date,
 		startTime: normalizedTournament.startTime,
 		endTime: normalizedTournament.endTime,
@@ -39,9 +39,15 @@ export function buildPublishCandidate(
 	validatedBody: Readonly<PublishBodyInput>,
 	clubId: string
 ) {
+	const base = toPublishCandidateBase(tournament, clubId);
+
+	const { club: _clientClub, ...bodyWithoutClub } = validatedBody as PublishBodyInput & {
+		club?: unknown;
+	};
+
 	return {
-		...toPublishCandidateBase(tournament, clubId),
-		...validatedBody,
+		...base,
+		...bodyWithoutClub,
 		status: 'active'
 	};
 }

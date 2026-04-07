@@ -18,7 +18,7 @@ export interface UpdateContext {
  * Authorizes and validates update: draft-only, club permission, club/sponsor/court integrity.
  */
 export async function authorizeUpdate(
-  tournament: { club: unknown; status: string; minMember?: number; maxMember?: number },
+  tournament: { club: unknown; status: string; minMember: number; maxMember: number },
   data: UpdateDraftInput,
   session: AuthenticatedSession
 ){

@@ -1,14 +1,15 @@
 import mongoose from "mongoose";
-import { userCanManageClub } from "../../../lib/permissions";
-import { buildPermissionContext, type AuthenticatedSession } from "../../../shared/authContext";
+import { ROLES } from "../../../constants/roles";
+import type { AuthenticatedSession } from "../../../shared/authContext";
 import { error, ok } from "../../../shared/helpers";
+import { computeSpotsTotal } from "../computeSpotsTotal";
 
 export interface JoinTournamentDoc {
   _id: mongoose.Types.ObjectId;
   club?: { _id: mongoose.Types.ObjectId } | null;
   status: string;
   participants?: mongoose.Types.ObjectId[];
-  maxMember?: number;
+  maxMember: number;
 }
 
 /**
@@ -27,10 +28,12 @@ export async function authorizeJoin(
     return error(400, "Tournament has no club"); 
   }
 
-  const ctx = buildPermissionContext(session);
-  const isManager = await userCanManageClub(ctx, clubId);
-  if (isManager) {
-    return error(400, "Club managers cannot join this tournament as participants");
+  const isBlockedRole =
+    session.role === ROLES.CLUB_ADMIN ||
+    session.role === ROLES.SUPER_ADMIN;
+
+  if (isBlockedRole) {
+    return error(400, "Club and super admins cannot join this tournament as participants");
   }
 
   const userId = session._id.toString();
@@ -39,6 +42,14 @@ export async function authorizeJoin(
   );
   if (alreadyJoined) {
     return error(400, "Already joined");
+  }
+
+  // Capacity must match mapTournamentDetail `permissions.canJoin` (hasAvailableSpots).
+  const spotsFilled = (tournament.participants ?? []).length;
+  const spotsTotal = computeSpotsTotal(tournament.maxMember);
+  const hasAvailableSpots = spotsFilled < spotsTotal;
+  if (!hasAvailableSpots) {
+    return error(400, "Tournament full");
   }
 
   return ok({}, { status: 200, message: "Authorized" });

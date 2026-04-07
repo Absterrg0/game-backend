@@ -1,11 +1,10 @@
-import mongoose from "mongoose";
-import Tournament from "../../../models/Tournament";
-import Court from "../../../models/Court";
+
 import { buildPublishCandidate } from "./helpers";
 import type { TournamentPublishSource } from "../../../types/api";
-import { publishSchema, type PublishInput, type PublishBodyInput } from "./validation";
+import { publishSchema, type PublishBodyInput } from "./validation";
 import { validateSponsorForPublish } from "./authorize";
 import { error, ok } from "../../../shared/helpers";
+import { fetchClubCourtIdsForPublish, updateTournamentForPublish } from "./queries";
 
 /**
  * Resolves courts for publish from all courts belonging to the selected club.
@@ -14,14 +13,12 @@ async function resolveCourtsForPublish(
   clubId: string,
   publishCandidate: ReturnType<typeof buildPublishCandidate>
 ){
-  const clubCourts = await Court.find({
-    club: new mongoose.Types.ObjectId(clubId),
-  })
-    .select("_id")
-    .lean()
-    .exec();
+  const clubCourtsResult = await fetchClubCourtIdsForPublish(clubId);
+  if (clubCourtsResult.status !== 200) {
+    return clubCourtsResult;
+  }
 
-  if (clubCourts.length === 0) {
+  if (clubCourtsResult.data.length === 0) {
     return error(
       400,
       "Selected club has no courts. Add at least one court before publishing this tournament."
@@ -31,9 +28,9 @@ async function resolveCourtsForPublish(
   return ok(
     {
       ...publishCandidate,
-      courts: clubCourts.map((court) => court._id.toString()),
+      courts: clubCourtsResult.data,
       status: "active",
-    } as PublishInput,
+    },
     { status: 200, message: "Courts resolved" }
   );
 }
@@ -47,7 +44,11 @@ export async function publishTournamentFlow(
   validatedBody: PublishBodyInput,
   clubId: string
 ) {
-  const publishCandidate = buildPublishCandidate(tournament, validatedBody, clubId);
+  const publishCandidate = buildPublishCandidate(
+    tournament,
+    validatedBody,
+    clubId
+  );
   const resolved = await resolveCourtsForPublish(clubId, publishCandidate);
   if (resolved.status !== 200) {
     return resolved;
@@ -72,26 +73,10 @@ export async function publishTournamentFlow(
     sponsor: sponsor ?? null,
     status: "active" as const,
   };
-  const updated = await Tournament.findByIdAndUpdate(
-    tournamentId,
-    { $set: payload },
-    { new: true, runValidators: true }
-  )
-    .select("_id name club status")
-    .lean()
-    .exec();
-
-  if (!updated) {
-    return error(404, "Tournament not found");
+  const updatedResult = await updateTournamentForPublish(tournamentId, payload);
+  if (updatedResult.status !== 200) {
+    return updatedResult;
   }
 
-  return ok(
-    {
-      id: updated._id.toString(),
-      name: updated.name,
-      club: updated.club.toString(),
-      status: "active" as const,
-    },
-    { status: 200, message: "Tournament published" }
-  );
+  return ok(updatedResult.data, { status: 200, message: "Tournament published" });
 }

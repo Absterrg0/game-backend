@@ -11,7 +11,7 @@
     "allowSyntheticDefaultImports": true,
     "noImplicitAny": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node10",
     "sourceMap": true
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "src/types"]

@@ -1,9 +1,16 @@
 import type { TournamentPopulated } from "../../../types/api/tournament";
+import { ROLES } from "../../../constants/roles";
 import type { DetailViewContext } from "./authorize";
+import { computeSpotsTotal } from "../computeSpotsTotal";
+
+/* =========================
+   Response Types
+========================= */
 
 export interface ClubInfo {
   id: string;
   name: string;
+  address: string | null;
 }
 
 export interface SponsorInfo {
@@ -55,7 +62,6 @@ export interface PermissionsInfo {
 export interface TournamentDetailResponse {
   id: string;
   name: string;
-  logo: string | null;
   club: ClubInfo | null;
   sponsor: SponsorInfo | null;
   clubSponsors: ClubSponsorInfo[];
@@ -80,92 +86,213 @@ export interface TournamentDetailResponse {
   updatedAt: string | null;
 }
 
+/* =========================
+   Helpers
+========================= */
+
+function toSafeStringId(id: unknown): string | null {
+  if (id === null || id === undefined) return null;
+
+  try {
+    const trimmed = String(id).trim();
+    if (!trimmed || trimmed === "[object Object]") return null;
+
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
+/* =========================
+   Main Mapper
+========================= */
+
 export function mapTournamentDetail(
   tournament: TournamentPopulated,
   context: DetailViewContext,
   clubSponsorsList: ClubSponsorDoc[],
   sessionUserId: string
-) {
-  const participants = tournament.participants ?? []
-  const participantItems = participants
-    .map((p) => {
-      const participantId = p._id?.toString();
-      return {
-        id: participantId,
-        name: p.name,
-        alias: p.alias,
-      };
-    })
-    .filter((p) => Boolean(p.id));
+): TournamentDetailResponse {
+  if (!tournament) {
+    throw new Error("Invalid tournament data: missing tournament");
+  }
+
+  const tournamentId = toSafeStringId(tournament._id);
+  if (!tournamentId) {
+    throw new Error("Invalid tournament data: missing _id");
+  }
+
+  /* =========================
+     Participants
+  ========================= */
+
+  const participantsRaw = tournament.participants ?? [];
+  const participantItems: ParticipantInfo[] = [];
+  for (const p of participantsRaw) {
+    const id = toSafeStringId(p._id);
+    if (!id) continue;
+
+    participantItems.push({
+      id,
+      name: p.name ?? null,
+      alias: p.alias ?? null,
+    });
+  }
+
   const participantIdSet = new Set(participantItems.map((p) => p.id));
 
-  const spotsFilled = participantItems.length;
-  const spotsTotal = Math.max(1, tournament.maxMember);
-  const isParticipant = participantIdSet.has(sessionUserId);
-  const canJoin =
-    tournament.status === "active" &&
-    !context.isManager &&
-    !isParticipant &&
-    spotsFilled < spotsTotal;
+  /* =========================
+     Progress
+  ========================= */
 
-  const courts = (tournament.courts ?? [])
-  .map((court) => ({
-    id: court._id?.toString(),
-    name: court.name,
-    type: court.type,
-    placement: court.placement,
-  }));
+  const spotsFilled = participantsRaw.length;
+  const rawSpotsTotal = computeSpotsTotal(tournament.maxMember);
+  const maxMemberNum = Number(tournament.maxMember);
+  const spotsTotalForResponse = Number.isFinite(rawSpotsTotal)
+    ? rawSpotsTotal
+    : Number.isFinite(maxMemberNum) && Math.trunc(maxMemberNum) >= 1
+      ? Math.trunc(maxMemberNum)
+      : 1;
+
+  const percentage =
+    rawSpotsTotal > 0 && Number.isFinite(rawSpotsTotal)
+      ? Math.round((spotsFilled / rawSpotsTotal) * 100)
+      : 0;
+
+  /* =========================
+     Permissions
+  ========================= */
+
+  const sessionParticipantId = sessionUserId.trim();
+  const isParticipant = sessionParticipantId
+    ? participantIdSet.has(sessionParticipantId)
+    : false;
+
+  const isAdminRole =
+    context.role === ROLES.CLUB_ADMIN ||
+    context.role === ROLES.SUPER_ADMIN;
+
+  const isActive = tournament.status === "active";
+  // Verification: tournaments without maxMember normalize to Infinity and remain joinable.
+  const hasAvailableSpots =
+    rawSpotsTotal === Infinity || spotsFilled < rawSpotsTotal;
+
+  const canJoin =
+    isActive &&
+    !isAdminRole &&
+    !isParticipant &&
+    hasAvailableSpots;
+
+  /* =========================
+     Courts
+  ========================= */
+
+  const courts: CourtInfo[] = [];
+  for (const court of tournament.courts ?? []) {
+    const id = toSafeStringId(court._id);
+    if (!id) continue;
+
+    courts.push({
+      id,
+      name: court.name ?? "",
+      type: court.type ?? null,
+      placement: court.placement ?? null,
+    });
+  }
+
+  /* =========================
+     Club
+  ========================= */
+
+  const club: ClubInfo | null = tournament.club
+    ? (() => {
+        const id = toSafeStringId(tournament.club._id);
+        if (!id) return null;
+
+        return {
+          id,
+          name: tournament.club.name ?? "",
+          address: tournament.club.address ?? null,
+        };
+      })()
+    : null;
+
+  /* =========================
+     Sponsor
+  ========================= */
+
+  const sponsor: SponsorInfo | null = tournament.sponsor
+    ? (() => {
+        const id = toSafeStringId(tournament.sponsor?._id);
+        if (!id) return null;
+
+        return {
+          id,
+          name: tournament.sponsor.name ?? "",
+          logoUrl: tournament.sponsor.logoUrl ?? null,
+          link: tournament.sponsor.link ?? null,
+        };
+      })()
+    : null;
+
+  /* =========================
+     Club Sponsors
+  ========================= */
+
+  const clubSponsors: ClubSponsorInfo[] = [];
+  for (const s of clubSponsorsList) {
+    const id = toSafeStringId(s._id);
+    if (!id) continue;
+
+    clubSponsors.push({
+      id,
+      name: s.name ?? "",
+      logoUrl: s.logoUrl ?? null,
+      link: s.link ?? null,
+    });
+  }
+
+  /* =========================
+     Final Response
+  ========================= */
 
   return {
-    id: tournament._id.toString(),
+    id: tournamentId,
     name: tournament.name,
-    logo: tournament.logo ?? null,
-    club: tournament.club
-      ? {
-          id: tournament.club._id.toString(),
-          name: tournament.club.name,
-        }
-      : null,
-    sponsor: tournament.sponsor
-      ? {
-          id: String(tournament.sponsor._id),
-          name: tournament.sponsor.name,
-          logoUrl: tournament.sponsor.logoUrl,
-          link: tournament.sponsor.link,
-        }
-      : null,
-    clubSponsors: clubSponsorsList.map((s) => ({
-      id: s._id.toString(),
-      name: s.name,
-      logoUrl: s.logoUrl,
-      link: s.link,
-    })),
-    date: tournament.date?.toISOString(),
-    startTime: tournament.startTime,
-    endTime: tournament.endTime,
+    club,
+    sponsor,
+    clubSponsors,
+    date: tournament.date instanceof Date ? tournament.date.toISOString() : null,
+    startTime: tournament.startTime ?? null,
+    endTime: tournament.endTime ?? null,
     playMode: tournament.playMode,
     tournamentMode: tournament.tournamentMode,
-    entryFee: tournament.entryFee,
-    minMember: tournament.minMember,
-    maxMember: tournament.maxMember,
-    duration: tournament.duration,
-    breakDuration: tournament.breakDuration,
+    entryFee: Number.isFinite(tournament.entryFee) ? tournament.entryFee : 0,
+    minMember: Math.max(
+      0,
+      Number.isFinite(Number(tournament.minMember))
+        ? Math.trunc(Number(tournament.minMember))
+        : 0
+    ),
+    maxMember: spotsTotalForResponse,
+    duration: tournament.duration ?? null,
+    breakDuration: tournament.breakDuration ?? null,
     courts,
-    foodInfo: tournament.foodInfo,
-    descriptionInfo: tournament.descriptionInfo,
+    foodInfo: tournament.foodInfo ?? "",
+    descriptionInfo: tournament.descriptionInfo ?? "",
     status: tournament.status,
     participants: participantItems,
     progress: {
       spotsFilled,
-      spotsTotal,
-      percentage: Math.round((spotsFilled / spotsTotal) * 100),
+      spotsTotal: spotsTotalForResponse,
+      percentage,
     },
     permissions: {
       canEdit: context.isManager,
       canJoin,
       isParticipant,
     },
-    createdAt: tournament.createdAt?.toISOString(),
-    updatedAt: tournament.updatedAt?.toISOString(),
+    createdAt: tournament.createdAt instanceof Date ? tournament.createdAt.toISOString() : null,
+    updatedAt: tournament.updatedAt instanceof Date ? tournament.updatedAt.toISOString() : null,
   };
 }

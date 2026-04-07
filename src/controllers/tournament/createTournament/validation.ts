@@ -19,13 +19,11 @@ const baseTournament = z.object({
   
     name: z.string().min(1),
   
-    logo: z.string().optional(),
-  
     playMode: playModeEnum,
   
     entryFee: z.number().min(0).nonnegative().default(0),
-    minMember: z.number().min(1).nonnegative(),
-    maxMember: z.number().min(1).nonnegative(),
+    minMember: z.number().int().min(1),
+    maxMember: z.number().int().min(1),
   
     duration: z.string(),
     breakDuration: z.string(),

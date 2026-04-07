@@ -47,16 +47,13 @@ export async function sponsorBelongsToClub(
 	clubId: string
 ) {
 	if (!sponsorId) return true;
-
-	const sponsorObjId = new mongoose.Types.ObjectId(sponsorId);
-	const clubObjId = new mongoose.Types.ObjectId(clubId);
-
-	if (!mongoose.Types.ObjectId.isValid(sponsorObjId) || !mongoose.Types.ObjectId.isValid(clubObjId)) return false;
+	if (!mongoose.Types.ObjectId.isValid(sponsorId)) return false;
+	if (!mongoose.Types.ObjectId.isValid(clubId)) return false;
 
 	const sponsor = await Sponsor.findOne({
-		_id: sponsorObjId,
+		_id: sponsorId,
 		scope: 'club',
-		clubId: clubObjId,
+		club: clubId,
 		status: 'active'
 	}).lean().exec();
 	return !!sponsor;

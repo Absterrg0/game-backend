@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import {
 	getTournaments,
 	getTournamentById,
@@ -7,16 +7,17 @@ import {
 	updateTournament,
 	publishTournament
 } from '../controllers/tournament/controller';
-import authenticate from '../middlewares/auth';
 import { requireOrganiserOrAbove, requirePlayerOrAbove } from '../middlewares/rbac';
+import { createAuthedRouter } from './authedRouter';
 
-const router = express.Router();
+const router = Router();
+const authed = createAuthedRouter(router);
 
-router.get('/', authenticate, requirePlayerOrAbove, getTournaments);
-router.get('/:id', authenticate, requirePlayerOrAbove, getTournamentById);
-router.post('/:id/join', authenticate, requirePlayerOrAbove, joinTournament);
-router.post('/', authenticate, requireOrganiserOrAbove, createTournament);
-router.patch('/:id', authenticate, requireOrganiserOrAbove, updateTournament);
-router.post('/:id/publish', authenticate, requireOrganiserOrAbove, publishTournament);
+authed.get('/', requirePlayerOrAbove, getTournaments);
+authed.get('/:id', requirePlayerOrAbove, getTournamentById);
+authed.post('/:id/join', requirePlayerOrAbove, joinTournament);
+authed.post('/', requireOrganiserOrAbove, createTournament);
+authed.patch('/:id', requireOrganiserOrAbove, updateTournament);
+authed.post('/:id/publish', requireOrganiserOrAbove, publishTournament);
 
 export default router;

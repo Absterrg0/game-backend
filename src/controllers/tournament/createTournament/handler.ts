@@ -1,7 +1,7 @@
 import Tournament from "../../../models/Tournament";
-import Court from "../../../models/Court";
 import type { CreateTournamentInput } from "./validation";
 import { authorizeCreate, type AuthenticatedSession } from "./authorize";
+import { getClubCourtIds } from "./queries";
 import { logger } from "../../../lib/logger";
 import { error, ok } from "../../../shared/helpers";
 /**
@@ -17,13 +17,9 @@ export async function createTournamentFlow(
   if (auth.status !== 200) {
     return error(auth.status, auth.message);
   }
+  const clubCourtIds = await getClubCourtIds(auth.data.context.clubId);
 
-  const clubCourts = await Court.find({ club: data.club })
-    .select("_id")
-    .lean()
-    .exec();
-
-  if (data.status === "active" && clubCourts.length === 0) {
+  if (data.status === "active" && clubCourtIds.length === 0) {
     return error(
       400,
       "Selected club has no courts. Add at least one court before publishing this tournament."
@@ -32,7 +28,8 @@ export async function createTournamentFlow(
 
   const payload = {
     ...data,
-    courts: clubCourts.map((court) => court._id.toString()),
+    createdBy: session._id,
+    courts: clubCourtIds,
   };
 
   try {

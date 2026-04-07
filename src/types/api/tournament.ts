@@ -18,6 +18,7 @@ import type { ITournament } from "../../models/Tournament";
 export interface PopulatedClub {
 	_id: mongoose.Types.ObjectId;
 	name: string;
+  address?: string | null;
 }
 
 export interface PopulatedSponsor {
@@ -40,7 +41,11 @@ export type TournamentPopulated = Omit<
 	ITournament,
 	'club' | 'sponsor' | 'courts' | 'participants'
 > & {
-	club?: { _id: mongoose.Types.ObjectId; name?: string } | null;
+  club?: {
+    _id: mongoose.Types.ObjectId;
+    name?: string;
+    address?: string | null;
+  } | null;
 	sponsor?: {
 		_id: mongoose.Types.ObjectId;
 		name?: string;
@@ -78,15 +83,14 @@ export const tournamentPublishSourceSchema = z
     status: z.enum(TOURNAMENT_STATUSES),
     name: z.string(),
     sponsor: dbIdLikeSchema.optional().nullable(),
-    logo: z.string().optional().nullable(),
     date: z.coerce.date().optional().nullable(),
     startTime: z.string().optional().nullable(),
     endTime: z.string().optional().nullable(),
     playMode: z.enum(TOURNAMENT_PLAY_MODES).optional(),
     tournamentMode: z.enum(TOURNAMENT_MODES).optional(),
     entryFee: z.number().optional(),
-    minMember: z.number().int().optional(),
-    maxMember: z.number().int().optional(),
+    minMember: z.number().int().min(1),
+    maxMember: z.number().int().min(1),
     duration: z.string().optional(),
     breakDuration: z.string().optional(),
     courts: z.array(dbIdLikeSchema).optional(),
@@ -103,15 +107,14 @@ export type NormalizedTournamentPublishSource = {
   status: (typeof TOURNAMENT_STATUSES)[number];
   name: string;
   sponsor: DbIdLike | null;
-  logo: string | null;
   date: Date | null;
   startTime?: string | null;
   endTime?: string | null;
   playMode: PublishInput["playMode"];
   tournamentMode: PublishInput["tournamentMode"];
   entryFee?: number;
-  minMember?: number;
-  maxMember?: number;
+  minMember: number;
+  maxMember: number;
   duration?: string;
   breakDuration?: string;
   courts: DbIdLike[];
@@ -131,7 +134,6 @@ export function normalizeTournamentPublishSource(
     status: source.status,
     name: source.name,
     sponsor: source.sponsor ?? null,
-    logo: source.logo ?? null,
     date: source.date ?? null,
     startTime: source.startTime,
     endTime: source.endTime,
