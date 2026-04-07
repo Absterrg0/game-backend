@@ -114,7 +114,7 @@ export function mapTournamentDetail(
   sessionUserId: string
 ): TournamentDetailResponse {
   if (!tournament) {
-    throw new Error("Invalid tournament data: missing _id");
+    throw new Error("Invalid tournament data: missing tournament");
   }
 
   const tournamentId = toSafeStringId(tournament._id);
@@ -234,7 +234,7 @@ export function mapTournamentDetail(
     if (!id) continue;
 
     clubSponsors.push({
-        id,
+      id,
       name: s.name ?? "",
       logoUrl: s.logoUrl ?? null,
       link: s.link ?? null,
@@ -276,7 +276,7 @@ export function mapTournamentDetail(
       canJoin,
       isParticipant,
     },
-    createdAt: tournament.createdAt?.toISOString?.() || null,
-    updatedAt: tournament.updatedAt?.toISOString?.() || null,
+    createdAt: tournament.createdAt instanceof Date ? tournament.createdAt.toISOString() : null,
+    updatedAt: tournament.updatedAt instanceof Date ? tournament.updatedAt.toISOString() : null,
   };
 }
