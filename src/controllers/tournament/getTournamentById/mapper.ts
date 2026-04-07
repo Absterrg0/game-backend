@@ -257,7 +257,12 @@ export function mapTournamentDetail(
     playMode: tournament.playMode,
     tournamentMode: tournament.tournamentMode,
     entryFee: Number.isFinite(tournament.entryFee) ? tournament.entryFee : 0,
-    minMember: Math.max(0, Math.trunc(Number(tournament.minMember)) || 0),
+    minMember: Math.max(
+      0,
+      Number.isFinite(Number(tournament.minMember))
+        ? Math.trunc(Number(tournament.minMember))
+        : 0
+    ),
     maxMember: spotsTotal,
     duration: tournament.duration ?? null,
     breakDuration: tournament.breakDuration ?? null,
