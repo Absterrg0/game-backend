@@ -11,7 +11,7 @@ import {
 // Define the ITournament interface
 export interface ITournament extends Document {
 	club: mongoose.Types.ObjectId;
-	createdBy?: mongoose.Types.ObjectId;
+	createdBy: mongoose.Types.ObjectId;
 	schedule?: mongoose.Types.ObjectId;
 	sponsor?: mongoose.Types.ObjectId;
 	name: string;
@@ -45,7 +45,7 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 		createdBy: {
 			type: Schema.Types.ObjectId,
 			ref: 'User',
-			required: false
+			required: true
 		},
 		schedule: {
 			type: Schema.Types.ObjectId,
