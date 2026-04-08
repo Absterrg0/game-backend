@@ -37,6 +37,14 @@ export interface TournamentListDoc {
 	sponsorId?: PopulatedSponsor | null;
 }
 
+export interface TournamentForUpdateAuth {
+  club: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
+  status: TournamentStatus;
+  minMember?: number;
+  maxMember?: number;
+}
+
 export type TournamentPopulated = Omit<
 	ITournament,
 	'club' | 'sponsor' | 'courts' | 'participants'
@@ -80,6 +88,7 @@ export const tournamentPublishSourceSchema = z
   .object({
     _id: z.instanceof(mongoose.Types.ObjectId),
     club: dbIdLikeSchema.nullable(),
+    createdBy: dbIdLikeSchema,
     status: z.enum(TOURNAMENT_STATUSES),
     name: z.string(),
     sponsor: dbIdLikeSchema.optional().nullable(),
@@ -104,6 +113,7 @@ export type TournamentPublishSource = z.infer<typeof tournamentPublishSourceSche
 export type NormalizedTournamentPublishSource = {
   _id: mongoose.Types.ObjectId;
   club: DbIdLike | null;
+  createdBy: DbIdLike;
   status: (typeof TOURNAMENT_STATUSES)[number];
   name: string;
   sponsor: DbIdLike | null;
@@ -127,10 +137,11 @@ const DEFAULT_TOURNAMENT_MODE: PublishInput["tournamentMode"] = "singleDay";
 
 export function normalizeTournamentPublishSource(
   source: Readonly<TournamentPublishSource>
-) {
+): NormalizedTournamentPublishSource {
   return {
     _id: source._id,
     club: source.club,
+    createdBy: source.createdBy,
     status: source.status,
     name: source.name,
     sponsor: source.sponsor ?? null,

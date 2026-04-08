@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { ROLES } from "../../../constants/roles";
 import type { AuthenticatedSession } from "../../../shared/authContext";
 import { error, ok } from "../../../shared/helpers";
 import { computeSpotsTotal } from "../computeSpotsTotal";
@@ -26,14 +25,6 @@ export async function authorizeJoin(
   const clubId = tournament.club?._id?.toString();
   if (!clubId) {
     return error(400, "Tournament has no club"); 
-  }
-
-  const isBlockedRole =
-    session.role === ROLES.CLUB_ADMIN ||
-    session.role === ROLES.SUPER_ADMIN;
-
-  if (isBlockedRole) {
-    return error(400, "Club and super admins cannot join this tournament as participants");
   }
 
   const userId = session._id.toString();

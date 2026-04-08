@@ -1,11 +1,12 @@
-import { checkClubManagement, checkSponsorBelongsToClub } from "../../../shared/relations";
-import { buildPermissionContext, type AuthenticatedSession } from "../../../shared/authContext";
+import { checkSponsorBelongsToClub } from "../../../shared/relations";
+import type { AuthenticatedSession } from "../../../shared/authContext";
+import { isOwnerOrSuperAdmin } from "../../../lib/permissions";
 import type { TournamentPublishSource } from "../../../types/api";
 import type { PublishInput } from "./validation";
 import { error, ok } from "../../../shared/helpers";
 
 /**
- * Authorizes publish via publish endpoint: draft only, club permission.
+ * Authorizes publish via publish endpoint: draft only, creator/super-admin.
  */
 export async function authorizePublish(
   tournament: TournamentPublishSource,
@@ -20,14 +21,8 @@ export async function authorizePublish(
     return error(400, "Tournament has no club");
   }
 
-  const ctx = buildPermissionContext(session);
-  const manageResult = await checkClubManagement(
-    ctx,
-    clubId,
-    "You do not have permission to publish this tournament"
-  );
-  if (manageResult.status !== 200) {
-    return manageResult;
+  if (!isOwnerOrSuperAdmin(session, tournament.createdBy)) {
+    return error(403, "You do not have permission to publish this tournament");
   }
 
   return ok({ clubId }, { status: 200, message: "Authorized" });

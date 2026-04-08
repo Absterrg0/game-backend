@@ -44,7 +44,7 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       return;
     }
 
-    const result = await updateTournamentFlow(idResult.data, bodyParse.data, authResult.data);
+    const result = await updateTournamentFlow(idResult.data, bodyParse.data);
     if (!result) {
       res.status(404).json(buildErrorPayload("Tournament not found"));
       return;

@@ -168,9 +168,7 @@ export function mapTournamentDetail(
     ? participantIdSet.has(sessionParticipantId)
     : false;
 
-  const isAdminRole =
-    context.role === ROLES.CLUB_ADMIN ||
-    context.role === ROLES.SUPER_ADMIN;
+  const canEdit = context.isCreator || context.role === ROLES.SUPER_ADMIN;
 
   const isActive = tournament.status === "active";
   // Verification: tournaments without maxMember normalize to Infinity and remain joinable.
@@ -179,7 +177,6 @@ export function mapTournamentDetail(
 
   const canJoin =
     isActive &&
-    !isAdminRole &&
     !isParticipant &&
     hasAvailableSpots;
 
@@ -288,7 +285,7 @@ export function mapTournamentDetail(
       percentage,
     },
     permissions: {
-      canEdit: context.isManager,
+      canEdit,
       canJoin,
       isParticipant,
     },
