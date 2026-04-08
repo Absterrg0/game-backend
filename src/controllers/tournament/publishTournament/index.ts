@@ -10,8 +10,8 @@ import { tournamentPublishSourceSchema } from "../../../types/api";
 import { AuthenticatedRequest } from "../../../shared";
 /**
  * POST /api/tournaments/:id/publish
- * Publish a draft tournament. Body must contain full publish-valid payload (merge with existing).
- * Idempotent if already active.
+ * Publish a draft tournament or update an active tournament using publish validation.
+ * Body may be partial; it is merged with the stored tournament before validation.
  */
 export async function publishTournament(req: AuthenticatedRequest, res: Response){
   try {
@@ -36,18 +36,6 @@ export async function publishTournament(req: AuthenticatedRequest, res: Response
       return;
     }
     const tournament = tournamentParse.data;
-
-    if (tournament.status === "active") {
-      res.json({
-        message: "Tournament is already published",
-        tournament: {
-          id: tournament._id,
-          name: tournament.name,
-          status: tournament.status,
-        },
-      });
-      return;
-    }
 
     const bodyParse = publishBodySchema.safeParse(req.body);
     if (!bodyParse.success) {

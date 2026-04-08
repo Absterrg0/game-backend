@@ -5,15 +5,14 @@ import type { PublishInput } from "./validation";
 import { error, ok } from "../../../shared/helpers";
 
 /**
- * Authorizes publish: draft-only, club permission.
- * Caller must handle idempotent (already active) case before calling.
+ * Authorizes publish/update via publish endpoint: draft or active, club permission.
  */
 export async function authorizePublish(
   tournament: TournamentPublishSource,
   session: AuthenticatedSession
 ){
-  if (tournament.status !== "draft") {
-    return error(400, "Only draft tournaments can be published");
+  if (tournament.status !== "draft" && tournament.status !== "active") {
+    return error(400, "Only draft or active tournaments can be updated via publish endpoint");
   }
 
   const clubId = tournament.club?.toString();
