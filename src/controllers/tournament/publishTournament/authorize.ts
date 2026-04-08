@@ -5,8 +5,7 @@ import type { PublishInput } from "./validation";
 import { error, ok } from "../../../shared/helpers";
 
 /**
- * Authorizes publish: draft-only, club permission.
- * Caller must handle idempotent (already active) case before calling.
+ * Authorizes publish via publish endpoint: draft only, club permission.
  */
 export async function authorizePublish(
   tournament: TournamentPublishSource,

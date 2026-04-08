@@ -42,8 +42,8 @@ export async function authorizeCreate(
     return clubResult;
   }
 
-  if (data.sponsorId != null && data.sponsorId !== "") {
-    const sponsorResult = await checkSponsorBelongsToClub(data.sponsorId, clubId);
+  if (data.sponsor != null && data.sponsor !== "") {
+    const sponsorResult = await checkSponsorBelongsToClub(data.sponsor, clubId);
     if (sponsorResult.status !== 200) {
       return sponsorResult;
     }

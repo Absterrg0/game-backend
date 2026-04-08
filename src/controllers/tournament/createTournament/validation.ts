@@ -15,7 +15,8 @@ export const statusEnum = z.enum(["draft", "active"]);
 const baseTournament = z.object({
     club: objectId,
     schedule: objectId.optional(),
-    sponsorId: objectId.optional(),
+    sponsor: objectId.nullable().optional(),
+    sponsorId: objectId.nullable().optional(),
   
     name: z.string().min(1),
   
@@ -97,6 +98,27 @@ const baseTournament = z.object({
         return toMin(d.startTime) < toMin(d.endTime);
       },
       { message: "Start time must be before end time", path: ["startTime"] }
-    );
+    )
+    .superRefine((d, ctx) => {
+      if (
+        d.sponsor !== undefined &&
+        d.sponsorId !== undefined &&
+        d.sponsor !== d.sponsorId
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["sponsor"],
+          message: "conflicting sponsor and sponsorId",
+        });
+      }
+    })
+    .transform((d) => {
+      const sponsor = d.sponsor ?? d.sponsorId ?? undefined;
+      const { sponsorId, ...rest } = d;
+      return {
+        ...rest,
+        sponsor,
+      };
+    });
 
   export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;

@@ -10,8 +10,7 @@
     "build": "tsc",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watchAll",
-    "test:coverage": "jest --coverage",
-    "backfill:tournament-createdBy": "tsx scripts/backfill-tournament-createdBy.ts"
+    "test:coverage": "jest --coverage"
   },
   "repository": {
     "type": "git",
