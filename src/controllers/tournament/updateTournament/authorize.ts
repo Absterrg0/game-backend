@@ -1,11 +1,13 @@
 import type { UpdateDraftInput } from "./validation";
+import type mongoose from "mongoose";
+import type { TournamentStatus } from "../../../types/domain/tournament";
 import {
-  checkClubManagement,
   checkClubExists,
   checkSponsorBelongsToClub,
   checkCourtsBelongToClub,
 } from "../../../shared/relations";
-import { buildPermissionContext, type AuthenticatedSession } from "../../../shared/authContext";
+import { ROLES } from "../../../constants/roles";
+import type { AuthenticatedSession } from "../../../shared/authContext";
 import { error, ok } from "../../../shared/helpers";
 
 export interface UpdateContext {
@@ -14,11 +16,19 @@ export interface UpdateContext {
   isChangingClub: boolean;
 }
 
+export interface TournamentForUpdateAuth {
+  club: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
+  status: TournamentStatus;
+  minMember: number;
+  maxMember: number;
+}
+
 /**
- * Authorizes and validates update: draft-only, club permission, club/sponsor/court integrity.
+ * Authorizes and validates update: draft-only, creator/super-admin, club/sponsor/court integrity.
  */
 export async function authorizeUpdate(
-  tournament: { club: unknown; status: string; minMember: number; maxMember: number },
+  tournament: TournamentForUpdateAuth,
   data: UpdateDraftInput,
   session: AuthenticatedSession
 ){
@@ -26,19 +36,12 @@ export async function authorizeUpdate(
     return error(400, "Only draft tournaments can be updated. Use publish to activate.");
   }
 
-  const clubId = tournament.club?.toString();
-  if (!clubId) {
-    return error(400, "Tournament has no club");
-  }
-  const ctx = buildPermissionContext(session);
-
-  const manageResult = await checkClubManagement(
-    ctx,
-    clubId,
-    "You do not have permission to update this tournament"
-  );
-  if (manageResult.status !== 200) {
-    return manageResult;
+  const clubId = tournament.club.toString();
+  const createdBy = tournament.createdBy.toString();
+  const isCreator = createdBy === session._id.toString();
+  const isSuperAdmin = session.role === ROLES.SUPER_ADMIN;
+  if (!isCreator && !isSuperAdmin) {
+    return error(403, "You do not have permission to update this tournament");
   }
 
   const updateClubId = data.club ?? clubId;
@@ -57,14 +60,7 @@ export async function authorizeUpdate(
   }
 
   if (isChangingClub) {
-    const manageNewResult = await checkClubManagement(
-      ctx,
-      data.club?.toString() ?? "",
-      "You do not have permission to assign this tournament to that club"
-    );
-    if (manageNewResult.status !== 200) {
-      return manageNewResult;
-    }
+    return error(400, "club cannot be changed for an existing tournament");
   }
 
   if (Array.isArray(data.courts) && data.courts.length > 0) {

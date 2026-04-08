@@ -6,6 +6,7 @@ import { error, ok } from "../../../shared/helpers";
 
 export interface DetailViewContext {
   isManager: boolean;
+  isCreator: boolean;
   clubIdStr: string;
   role: Role;
 }
@@ -26,11 +27,12 @@ export async function authorizeGetById(
 
   const ctx = buildPermissionContext(session);
   const isManager = await userCanManageClub(ctx, clubIdStr);
+  const isCreator = String(tournament.createdBy) === session._id.toString();
 
-  // Non-managers can only view active tournaments.
-  if (tournament.status !== "active" && !isManager) {
+  // Non-managers/non-creators can only view active tournaments.
+  if (tournament.status !== "active" && !isManager && !isCreator) {
     return error(403, "You do not have permission to view this tournament");
   }
 
-  return ok({ context: { isManager, clubIdStr, role } }, { status: 200, message: "Authorized" });
+  return ok({ context: { isManager, isCreator, clubIdStr, role } }, { status: 200, message: "Authorized" });
 }
