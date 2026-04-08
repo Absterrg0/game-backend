@@ -41,8 +41,8 @@ export interface TournamentForUpdateAuth {
   club: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   status: TournamentStatus;
-  minMember: number;
-  maxMember: number;
+  minMember?: number;
+  maxMember?: number;
 }
 
 export type TournamentPopulated = Omit<

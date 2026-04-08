@@ -11,8 +11,6 @@ import { error, ok } from "../../../shared/helpers";
 
 export interface UpdateContext {
   clubId: string;
-  updateClubId: string;
-  isChangingClub: boolean;
 }
 
 /**
@@ -32,27 +30,27 @@ export async function authorizeUpdate(
     return error(403, "You do not have permission to update this tournament");
   }
 
-  const updateClubId = data.club ?? clubId;
-  const isChangingClub = Boolean(data.club && data.club !== clubId);
+  const requestedClub = (data as { club?: string }).club;
+  const isChangingClub = Boolean(requestedClub && requestedClub !== clubId);
 
   if (isChangingClub) {
     return error(400, "club cannot be changed for an existing tournament");
   }
 
-  const clubResult = await checkClubExists(updateClubId);
+  const clubResult = await checkClubExists(clubId);
   if (clubResult.status !== 200) {
     return clubResult;
   }
 
   if (data.sponsor) {
-    const sponsorResult = await checkSponsorBelongsToClub(data.sponsor.toString(), updateClubId);
+    const sponsorResult = await checkSponsorBelongsToClub(data.sponsor.toString(), clubId);
     if (sponsorResult.status !== 200) {
       return sponsorResult;
     }
   }
 
   if (Array.isArray(data.courts) && data.courts.length > 0) {
-    const courtResult = await checkCourtsBelongToClub(updateClubId, data.courts);
+    const courtResult = await checkCourtsBelongToClub(clubId, data.courts);
     if (courtResult.status !== 200) {
       return courtResult;
     }
@@ -72,5 +70,5 @@ export async function authorizeUpdate(
     return error(400, "maxMember must be greater than or equal to minMember");
   }
 
-  return ok({ clubId, updateClubId, isChangingClub }, { status: 200, message: "Authorized" });
+  return ok({ clubId }, { status: 200, message: "Authorized" });
 }
