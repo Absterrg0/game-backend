@@ -19,6 +19,12 @@ export interface PopulatedClub {
 	_id: mongoose.Types.ObjectId;
 	name: string;
   address?: string | null;
+  courts?: Array<{
+    _id: mongoose.Types.ObjectId;
+    name?: string;
+    type?: string;
+    placement?: string;
+  }>;
 }
 
 export interface PopulatedSponsor {
@@ -47,12 +53,18 @@ export interface TournamentForUpdateAuth {
 
 export type TournamentPopulated = Omit<
 	ITournament,
-	'club' | 'sponsor' | 'courts' | 'participants'
+  'club' | 'sponsor' | 'participants'
 > & {
   club?: {
     _id: mongoose.Types.ObjectId;
     name?: string;
     address?: string | null;
+    courts?: Array<{
+      _id: mongoose.Types.ObjectId;
+      name?: string;
+      type?: string;
+      placement?: string;
+    }>;
   } | null;
 	sponsor?: {
 		_id: mongoose.Types.ObjectId;
@@ -60,12 +72,6 @@ export type TournamentPopulated = Omit<
 		logoUrl?: string | null;
 		link?: string | null;
 	} | null;
-	courts?: Array<{
-		_id: mongoose.Types.ObjectId;
-		name?: string;
-		type?: string;
-		placement?: string;
-	}>;
 	participants?: Array<{
 		_id?: mongoose.Types.ObjectId | string;
 		name?: string | null;
@@ -102,7 +108,6 @@ export const tournamentPublishSourceSchema = z
     maxMember: z.number().int().min(1),
     duration: z.string().optional(),
     breakDuration: z.string().optional(),
-    courts: z.array(dbIdLikeSchema).optional(),
     foodInfo: z.string().optional(),
     descriptionInfo: z.string().optional(),
   })
@@ -127,7 +132,6 @@ export type NormalizedTournamentPublishSource = {
   maxMember: number;
   duration?: string;
   breakDuration?: string;
-  courts: DbIdLike[];
   foodInfo: string;
   descriptionInfo: string;
 };
@@ -155,7 +159,6 @@ export function normalizeTournamentPublishSource(
     maxMember: source.maxMember,
     duration: source.duration,
     breakDuration: source.breakDuration,
-    courts: source.courts ?? [],
     foodInfo: source.foodInfo ?? "",
     descriptionInfo: source.descriptionInfo ?? "",
   };

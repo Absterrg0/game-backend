@@ -18,9 +18,17 @@ export interface UpdateResult {
  */
 export async function updateTournamentFlow(
   tournamentId: string,
-  data: UpdateDraftInput
+  data: UpdateDraftInput,
+  context: { clubChanged: boolean }
 ) {
-  const payload = { ...data };
+  const payload: Record<string, unknown> = { ...data };
+
+  // When tournament club changes, clear cross-club relations unless explicitly reassigned.
+  if (context.clubChanged) {
+    if (data.sponsor === undefined) {
+      payload.sponsor = null;
+    }
+  }
 
   const updated = await Tournament.findByIdAndUpdate(
     tournamentId,

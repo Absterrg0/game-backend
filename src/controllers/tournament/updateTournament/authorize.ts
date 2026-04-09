@@ -2,7 +2,6 @@ import type { UpdateDraftInput } from "./validation";
 import {
   checkClubExists,
   checkSponsorBelongsToClub,
-  checkCourtsBelongToClub,
 } from "../../../shared/relations";
 import { isOwnerOrSuperAdmin } from "../../../lib/permissions";
 import type { AuthenticatedSession } from "../../../shared/authContext";
@@ -11,48 +10,34 @@ import { error, ok } from "../../../shared/helpers";
 
 export interface UpdateContext {
   clubId: string;
+  clubChanged: boolean;
 }
 
 /**
- * Authorizes and validates update: draft-only, creator/super-admin, club/sponsor/court integrity.
+ * Authorizes and validates update for existing tournaments with club/sponsor integrity.
  */
 export async function authorizeUpdate(
   tournament: TournamentForUpdateAuth,
   data: UpdateDraftInput,
   session: AuthenticatedSession
 ){
-  if (tournament.status !== "draft") {
-    return error(400, "Only draft tournaments can be updated. Use publish to activate.");
-  }
-
-  const clubId = tournament.club.toString();
+  const currentClubId = tournament.club.toString();
   if (!isOwnerOrSuperAdmin(session, tournament.createdBy)) {
     return error(403, "You do not have permission to update this tournament");
   }
 
-  const requestedClub = (data as { club?: string }).club;
-  const isChangingClub = Boolean(requestedClub && requestedClub !== clubId);
+  const targetClubId = data.club ?? currentClubId;
+  const clubChanged = targetClubId !== currentClubId;
 
-  if (isChangingClub) {
-    return error(400, "club cannot be changed for an existing tournament");
-  }
-
-  const clubResult = await checkClubExists(clubId);
+  const clubResult = await checkClubExists(targetClubId);
   if (clubResult.status !== 200) {
     return clubResult;
   }
 
   if (data.sponsor) {
-    const sponsorResult = await checkSponsorBelongsToClub(data.sponsor.toString(), clubId);
+    const sponsorResult = await checkSponsorBelongsToClub(data.sponsor.toString(), targetClubId);
     if (sponsorResult.status !== 200) {
       return sponsorResult;
-    }
-  }
-
-  if (Array.isArray(data.courts) && data.courts.length > 0) {
-    const courtResult = await checkCourtsBelongToClub(clubId, data.courts);
-    if (courtResult.status !== 200) {
-      return courtResult;
     }
   }
 
@@ -70,5 +55,5 @@ export async function authorizeUpdate(
     return error(400, "maxMember must be greater than or equal to minMember");
   }
 
-  return ok({ clubId }, { status: 200, message: "Authorized" });
+  return ok({ clubId: targetClubId, clubChanged }, { status: 200, message: "Authorized" });
 }

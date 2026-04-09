@@ -10,7 +10,7 @@ import { updateTournamentFlow } from "./handler";
 
 /**
  * PATCH /api/tournaments/:id
- * Update tournament. Only draft tournaments can be updated. User must have club permission.
+ * Update tournament. Existing draft and published tournaments can be updated.
  */
 export async function updateTournament(req: AuthenticatedRequest ,res: Response){
   try {
@@ -44,7 +44,9 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       return;
     }
 
-    const result = await updateTournamentFlow(idResult.data, bodyParse.data);
+    const result = await updateTournamentFlow(idResult.data, bodyParse.data, {
+      clubChanged: authResult.data.clubChanged,
+    });
     if (!result) {
       res.status(404).json(buildErrorPayload("Tournament not found"));
       return;
