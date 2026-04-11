@@ -57,10 +57,6 @@ export async function authorizeUpdate(
     }
   }
 
-  if ("status" in data && data.status !== undefined) {
-    return error(400, "status cannot be set via update; use publish to activate");
-  }
-
   const effectiveMinMember = data.minMember ?? tournament.minMember;
   const effectiveMaxMember = data.maxMember ?? tournament.maxMember;
   if (

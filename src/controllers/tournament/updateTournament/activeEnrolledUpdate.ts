@@ -26,6 +26,10 @@ export function validateActiveTournamentEnrolledUpdate(
   tournament: TournamentForUpdateAuth,
   data: UpdateDraftInput
 ) {
+  if (data.status === "draft") {
+    return ok(undefined, { status: 200, message: "OK" });
+  }
+
   if (tournament.status !== "active") {
     return ok(undefined, { status: 200, message: "OK" });
   }

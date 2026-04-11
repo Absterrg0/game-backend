@@ -8,6 +8,8 @@ import { authorizeUpdate } from "./authorize";
 import { fetchTournamentForUpdate } from "./queries";
 import { updateTournamentFlow } from "./handler";
 import { validateActiveTournamentEnrolledUpdate } from "./activeEnrolledUpdate";
+import { publishSchema } from "../../../validation/tournament.schemas";
+import { getClubCourtIds } from "../createTournament/queries";
 
 /**
  * PATCH /api/tournaments/:id
@@ -52,6 +54,49 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
     if (authResult.status !== 200) {
       res.status(authResult.status).json(buildErrorPayload(authResult.message));
       return;
+    }
+
+    const nextStatus = bodyParse.data.status ?? tournament.data.status;
+    if (nextStatus === "active") {
+      const clubId = authResult.data.clubId;
+      const shouldClearSponsor = authResult.data.clubChanged && bodyParse.data.sponsor === undefined;
+      const effectiveSponsor = shouldClearSponsor
+        ? null
+        : (bodyParse.data.sponsor ?? tournament.data.sponsor ?? null);
+
+      const publishCandidate = {
+        club: clubId,
+        sponsor: effectiveSponsor,
+        name: bodyParse.data.name ?? tournament.data.name,
+        date: bodyParse.data.date ?? tournament.data.date ?? null,
+        startTime: bodyParse.data.startTime ?? tournament.data.startTime ?? null,
+        endTime: bodyParse.data.endTime ?? tournament.data.endTime ?? null,
+        playMode: bodyParse.data.playMode ?? tournament.data.playMode,
+        tournamentMode: bodyParse.data.tournamentMode ?? tournament.data.tournamentMode,
+        entryFee: bodyParse.data.entryFee ?? tournament.data.entryFee,
+        minMember: bodyParse.data.minMember ?? tournament.data.minMember,
+        maxMember: bodyParse.data.maxMember ?? tournament.data.maxMember,
+        duration: bodyParse.data.duration ?? tournament.data.duration ?? "",
+        breakDuration: bodyParse.data.breakDuration ?? tournament.data.breakDuration ?? "",
+        foodInfo: bodyParse.data.foodInfo ?? tournament.data.foodInfo ?? "",
+        descriptionInfo: bodyParse.data.descriptionInfo ?? tournament.data.descriptionInfo ?? "",
+        status: "active" as const,
+      };
+
+      const publishValidation = publishSchema.safeParse(publishCandidate);
+      if (!publishValidation.success) {
+        const message = publishValidation.error.issues.map((issue) => issue.message).join("; ");
+        res.status(400).json(buildErrorPayload(message || "Tournament publish validation failed"));
+        return;
+      }
+
+      const clubCourtIds = await getClubCourtIds(clubId);
+      if (clubCourtIds.length === 0) {
+        res.status(400).json(
+          buildErrorPayload("Selected club has no courts. Add at least one court before publishing this tournament.")
+        );
+        return;
+      }
     }
 
     const result = await updateTournamentFlow(idResult.data, bodyParse.data, {
