@@ -7,6 +7,7 @@ import {
 	type TournamentPlayMode,
 	type TournamentStatus
 } from '../types/domain/tournament';
+import Schedule from './Schedule';
 
 // Define the ITournament interface
 export interface ITournament extends Document {
@@ -156,12 +157,22 @@ tournamentSchema.pre('validate', function () {
 	}
 });
 
-// tournamentSchema.pre('save', async function () {
-// 	if (!this.schedule) {
-// 		const _schedule = await mongoose.model('Schedule').create({ tournament: this._id, currentRound: 0 });
-// 		this.schedule = _schedule._id;
-// 	}
-// });
+tournamentSchema.post('save', async function (doc) {
+	if (doc.schedule) return;
+
+	const schedule = await Schedule.findOneAndUpdate(
+		{ tournament: doc._id },
+		{ $setOnInsert: { tournament: doc._id, currentRound: 0 } },
+		{ upsert: true, new: true, setDefaultsOnInsert: true }
+	)
+		.select('_id')
+		.lean()
+		.exec();
+
+	if (schedule?._id) {
+		await doc.updateOne({ schedule: schedule._id }).exec();
+	}
+});
 
 const Tournament = mongoose.model<ITournament>('Tournament', tournamentSchema);
 
