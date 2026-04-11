@@ -30,7 +30,7 @@ export async function getTournamentMatches(req: AuthenticatedRequest, res: Respo
     }
 
     const authResult = await authorizeGetById(tournament, req.user);
-    if (authResult.status !== 200) {
+    if (!authResult.ok) {
       res.status(authResult.status).json(buildErrorPayload(authResult.message));
       return;
     }

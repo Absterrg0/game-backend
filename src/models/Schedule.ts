@@ -88,7 +88,11 @@ scheduleSchema.pre('validate', function () {
 	}
 
 	const maxRound = this.rounds.reduce((max, entry) => Math.max(max, entry.round), 0);
-	if (this.currentRound > maxRound && maxRound > 0) {
+	if (this.rounds.length === 0) {
+		if (this.currentRound > 0) {
+			this.invalidate('currentRound', 'currentRound cannot be greater than the highest round in rounds');
+		}
+	} else if (this.currentRound > maxRound) {
 		this.invalidate('currentRound', 'currentRound cannot be greater than the highest round in rounds');
 	}
 });

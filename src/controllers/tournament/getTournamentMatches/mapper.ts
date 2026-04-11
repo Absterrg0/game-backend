@@ -24,6 +24,10 @@ function mapStatus(status: GameStatus): MatchStatusResponse {
     return "inProgress";
   }
 
+  if (status === "cancelled") {
+    return "cancelled";
+  }
+
   return "scheduled";
 }
 
@@ -85,7 +89,15 @@ export function mapTournamentMatchesResponse(
     return a.id.localeCompare(b.id);
   });
 
-  const totalRounds = matches.reduce((max, match) => Math.max(max, match.round), 0);
+  const totalRounds =
+    schedule != null
+      ? rounds.length > 0
+        ? rounds.reduce(
+            (max, entry) => Math.max(max, asPositiveInt(entry.round, 1)),
+            0
+          )
+        : 0
+      : matches.reduce((max, match) => Math.max(max, match.round), 0);
   const currentRound =
     schedule && Number.isFinite(schedule.currentRound) && schedule.currentRound >= 1
       ? Math.trunc(schedule.currentRound)

@@ -35,7 +35,11 @@ export interface GameForMatchesDoc {
   startTime?: Date | null;
 }
 
-export type MatchStatusResponse = "completed" | "inProgress" | "scheduled";
+export type MatchStatusResponse =
+  | "completed"
+  | "inProgress"
+  | "scheduled"
+  | "cancelled";
 
 export interface MatchPlayerResponse {
   id: string;
