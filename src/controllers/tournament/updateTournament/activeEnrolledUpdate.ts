@@ -23,6 +23,10 @@ function nullableStringEqual(
  * changes and ensures capacity stays consistent with enrollment. Applies even
  * when the payload sets status to draft/inactive so mixed updates cannot bypass
  * these checks.
+ *
+ * Note: `minMember` is intentionally not tied to current enrollment here.
+ * Tournament start is gated by schedule-generation rules, not by update-time
+ * enrollment checks.
  */
 export function validateActiveTournamentEnrolledUpdate(
   tournament: TournamentForUpdateAuth,
@@ -64,8 +68,6 @@ export function validateActiveTournamentEnrolledUpdate(
     );
   }
 
-  const effectiveMin =
-    data.minMember !== undefined ? data.minMember : tournament.minMember;
   const effectiveMax =
     data.maxMember !== undefined ? data.maxMember : tournament.maxMember;
 
@@ -73,13 +75,6 @@ export function validateActiveTournamentEnrolledUpdate(
     return error(
       400,
       `maxMember must be at least ${enrolledCount} (current enrollment) while participants are registered`
-    );
-  }
-
-  if (effectiveMin != null && effectiveMin > enrolledCount) {
-    return error(
-      400,
-      `minMember cannot exceed ${enrolledCount} (current enrollment) while participants are registered`
     );
   }
 

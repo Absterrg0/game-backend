@@ -25,9 +25,11 @@ const baseTournament = z.object({
     entryFee: z.number().min(0).nonnegative().default(0),
     minMember: z.number().int().min(1),
     maxMember: z.number().int().min(1),
+    totalRounds: z.number().int().min(1).max(100).optional(),
   
     duration: z.string(),
     breakDuration: z.string(),
+    matchesPerPlayer: z.number().int().min(1).max(20).optional(),
   
     foodInfo: z.string().optional(),
     descriptionInfo: z.string().optional(),

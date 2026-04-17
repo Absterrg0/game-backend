@@ -1,6 +1,8 @@
 export { getTournaments } from './getTournaments/index';
+export { getTournamentLiveMatch } from './getLiveMatch/index';
 export { getTournamentById } from './getTournamentById/index';
 export { getTournamentMatches } from './getTournamentMatches/index';
+export { recordMatchScore } from './recordMatchScore/index';
 export { joinTournament } from './joinTournament/index';
 export { leaveTournament } from './leaveTournament/index';
 export { createTournament } from './createTournament/index';
