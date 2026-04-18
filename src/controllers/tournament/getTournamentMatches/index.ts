@@ -72,7 +72,6 @@ export async function getTournamentMatches(req: AuthenticatedRequest, res: Respo
           id: game._id,
           status: nextStatus,
         });
-        game.status = nextStatus;
       }
     }
 
@@ -80,6 +79,16 @@ export async function getTournamentMatches(req: AuthenticatedRequest, res: Respo
       for (let i = 0; i < statusUpdates.length; i += STATUS_UPDATE_CHUNK_SIZE) {
         const chunk = statusUpdates.slice(i, i + STATUS_UPDATE_CHUNK_SIZE);
         await updateGameStatuses(chunk);
+      }
+
+      const statusById = new Map(
+        statusUpdates.map((u) => [u.id.toString(), u.status])
+      );
+      for (const game of games) {
+        const persisted = statusById.get(game._id.toString());
+        if (persisted !== undefined) {
+          game.status = persisted;
+        }
       }
     }
 

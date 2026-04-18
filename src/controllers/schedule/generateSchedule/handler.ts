@@ -545,7 +545,7 @@ export async function persistSinglesScheduleRound(
         { session }
       ).exec();
 
-      if (targetRound >= 1) {
+      if (targetRound === 1) {
         await Tournament.updateOne(
           {
             _id: tournament._id,
