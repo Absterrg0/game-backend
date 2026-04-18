@@ -85,7 +85,10 @@ export async function leaveTournamentFlow(
       );
     }
 
-    return error(400, "You are not a participant in this tournament");
+    return error(
+      409,
+      "Unable to leave tournament due to a concurrent update. Please retry."
+    );
   }
 
   const spotsFilled = (returnedDoc.participants ?? []).length;
