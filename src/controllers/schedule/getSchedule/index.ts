@@ -55,6 +55,8 @@ export async function getSchedule(req: AuthenticatedRequest, res: Response) {
     const payload = mapScheduleViewResponse(responseContext, {
       currentRound: schedule?.currentRound ?? 0,
       totalRounds,
+    }, {
+      matchesPerPlayer: schedule?.matchesPerPlayer ?? null,
     });
 
     res.status(200).json(payload);

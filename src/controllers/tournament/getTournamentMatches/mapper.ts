@@ -23,6 +23,10 @@ function mapStatus(status: GameStatus): MatchStatusResponse {
     return "completed";
   }
 
+  if (status === "pendingScore") {
+    return "pendingScore";
+  }
+
   if (status === "active") {
     return "inProgress";
   }
