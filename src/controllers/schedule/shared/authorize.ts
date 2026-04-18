@@ -47,8 +47,15 @@ export async function authorizeScheduleOrMatchParticipant(
     return primary;
   }
 
+  let matchObjectId: Types.ObjectId;
+  try {
+    matchObjectId = new Types.ObjectId(matchId);
+  } catch {
+    return primary;
+  }
+
   const isParticipant = await Game.exists({
-    _id: new Types.ObjectId(matchId),
+    _id: matchObjectId,
     tournament: tournament._id,
     gameMode: "tournament",
     "teams.players": session._id,

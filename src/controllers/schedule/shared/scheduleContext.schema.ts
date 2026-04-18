@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { z } from "zod";
+import { logger } from "../../../lib/logger";
 import {
   TOURNAMENT_MODES,
   TOURNAMENT_PLAY_MODES,
@@ -78,7 +79,7 @@ export type ScheduleParticipantElo = z.infer<typeof scheduleParticipantEloSchema
 export const tournamentScheduleDocumentSchema = z.object({
   _id: mongoObjectIdSchema,
   status: z.enum(["draft", "active", "finished"]),
-  currentRound: z.number(),
+  currentRound: z.number().int().min(0),
   matchDurationMinutes: z
     .number()
     .nullish()
@@ -90,8 +91,8 @@ export const tournamentScheduleDocumentSchema = z.object({
   rounds: z.array(
     z.object({
       game: mongoObjectIdSchema,
-      slot: z.number(),
-      round: z.number(),
+      slot: z.number().int().min(1),
+      round: z.number().int().min(1),
     })
   ),
 });
@@ -99,9 +100,23 @@ export const tournamentScheduleDocumentSchema = z.object({
 export type TournamentScheduleDocument = z.infer<typeof tournamentScheduleDocumentSchema>;
 
 export function parseTournamentScheduleContext(data: unknown) {
-  return tournamentScheduleContextSchema.parse(data);
+  const result = tournamentScheduleContextSchema.safeParse(data);
+  if (!result.success) {
+    logger.error("Tournament schedule context failed validation", {
+      issues: result.error.flatten(),
+    });
+    throw new Error("Invalid tournament schedule context");
+  }
+  return result.data;
 }
 
 export function parseTournamentScheduleDocument(data: unknown) {
-  return tournamentScheduleDocumentSchema.parse(data);
+  const result = tournamentScheduleDocumentSchema.safeParse(data);
+  if (!result.success) {
+    logger.error("Schedule document failed validation", {
+      issues: result.error.flatten(),
+    });
+    throw new Error("Invalid schedule document");
+  }
+  return result.data;
 }
