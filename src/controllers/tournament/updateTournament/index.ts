@@ -83,12 +83,17 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
         entryFee: d.entryFee !== undefined ? d.entryFee : t.entryFee,
         minMember: d.minMember !== undefined ? d.minMember : t.minMember,
         maxMember: d.maxMember !== undefined ? d.maxMember : t.maxMember,
+        totalRounds: d.totalRounds !== undefined ? d.totalRounds : t.totalRounds ?? 1,
         duration:
           d.duration !== undefined ? d.duration : t.duration ?? "",
         breakDuration:
           d.breakDuration !== undefined
             ? d.breakDuration
             : t.breakDuration ?? "",
+        matchesPerPlayer:
+          d.matchesPerPlayer !== undefined
+            ? d.matchesPerPlayer
+            : t.matchesPerPlayer ?? 1,
         foodInfo:
           d.foodInfo !== undefined ? d.foodInfo : t.foodInfo ?? "",
         descriptionInfo:

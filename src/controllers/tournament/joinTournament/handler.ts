@@ -15,6 +15,7 @@ export async function joinTournamentFlow(
     {
       _id: tournamentId,
       status: "active",
+      firstRoundScheduledAt: null,
       $expr: {
         $lt: [
           { $size: { $ifNull: ["$participants", []] } },
@@ -30,7 +31,7 @@ export async function joinTournamentFlow(
     .exec();
 
   if (!returnedDoc) {
-    return error(400, "This tournament is already full");
+    return error(400, "This tournament is either full or no longer accepting participants");
   }
 
   const spotsFilled = (returnedDoc.participants ?? []).length;
