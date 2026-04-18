@@ -4,6 +4,7 @@ import Game from "../../../models/Game";
 import Schedule from "../../../models/Schedule";
 import Tournament from "../../../models/Tournament";
 import User from "../../../models/User";
+import type { GamePlayMode } from "../../../types/domain/game";
 import type { RecordMatchScoreInput } from "./validation";
 
 type ScoreValue = number | "wo";
@@ -144,16 +145,71 @@ function getTeamPlayerIds(game: { teams?: Array<{ players?: unknown[] }> }, team
   return ids;
 }
 
+function compareSetScore(playerOneScore: ScoreValue, playerTwoScore: ScoreValue): number {
+  if (playerOneScore === "wo" && playerTwoScore === "wo") {
+    return 0;
+  }
+
+  if (playerOneScore === "wo") {
+    return -1;
+  }
+
+  if (playerTwoScore === "wo") {
+    return 1;
+  }
+
+  if (playerOneScore === playerTwoScore) {
+    return 0;
+  }
+
+  return playerOneScore > playerTwoScore ? 1 : -1;
+}
+
+function requiredSetWins(playMode: GamePlayMode): number {
+  if (playMode === "5set") {
+    return 3;
+  }
+
+  if (playMode === "3set" || playMode === "3setTieBreak10") {
+    return 2;
+  }
+
+  return 1;
+}
+
+function isWinnerDecided(playMode: GamePlayMode, input: RecordMatchScoreInput): boolean {
+  const neededWins = requiredSetWins(playMode);
+  let playerOneSetWins = 0;
+  let playerTwoSetWins = 0;
+
+  for (let index = 0; index < input.playerOneScores.length; index += 1) {
+    const playerOneScore = input.playerOneScores[index];
+    const playerTwoScore = input.playerTwoScores[index];
+
+    if (playerOneScore === "wo" || playerTwoScore === "wo") {
+      return true;
+    }
+
+    const setResult = compareSetScore(playerOneScore, playerTwoScore);
+    if (setResult > 0) {
+      playerOneSetWins += 1;
+    } else if (setResult < 0) {
+      playerTwoSetWins += 1;
+    }
+
+    if (playerOneSetWins >= neededWins || playerTwoSetWins >= neededWins) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function recordTournamentMatchScoreFlow(
   tournamentId: string,
   matchId: string,
   input: RecordMatchScoreInput
 ) {
-  const outcomes = flattenOutcomeSegments(input);
-  if (outcomes.length === 0) {
-    throw new Error("At least one score outcome is required");
-  }
-
   const session = await mongoose.startSession();
 
   try {
@@ -169,6 +225,37 @@ export async function recordTournamentMatchScoreFlow(
       if (!game) {
         throw new Error("Tournament match not found");
       }
+
+      const now = new Date();
+      game.score = {
+        playerOneScores: [...input.playerOneScores],
+        playerTwoScores: [...input.playerTwoScores],
+      };
+      game.startTime = game.startTime ?? now;
+
+      const winnerDecided = isWinnerDecided(game.playMode, input);
+      if (!winnerDecided) {
+        game.status = "pendingScore";
+        game.endTime = undefined;
+        await game.save({ session });
+
+        return {
+          matchId,
+          tournamentId,
+          matchStatus: "pendingScore" as const,
+          tournamentCompleted: false,
+          updatedRatings: [] as Array<{ userId: string; rating: number; rd: number; vol: number }>,
+        };
+      }
+
+      const outcomes = flattenOutcomeSegments(input);
+      if (outcomes.length === 0) {
+        throw new Error("At least one score outcome is required");
+      }
+
+      game.status = "finished";
+      game.endTime = now;
+      await game.save({ session });
 
       const participantIds = Array.isArray(game.teams)
         ? game.teams.flatMap((team) =>
@@ -259,16 +346,6 @@ export async function recordTournamentMatchScoreFlow(
         }
       }
 
-      const now = new Date();
-      game.score = {
-        playerOneScores: [...input.playerOneScores],
-        playerTwoScores: [...input.playerTwoScores],
-      };
-      game.status = "finished";
-      game.startTime = game.startTime ?? now;
-      game.endTime = now;
-      await game.save({ session });
-
       const updatedRatings: Array<{ userId: string; rating: number; rd: number; vol: number }> = [];
       for (const participantId of uniqueParticipantIds) {
         const nextState = getStateOrThrow(states, participantId);
@@ -341,6 +418,7 @@ export async function recordTournamentMatchScoreFlow(
       return {
         matchId,
         tournamentId,
+        matchStatus: "completed" as const,
         tournamentCompleted,
         updatedRatings,
       };

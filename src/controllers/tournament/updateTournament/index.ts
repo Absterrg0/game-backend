@@ -90,10 +90,6 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
           d.breakDuration !== undefined
             ? d.breakDuration
             : t.breakDuration ?? "",
-        matchesPerPlayer:
-          d.matchesPerPlayer !== undefined
-            ? d.matchesPerPlayer
-            : t.matchesPerPlayer ?? 1,
         foodInfo:
           d.foodInfo !== undefined ? d.foodInfo : t.foodInfo ?? "",
         descriptionInfo:

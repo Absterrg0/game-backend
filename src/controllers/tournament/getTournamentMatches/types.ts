@@ -52,6 +52,7 @@ export interface MatchScoreResponse {
 
 export type MatchStatusResponse =
   | "completed"
+  | "pendingScore"
   | "inProgress"
   | "scheduled"
   | "cancelled";

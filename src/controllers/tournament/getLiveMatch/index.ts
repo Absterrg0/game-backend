@@ -8,7 +8,7 @@ import { buildErrorPayload } from "../../../shared/errors";
 import type { GameStatus, MatchType } from "../../../types/domain/game";
 import { parseDurationMinutes, resolveTimedGameStatus } from "../../../shared/matchTiming";
 
-type MatchStatusResponse = "completed" | "inProgress" | "scheduled" | "cancelled";
+type MatchStatusResponse = "completed" | "pendingScore" | "inProgress" | "scheduled" | "cancelled";
 
 interface MatchPlayerResponse {
   id: string;
@@ -65,6 +65,10 @@ interface LiveMatchGameDoc {
 function toResponseStatus(status: GameStatus): MatchStatusResponse {
   if (status === "finished") {
     return "completed";
+  }
+
+  if (status === "pendingScore") {
+    return "pendingScore";
   }
 
   if (status === "active") {

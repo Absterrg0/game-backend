@@ -64,7 +64,6 @@ export interface TournamentForUpdateAuth {
   entryFee?: number;
   duration?: string | null;
   breakDuration?: string | null;
-  matchesPerPlayer?: number;
   foodInfo?: string | null;
   descriptionInfo?: string | null;
 }

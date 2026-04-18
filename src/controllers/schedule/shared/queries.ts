@@ -82,7 +82,7 @@ function buildNormalizedScheduleContext(raw: TournamentScheduleContextRaw) {
     });
   }
 
-  return {
+  const normalizedContext: TournamentScheduleContext = {
     _id: tournamentId,
     name: raw.name?.trim() || "Tournament",
     minMember:
@@ -95,10 +95,6 @@ function buildNormalizedScheduleContext(raw: TournamentScheduleContextRaw) {
     startTime: raw.startTime ?? null,
     duration: raw.duration ?? null,
     breakDuration: raw.breakDuration ?? null,
-    matchesPerPlayer:
-      typeof raw.matchesPerPlayer === "number" && Number.isFinite(raw.matchesPerPlayer)
-        ? Math.max(1, Math.min(20, Math.trunc(raw.matchesPerPlayer)))
-        : 1,
     totalRounds:
       typeof raw.totalRounds === "number" && Number.isFinite(raw.totalRounds)
         ? Math.max(1, Math.min(100, Math.trunc(raw.totalRounds)))
@@ -109,6 +105,8 @@ function buildNormalizedScheduleContext(raw: TournamentScheduleContextRaw) {
     participants,
     schedule: scheduleId,
   };
+
+  return normalizedContext;
 }
 
 export async function fetchTournamentScheduleContext(
@@ -116,7 +114,7 @@ export async function fetchTournamentScheduleContext(
 ): Promise<TournamentScheduleContext | null> {
   const raw = await Tournament.findById(tournamentId)
     .select(
-      "_id name minMember firstRoundScheduledAt tournamentMode date startTime duration breakDuration matchesPerPlayer totalRounds playMode createdBy club participants schedule"
+      "_id name minMember firstRoundScheduledAt tournamentMode date startTime duration breakDuration totalRounds playMode createdBy club participants schedule"
     )
     .populate({
       path: "club",
@@ -146,7 +144,7 @@ export async function fetchScheduleForTournament(
     : Schedule.findOne({ tournament: tournamentId });
 
   const doc = await query
-    .select("_id status currentRound matchDurationMinutes breakTimeMinutes rounds")
+    .select("_id status currentRound matchesPerPlayer matchDurationMinutes breakTimeMinutes rounds")
     .lean<Record<string, unknown>>()
     .exec();
 

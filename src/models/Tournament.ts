@@ -34,7 +34,6 @@ export interface ITournament extends Document {
 	createdAt?: Date;
 	updatedAt?: Date;
 	participants: mongoose.Types.ObjectId[];
-	matchesPerPlayer: number;
 	firstRoundScheduledAt?: Date | null;
 	completedAt?: Date | null;
 }
@@ -156,17 +155,6 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 				}
 			],
 			default: []
-		},
-		matchesPerPlayer: {
-			type: Number,
-			required: true,
-			min: [1, 'matchesPerPlayer must be at least 1'],
-			max: [20, 'matchesPerPlayer cannot be greater than 20'],
-			default: 1,
-			validate: {
-				validator: (v: unknown) => typeof v === 'number' && Number.isInteger(v),
-				message: 'matchesPerPlayer must be an integer'
-			}
 		},
 		firstRoundScheduledAt: {
 			type: Date,

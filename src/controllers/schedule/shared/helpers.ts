@@ -27,15 +27,20 @@ function parseMinutesFromText(value: string | null, fallback: number, allowZero 
   return parsed > 0 ? parsed : fallback;
 }
 
-export function getDefaultScheduleInput(tournament: TournamentScheduleContext) {
+export function getDefaultScheduleInput(
+  tournament: TournamentScheduleContext,
+  options?: { matchesPerPlayer?: number | null }
+) {
   const courts = tournament.club?.courts ?? [];
   const selectedDefault = new Set(courts.slice(0, Math.min(2, courts.length)).map((court) => court._id.toString()));
 
+  const resolvedMatchesPerPlayer =
+    typeof options?.matchesPerPlayer === "number" && Number.isFinite(options.matchesPerPlayer)
+      ? Math.max(1, Math.min(20, Math.trunc(options.matchesPerPlayer)))
+      : DEFAULT_MATCHES_PER_PLAYER;
+
   const base = {
-    matchesPerPlayer:
-      Number.isFinite(tournament.matchesPerPlayer) && tournament.matchesPerPlayer >= 1
-        ? Math.trunc(tournament.matchesPerPlayer)
-        : DEFAULT_MATCHES_PER_PLAYER,
+    matchesPerPlayer: resolvedMatchesPerPlayer,
     startTime: tournament.startTime ?? DEFAULT_SCHEDULE_START_TIME,
     mode: "singles" as const,
     availableCourts: courts.map((court) => ({

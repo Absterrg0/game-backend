@@ -9,7 +9,7 @@ import { recordMatchScoreParamsSchema, recordMatchScoreSchema } from "./validati
 
 /**
  * PATCH /api/tournaments/:id/matches/:matchId/score
- * Records score, closes the match, and immediately applies Glicko2 updates.
+ * Records score. If the winner is decided, closes the match and applies Glicko2 updates.
  */
 export async function recordMatchScore(req: AuthenticatedRequest, res: Response) {
   try {
@@ -48,12 +48,17 @@ export async function recordMatchScore(req: AuthenticatedRequest, res: Response)
 
     const result = await recordTournamentMatchScoreFlow(tournamentId, matchIdParam, parsedBody.data);
 
+    const responseMessage =
+      result.matchStatus === "completed"
+        ? "Match score recorded and ratings updated"
+        : "Partial score recorded; winner is still pending";
+
     res.status(200).json({
-      message: "Match score recorded and ratings updated",
+      message: responseMessage,
       match: {
         id: result.matchId,
         tournamentId: result.tournamentId,
-        status: "completed",
+        status: result.matchStatus,
       },
       tournamentCompleted: result.tournamentCompleted,
       ratings: result.updatedRatings,

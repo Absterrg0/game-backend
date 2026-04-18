@@ -67,6 +67,13 @@ export async function persistSinglesScheduleRound(
         throw new Error("Unable to initialize tournament schedule");
       }
 
+      const resolvedMatchesPerPlayer =
+        typeof body.matchesPerPlayer === "number"
+          ? Math.max(1, Math.min(20, Math.trunc(body.matchesPerPlayer)))
+          : typeof scheduleDoc.matchesPerPlayer === "number" && Number.isFinite(scheduleDoc.matchesPerPlayer)
+            ? Math.max(1, Math.min(20, Math.trunc(scheduleDoc.matchesPerPlayer)))
+            : 1;
+
       const targetRound = body.round;
       if (targetRound > tournament.totalRounds) {
         throw new Error(`Round ${targetRound} exceeds totalRounds limit (${tournament.totalRounds})`);
@@ -94,13 +101,13 @@ export async function persistSinglesScheduleRound(
         );
         const finishedCount = await Game.countDocuments({
           _id: { $in: gamesToReplaceIds },
-          status: "finished",
+          status: { $in: ["finished", "pendingScore"] },
         })
           .session(session)
           .exec();
         if (finishedCount > 0) {
           throw new Error(
-            "Cannot regenerate this round: one or more matches are already finished"
+            "Cannot regenerate this round: one or more matches are already completed or awaiting score submission"
           );
         }
 
@@ -119,7 +126,7 @@ export async function persistSinglesScheduleRound(
       const { pairs } = buildRoundPairs(
         selectedParticipants,
         body.mode,
-        body.matchesPerPlayer,
+        resolvedMatchesPerPlayer,
         targetRound
       );
 
@@ -210,6 +217,7 @@ export async function persistSinglesScheduleRound(
 
       scheduleDoc.currentRound = Math.max(scheduleDoc.currentRound, targetRound);
       scheduleDoc.status = "active";
+      scheduleDoc.matchesPerPlayer = resolvedMatchesPerPlayer;
       scheduleDoc.matchDurationMinutes = isScheduledTournament
         ? resolvedMatchDurationMinutes
         : null;
@@ -221,7 +229,6 @@ export async function persistSinglesScheduleRound(
       const tournamentSet: Record<string, unknown> = {
         schedule: scheduleDoc._id,
         startTime: body.startTime,
-        matchesPerPlayer: body.matchesPerPlayer,
         completedAt: null,
       };
 
