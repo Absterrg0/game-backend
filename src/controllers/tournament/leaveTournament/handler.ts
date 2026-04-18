@@ -41,7 +41,14 @@ export async function leaveTournamentFlow(
   }
 
   const returnedDoc = await Tournament.findOneAndUpdate(
-    { _id: tournamentId, participants: session._id },
+    {
+      _id: tournamentId,
+      participants: session._id,
+      $or: [
+        { firstRoundScheduledAt: { $exists: false } },
+        { firstRoundScheduledAt: null },
+      ],
+    },
     { $pull: { participants: session._id } },
     { new: true }
   )
@@ -50,6 +57,34 @@ export async function leaveTournamentFlow(
     .exec();
 
   if (!returnedDoc) {
+    const fresh = await Tournament.findById(tournamentId)
+      .select("participants firstRoundScheduledAt")
+      .populate({
+        path: "schedule",
+        select: "currentRound rounds.round",
+      })
+      .lean<TournamentPopulated>()
+      .exec();
+
+    if (!fresh) {
+      return error(404, "Tournament not found");
+    }
+
+    const stillParticipant = (fresh.participants ?? []).some(
+      (id) => id.toString() === session._id.toString()
+    );
+
+    if (!stillParticipant) {
+      return error(400, "You are not a participant in this tournament");
+    }
+
+    if (isTournamentSchedulingLocked(fresh)) {
+      return error(
+        400,
+        "You cannot leave this tournament after scheduling has started"
+      );
+    }
+
     return error(400, "You are not a participant in this tournament");
   }
 

@@ -45,7 +45,7 @@ interface LiveMatchGameDoc {
   startTime?: Date | null;
   matchType: MatchType;
   teams: Array<{
-    players: Array<PopulatedPlayer | Types.ObjectId>;
+    players: Array<PopulatedPlayer | Types.ObjectId | null>;
   }>;
   tournament?: {
     _id: Types.ObjectId;
@@ -98,12 +98,14 @@ function mapPlayer(value: PopulatedPlayer | Types.ObjectId): MatchPlayerResponse
   };
 }
 
-function mapTeamPlayers(team: { players: Array<PopulatedPlayer | Types.ObjectId> } | undefined) {
+function mapTeamPlayers(team: { players: Array<PopulatedPlayer | Types.ObjectId | null> } | undefined) {
   if (!team || !Array.isArray(team.players)) {
     return [] as MatchPlayerResponse[];
   }
 
-  return team.players.map((player) => mapPlayer(player));
+  return team.players
+    .filter((player): player is PopulatedPlayer | Types.ObjectId => player != null)
+    .map((player) => mapPlayer(player));
 }
 
 function resolveTeamsForUser(game: LiveMatchGameDoc, userId: string) {

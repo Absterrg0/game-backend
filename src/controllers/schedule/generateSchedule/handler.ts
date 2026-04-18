@@ -532,10 +532,6 @@ export async function persistSinglesScheduleRound(
         completedAt: null,
       };
 
-      if (targetRound >= 1 && !tournament.firstRoundScheduledAt) {
-        tournamentSet.firstRoundScheduledAt = new Date();
-      }
-
       if (isScheduledTournament) {
         tournamentSet.duration = `${resolvedMatchDurationMinutes} min`;
         tournamentSet.breakDuration = `${resolvedBreakTimeMinutes} min`;
@@ -548,6 +544,20 @@ export async function persistSinglesScheduleRound(
         },
         { session }
       ).exec();
+
+      if (targetRound >= 1) {
+        await Tournament.updateOne(
+          {
+            _id: tournament._id,
+            $or: [
+              { firstRoundScheduledAt: { $exists: false } },
+              { firstRoundScheduledAt: null },
+            ],
+          },
+          { $set: { firstRoundScheduledAt: new Date() } },
+          { session }
+        ).exec();
+      }
 
       result = {
         scheduleId: scheduleDoc._id,

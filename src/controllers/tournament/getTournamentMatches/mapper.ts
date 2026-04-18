@@ -54,8 +54,12 @@ function hasPopulatedPlayerShape(
   return typeof value === "object" && value !== null && "_id" in value;
 }
 
-function mapPlayer(player: { _id: DbIdLike; name?: string | null; alias?: string | null } | DbIdLike | null | undefined): MatchPlayerResponse {
-  if (!player) {
+function mapPlayer(player: { _id: DbIdLike; name?: string | null; alias?: string | null } | DbIdLike | null | undefined): MatchPlayerResponse | null {
+  if (player === null) {
+    return null;
+  }
+
+  if (player === undefined) {
     return EMPTY_PLAYER;
   }
 
@@ -87,13 +91,21 @@ function mapPlayer(player: { _id: DbIdLike; name?: string | null; alias?: string
 }
 
 function mapTeamPlayers(
-  team: { players: Array<{ _id: DbIdLike; name?: string | null; alias?: string | null } | DbIdLike> } | undefined
+  team: {
+    players: Array<
+      { _id: DbIdLike; name?: string | null; alias?: string | null } | DbIdLike | null
+    >;
+  } | undefined
 ) {
   if (!team || !Array.isArray(team.players)) {
-    return [] as MatchPlayerResponse[];
+    return [] as (MatchPlayerResponse | null)[];
   }
 
   return team.players.map((player) => mapPlayer(player));
+}
+
+function hasAtLeastOneFilledPlayer(slots: (MatchPlayerResponse | null)[]) {
+  return slots.some((p) => p != null && p.id.length > 0);
 }
 
 function normalizeScoreValues(values: unknown): MatchScoreValueResponse[] {
@@ -134,12 +146,12 @@ export function mapTournamentMatchesResponse(
 
     const teamOnePlayers = mapTeamPlayers(game.teams[0]);
     const teamTwoPlayers = mapTeamPlayers(game.teams[1]);
-    if (teamOnePlayers.length === 0 || teamTwoPlayers.length === 0) {
+    if (!hasAtLeastOneFilledPlayer(teamOnePlayers) || !hasAtLeastOneFilledPlayer(teamTwoPlayers)) {
       continue;
     }
 
-    const playerOne = teamOnePlayers[0] ?? EMPTY_PLAYER;
-    const playerTwo = teamTwoPlayers[0] ?? EMPTY_PLAYER;
+    const playerOne = teamOnePlayers.find((p) => p != null && p.id.length > 0) ?? EMPTY_PLAYER;
+    const playerTwo = teamTwoPlayers.find((p) => p != null && p.id.length > 0) ?? EMPTY_PLAYER;
     const teamOnePair: [MatchPlayerResponse, MatchPlayerResponse | null] = [
       teamOnePlayers[0] ?? EMPTY_PLAYER,
       teamOnePlayers[1] ?? null,
