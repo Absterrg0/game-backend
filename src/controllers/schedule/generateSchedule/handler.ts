@@ -529,9 +529,12 @@ export async function persistSinglesScheduleRound(
         schedule: scheduleDoc._id,
         startTime: body.startTime,
         matchesPerPlayer: body.matchesPerPlayer,
-        firstRoundScheduledAt: targetRound >= 1 ? new Date() : null,
         completedAt: null,
       };
+
+      if (targetRound >= 1 && !tournament.firstRoundScheduledAt) {
+        tournamentSet.firstRoundScheduledAt = new Date();
+      }
 
       if (isScheduledTournament) {
         tournamentSet.duration = `${resolvedMatchDurationMinutes} min`;
