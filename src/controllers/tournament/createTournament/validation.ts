@@ -29,7 +29,6 @@ const baseTournament = z.object({
   
     duration: z.string(),
     breakDuration: z.string(),
-    matchesPerPlayer: z.number().int().min(1).max(20).optional(),
   
     foodInfo: z.string().optional(),
     descriptionInfo: z.string().optional(),
@@ -121,13 +120,6 @@ const baseTournament = z.object({
           code: z.ZodIssueCode.custom,
           path: ["totalRounds"],
           message: "totalRounds is required when status is active",
-        });
-      }
-      if (d.matchesPerPlayer === undefined) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["matchesPerPlayer"],
-          message: "matchesPerPlayer is required when status is active",
         });
       }
     })

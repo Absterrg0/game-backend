@@ -41,7 +41,11 @@ interface ResolveTimedGameStatusInput {
 }
 
 export function resolveTimedGameStatus(input: ResolveTimedGameStatusInput): GameStatus {
-  if (input.persistedStatus === "cancelled" || input.persistedStatus === "finished") {
+  if (
+    input.persistedStatus === "cancelled" ||
+    input.persistedStatus === "finished" ||
+    input.persistedStatus === "pendingScore"
+  ) {
     return input.persistedStatus;
   }
 
@@ -68,7 +72,7 @@ export function resolveTimedGameStatus(input: ResolveTimedGameStatusInput): Game
 
   const endTimestamp = startTimestamp + durationMinutes * 60_000;
   if (nowTimestamp >= endTimestamp) {
-    return "finished";
+    return "pendingScore";
   }
 
   return "active";

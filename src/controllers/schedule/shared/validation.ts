@@ -16,15 +16,7 @@ export const generateScheduleSchema = z
     courtIds: z.array(objectId).min(1),
     participantOrder: z.array(objectId).min(2),
   })
-  .strict()
-  .transform((value) => ({
-    ...value,
-    matchesPerPlayer: value.matchesPerPlayer ?? 1,
-  }))
-  .refine((value) => value.matchesPerPlayer >= 1 && value.matchesPerPlayer <= 20, {
-    message: "matchesPerPlayer must be between 1 and 20",
-    path: ["matchesPerPlayer"],
-  });
+  .strict();
 
 export const generatePairsSchema = z
   .object({

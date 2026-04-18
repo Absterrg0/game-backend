@@ -37,13 +37,9 @@ export const scheduleParticipantInfoSchema = z.object({
   elo: scheduleParticipantEloSchema,
 });
 
-const tournamentModeSchema = z.enum(
-  TOURNAMENT_MODES as unknown as [string, ...string[]]
-);
+const tournamentModeSchema = z.enum(TOURNAMENT_MODES);
 
-const tournamentPlayModeSchema = z.enum(
-  TOURNAMENT_PLAY_MODES as unknown as [string, ...string[]]
-);
+const tournamentPlayModeSchema = z.enum(TOURNAMENT_PLAY_MODES);
 
 /**
  * Validated tournament + club + participants snapshot for schedule flows.
@@ -59,7 +55,6 @@ export const tournamentScheduleContextSchema = z.object({
   startTime: stringOrNull,
   duration: stringOrNull,
   breakDuration: stringOrNull,
-  matchesPerPlayer: z.number().int().min(1).max(20),
   totalRounds: z.number().int().min(1).max(100),
   playMode: tournamentPlayModeSchema,
   createdBy: mongoObjectIdSchema,
@@ -80,6 +75,13 @@ export const tournamentScheduleDocumentSchema = z.object({
   _id: mongoObjectIdSchema,
   status: z.enum(["draft", "active", "finished"]),
   currentRound: z.number().int().min(0),
+  matchesPerPlayer: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .nullish()
+    .transform((v) => (typeof v === "number" ? v : 1)),
   matchDurationMinutes: z
     .number()
     .nullish()
