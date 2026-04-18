@@ -25,9 +25,11 @@ const baseTournament = z.object({
     entryFee: z.number().min(0).nonnegative().default(0),
     minMember: z.number().int().min(1),
     maxMember: z.number().int().min(1),
+    totalRounds: z.number().int().min(1).max(100).optional(),
   
     duration: z.string(),
     breakDuration: z.string(),
+    matchesPerPlayer: z.number().int().min(1).max(20).optional(),
   
     foodInfo: z.string().optional(),
     descriptionInfo: z.string().optional(),
@@ -107,6 +109,25 @@ const baseTournament = z.object({
           code: z.ZodIssueCode.custom,
           path: ["sponsor"],
           message: "conflicting sponsor and sponsorId",
+        });
+      }
+    })
+    .superRefine((d, ctx) => {
+      if (d.status !== "active") {
+        return;
+      }
+      if (d.totalRounds === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["totalRounds"],
+          message: "totalRounds is required when status is active",
+        });
+      }
+      if (d.matchesPerPlayer === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["matchesPerPlayer"],
+          message: "matchesPerPlayer is required when status is active",
         });
       }
     })

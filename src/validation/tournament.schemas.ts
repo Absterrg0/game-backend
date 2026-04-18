@@ -22,8 +22,10 @@ const draftFields = {
 	entryFee: z.number().min(0).optional(),
 	minMember: z.number().int().min(1).optional(),
 	maxMember: z.number().int().min(1).optional(),
+	totalRounds: z.number().int().min(1).max(100).optional(),
 	duration: nullableNonEmptyString.optional(),
 	breakDuration: nullableNonEmptyString.optional(),
+	matchesPerPlayer: z.number().int().min(1).max(20).optional(),
 	foodInfo: z.string().max(500).optional().nullable(),
 	descriptionInfo: z.string().max(1000).optional().nullable(),
 } satisfies z.ZodRawShape;
@@ -67,9 +69,11 @@ const publishFields = {
 	entryFee: z.number().min(0),
 	minMember: z.number().int().min(1),
 	maxMember: z.number().int().min(1),
+	totalRounds: z.number().int().min(1).max(100),
 	status: z.literal('active'),
 	duration: z.string().trim().min(1, 'Playing time is required'),
 	breakDuration: z.string().trim().min(1, 'Game pause time is required'),
+	matchesPerPlayer: z.number().int().min(1).max(20),
 	startTime: z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)').optional().nullable(),
 	endTime: z.string().trim().regex(timeRegex, 'Invalid end time (expected HH:mm)').optional().nullable()
 } satisfies z.ZodRawShape;

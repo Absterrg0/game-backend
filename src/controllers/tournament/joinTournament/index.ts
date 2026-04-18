@@ -21,7 +21,7 @@ export async function joinTournament(req:AuthenticatedRequest, res: Response) {
     }
 
     const tournament = await Tournament.findById(idResult.data)
-      .select("_id name status minMember maxMember participants")
+      .select("_id name status minMember maxMember participants firstRoundScheduledAt")
       .populate("club")
       .lean()
       .exec();

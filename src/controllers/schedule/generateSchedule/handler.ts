@@ -396,7 +396,7 @@ export async function persistSinglesScheduleRound(
 
       const roundMatchDurationMinutes =
         typeof scheduleDoc.matchDurationMinutes === "number" && Number.isFinite(scheduleDoc.matchDurationMinutes)
-          ? Math.max(1, Math.trunc(scheduleDoc.matchDurationMinutes))
+          ? Math.max(5, Math.trunc(scheduleDoc.matchDurationMinutes))
           : parseDurationMinutes(tournament.duration ?? null, DEFAULT_MATCH_DURATION_MINUTES);
 
       await ensurePreviousRoundFinished(
@@ -411,8 +411,23 @@ export async function persistSinglesScheduleRound(
       );
 
       if (existingRoundEntries.length > 0) {
+        const gamesToReplaceIds = existingRoundEntries.map(
+          (entry: ScheduleRoundEntryLike) => entry.game
+        );
+        const finishedCount = await Game.countDocuments({
+          _id: { $in: gamesToReplaceIds },
+          status: "finished",
+        })
+          .session(session)
+          .exec();
+        if (finishedCount > 0) {
+          throw new Error(
+            "Cannot regenerate this round: one or more matches are already finished"
+          );
+        }
+
         await Game.deleteMany({
-          _id: { $in: existingRoundEntries.map((entry: ScheduleRoundEntryLike) => entry.game) },
+          _id: { $in: gamesToReplaceIds },
           schedule: scheduleDoc._id,
         })
           .session(session)
