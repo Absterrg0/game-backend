@@ -2,6 +2,7 @@ import type { TournamentPopulated } from "../../../types/api/tournament";
 import { ROLES } from "../../../constants/roles";
 import type { DetailViewContext } from "./authorize";
 import { computeSpotsTotal } from "../computeSpotsTotal";
+import { isTournamentSchedulingLocked } from "../schedulingLock";
 
 /* =========================
    Response Types
@@ -106,27 +107,6 @@ function toSafeStringId(id: unknown): string | null {
   }
 }
 
-function hasScheduledRoundInTournamentDetail(tournament: TournamentPopulated) {
-  const schedule = tournament.schedule;
-  if (!schedule || typeof schedule !== 'object') {
-    return false;
-  }
-
-  const currentRound =
-    'currentRound' in schedule && typeof schedule.currentRound === 'number'
-      ? Math.trunc(schedule.currentRound)
-      : 0;
-  if (currentRound >= 1) {
-    return true;
-  }
-
-  if (!('rounds' in schedule) || !Array.isArray(schedule.rounds)) {
-    return false;
-  }
-
-  return schedule.rounds.some((round) => typeof round?.round === 'number' && round.round >= 1);
-}
-
 /* =========================
    Main Mapper
 ========================= */
@@ -198,8 +178,7 @@ export function mapTournamentDetail(
   // Verification: tournaments without maxMember normalize to Infinity and remain joinable.
   const hasAvailableSpots =
     rawSpotsTotal === Infinity || spotsFilled < rawSpotsTotal;
-  const joinLockedByScheduling =
-    tournament.firstRoundScheduledAt != null || hasScheduledRoundInTournamentDetail(tournament);
+  const joinLockedByScheduling = isTournamentSchedulingLocked(tournament);
 
   const canJoin =
     isActive &&

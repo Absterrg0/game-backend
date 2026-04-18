@@ -185,7 +185,8 @@ export function mapGameToMyScoreEntry(game: MyScoreGameDoc, userId: string): MyS
 		return null;
 	}
 
-	const isDoubles = game.matchType === 'doubles';
+	const resolvedMode = resolveMatchModeFromType(game.matchType, game.playMode);
+	const isDoubles = resolvedMode === 'doubles';
 	const teamOnePlayers = Array.isArray(game.teams[0]?.players) ? game.teams[0].players : [];
 	const teamTwoPlayers = Array.isArray(game.teams[1]?.players) ? game.teams[1].players : [];
 	if (teamOnePlayers.length === 0 || teamTwoPlayers.length === 0) {
@@ -233,7 +234,7 @@ export function mapGameToMyScoreEntry(game: MyScoreGameDoc, userId: string): MyS
 			id: opponentId ?? '',
 			name: opponentName,
 		},
-		mode: resolveMatchModeFromType(game.matchType, game.playMode),
+		mode: resolvedMode,
 		myScore: myScore.total,
 		opponentScore: opponentScore.total,
 		didWin: resolveDidWin(myScore, opponentScore),

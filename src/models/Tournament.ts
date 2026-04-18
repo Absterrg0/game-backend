@@ -8,7 +8,7 @@ import {
 	type TournamentPlayMode,
 	type TournamentStatus
 } from '../types/domain/tournament';
-import Schedule from './Schedule.js';
+import Schedule from './Schedule';
 
 // Define the ITournament interface
 export interface ITournament extends Document {

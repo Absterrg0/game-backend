@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import type { DbIdLike } from "../../../types/domain/common";
 import type { GameStatus } from "../../../types/domain/game";
 import type {
@@ -66,7 +67,15 @@ function mapPlayer(player: { _id: DbIdLike; name?: string | null; alias?: string
     };
   }
 
-  if (typeof player === "string" || "toString" in player) {
+  if (typeof player === "string") {
+    return {
+      id: player,
+      name: null,
+      alias: null,
+    };
+  }
+
+  if (player instanceof Types.ObjectId) {
     return {
       id: player.toString(),
       name: null,
@@ -131,13 +140,13 @@ export function mapTournamentMatchesResponse(
 
     const playerOne = teamOnePlayers[0] ?? EMPTY_PLAYER;
     const playerTwo = teamTwoPlayers[0] ?? EMPTY_PLAYER;
-    const teamOnePair: [MatchPlayerResponse, MatchPlayerResponse] = [
+    const teamOnePair: [MatchPlayerResponse, MatchPlayerResponse | null] = [
       teamOnePlayers[0] ?? EMPTY_PLAYER,
-      teamOnePlayers[1] ?? EMPTY_PLAYER,
+      teamOnePlayers[1] ?? null,
     ];
-    const teamTwoPair: [MatchPlayerResponse, MatchPlayerResponse] = [
+    const teamTwoPair: [MatchPlayerResponse, MatchPlayerResponse | null] = [
       teamTwoPlayers[0] ?? EMPTY_PLAYER,
-      teamTwoPlayers[1] ?? EMPTY_PLAYER,
+      teamTwoPlayers[1] ?? null,
     ];
 
     matches.push({

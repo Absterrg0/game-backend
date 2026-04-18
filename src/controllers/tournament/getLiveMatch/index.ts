@@ -1,7 +1,8 @@
 import type { Response } from "express";
 import { Types } from "mongoose";
 import Game from "../../../models/Game";
-import { logger } from "../../../lib/logger";
+import { LogWarning, logger } from "../../../lib/logger";
+import { updateGameStatuses } from "../getTournamentMatches/queries";
 import type { AuthenticatedRequest } from "../../../shared/authContext";
 import { buildErrorPayload } from "../../../shared/errors";
 import type { GameStatus, MatchType } from "../../../types/domain/game";
@@ -21,7 +22,7 @@ interface LiveMatchResponseItem {
   status: MatchStatusResponse;
   startTime: string | null;
   tournament: {
-    id: string;
+    id: string | null;
     name: string;
   };
   court: {
@@ -127,12 +128,15 @@ function resolveTeamsForUser(game: LiveMatchGameDoc, userId: string) {
   };
 }
 
-function mapLiveMatchItem(game: LiveMatchGameDoc, userId: string): LiveMatchResponseItem | null {
-  const tournamentId = game.tournament?._id?.toString();
-  const tournamentName = game.tournament?.name?.trim();
+function mapLiveMatchItem(game: LiveMatchGameDoc, userId: string): LiveMatchResponseItem {
+  const tournamentId = game.tournament?._id?.toString() ?? null;
+  const tournamentNameTrimmed = game.tournament?.name?.trim();
 
-  if (!tournamentId || !tournamentName) {
-    return null;
+  if (!tournamentId || !tournamentNameTrimmed) {
+    LogWarning(
+      "getTournamentLiveMatch",
+      `Missing tournament name or id on in-flight game ${game._id.toString()}`
+    );
   }
 
   const teams = resolveTeamsForUser(game, userId);
@@ -144,7 +148,7 @@ function mapLiveMatchItem(game: LiveMatchGameDoc, userId: string): LiveMatchResp
     startTime: game.startTime ? game.startTime.toISOString() : null,
     tournament: {
       id: tournamentId,
-      name: tournamentName,
+      name: tournamentNameTrimmed || "[Deleted/Unknown Tournament]",
     },
     court: {
       id: game.court?._id ? game.court._id.toString() : null,
@@ -163,11 +167,15 @@ export async function getTournamentLiveMatch(req: AuthenticatedRequest, res: Res
   try {
     const userId = req.user._id.toString();
 
+    const startTimeLowerBound = new Date(
+      Date.now() - 365 * 24 * 60 * 60 * 1000
+    );
+
     const games = await Game.find({
       gameMode: "tournament",
       status: { $nin: ["finished", "cancelled"] },
       "teams.players": req.user._id,
-      startTime: { $ne: null },
+      startTime: { $ne: null, $gte: startTimeLowerBound },
     })
       .select("_id status startTime matchType teams tournament schedule court")
       .populate("teams.players", "name alias")
@@ -209,20 +217,20 @@ export async function getTournamentLiveMatch(req: AuthenticatedRequest, res: Res
     }
 
     if (statusUpdates.length > 0) {
-      await Game.bulkWrite(
-        statusUpdates.map((entry) => ({
-          updateOne: {
-            filter: { _id: entry.id },
-            update: { $set: { status: entry.status } },
-          },
-        }))
-      );
+      await updateGameStatuses(statusUpdates);
     }
 
     const liveGame = games.find((game) => game.status === "active") ?? null;
+    // resolveTimedGameStatus advances draft→active when start time passes, but we
+    // still require a future startTime here so "next" only means upcoming
+    // scheduled matches (avoids surfacing stale draft rows with past start times).
     const nextGame =
-      games.find((game) => game.status === "draft" && game.startTime instanceof Date && game.startTime.getTime() > now.getTime()) ??
-      null;
+      games.find(
+        (game) =>
+          game.status === "draft" &&
+          game.startTime instanceof Date &&
+          game.startTime.getTime() > now.getTime()
+      ) ?? null;
 
     const liveMatch = liveGame ? mapLiveMatchItem(liveGame, userId) : null;
     const nextMatch = nextGame ? mapLiveMatchItem(nextGame, userId) : null;

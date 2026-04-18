@@ -29,9 +29,10 @@ export interface PopulatedMatchCourtDoc {
 
 export interface GameForMatchesDoc {
   _id: Types.ObjectId;
-  teams: Array<{
-    players: Array<PopulatedMatchPlayerDoc | Types.ObjectId>;
-  }>;
+  teams: [
+    { players: Array<PopulatedMatchPlayerDoc | Types.ObjectId> },
+    { players: Array<PopulatedMatchPlayerDoc | Types.ObjectId> }
+  ];
   court?: PopulatedMatchCourtDoc | null;
   score?: {
     playerOneScores?: Array<number | "wo">;
@@ -77,8 +78,8 @@ export interface TournamentMatchResponse {
   court: MatchCourtResponse;
   players: [MatchPlayerResponse, MatchPlayerResponse];
   teams?: [
-    [MatchPlayerResponse, MatchPlayerResponse],
-    [MatchPlayerResponse, MatchPlayerResponse]
+    [MatchPlayerResponse, MatchPlayerResponse | null],
+    [MatchPlayerResponse, MatchPlayerResponse | null]
   ];
 }
 

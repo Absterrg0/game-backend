@@ -9,13 +9,30 @@ import type {
   ScheduleRoundDoc,
 } from "./types";
 
+function resolveScheduleRef(
+	scheduleRef: DbIdLike | { _id: DbIdLike } | null | undefined
+): DbIdLike | null | undefined {
+	if (scheduleRef == null) {
+		return scheduleRef;
+	}
+	if (
+		typeof scheduleRef === "object" &&
+		"_id" in scheduleRef &&
+		(scheduleRef as { _id: unknown })._id != null
+	) {
+		return (scheduleRef as { _id: DbIdLike })._id;
+	}
+	return scheduleRef as DbIdLike;
+}
+
 export async function fetchScheduleForTournament(
-  tournamentId: string,
-  scheduleId: DbIdLike | null | undefined
+	tournamentId: string,
+	scheduleId: DbIdLike | { _id: DbIdLike } | null | undefined
 ): Promise<ScheduleForMatchesDoc | null> {
-  const query = scheduleId
-    ? Schedule.findOne({ _id: scheduleId, tournament: tournamentId })
-    : Schedule.findOne({ tournament: tournamentId });
+	const resolved = resolveScheduleRef(scheduleId) ?? null;
+	const query = resolved
+		? Schedule.findOne({ _id: resolved, tournament: tournamentId })
+		: Schedule.findOne({ tournament: tournamentId });
 
   return query
     .select("_id status currentRound matchDurationMinutes rounds")

@@ -13,6 +13,8 @@ import {
 } from "./queries";
 import { parseDurationMinutes, resolveTimedGameStatus } from "../../../shared/matchTiming";
 
+const STATUS_UPDATE_CHUNK_SIZE = 100;
+
 /**
  * GET /api/tournaments/:id/matches
  * Returns matches linked by the tournament schedule with round and slot metadata.
@@ -75,7 +77,10 @@ export async function getTournamentMatches(req: AuthenticatedRequest, res: Respo
     }
 
     if (statusUpdates.length > 0) {
-      await updateGameStatuses(statusUpdates);
+      for (let i = 0; i < statusUpdates.length; i += STATUS_UPDATE_CHUNK_SIZE) {
+        const chunk = statusUpdates.slice(i, i + STATUS_UPDATE_CHUNK_SIZE);
+        await updateGameStatuses(chunk);
+      }
     }
 
     const payload = mapTournamentMatchesResponse(schedule, games, tournament.totalRounds);
