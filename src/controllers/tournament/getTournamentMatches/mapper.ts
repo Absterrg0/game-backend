@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import type { DbIdLike } from "../../../types/domain/common";
 import type { GameStatus } from "../../../types/domain/game";
+import { getGameSides } from "../../../shared/gameSides";
 import type {
   GameForMatchesDoc,
   MatchPlayerResponse,
@@ -29,6 +30,10 @@ function mapStatus(status: GameStatus): MatchStatusResponse {
 
   if (status === "cancelled") {
     return "cancelled";
+  }
+
+  if (status === "pendingScore") {
+    return "pendingScore";
   }
 
   return "scheduled";
@@ -92,7 +97,7 @@ function mapPlayer(player: { _id: DbIdLike; name?: string | null; alias?: string
 
 function mapTeamPlayers(
   team: {
-    players: Array<
+    players?: Array<
       { _id: DbIdLike; name?: string | null; alias?: string | null } | DbIdLike | null
     >;
   } | undefined
@@ -140,12 +145,16 @@ export function mapTournamentMatchesResponse(
   for (const entry of rounds) {
     const gameId = entry.game.toString();
     const game = gamesById.get(gameId);
-    if (!game || !Array.isArray(game.teams) || game.teams.length < 2) {
+    if (!game) {
+      continue;
+    }
+    const sides = getGameSides(game);
+    if (!sides) {
       continue;
     }
 
-    const teamOnePlayers = mapTeamPlayers(game.teams[0]);
-    const teamTwoPlayers = mapTeamPlayers(game.teams[1]);
+    const teamOnePlayers = mapTeamPlayers(sides[0]);
+    const teamTwoPlayers = mapTeamPlayers(sides[1]);
     if (!hasAtLeastOneFilledPlayer(teamOnePlayers) || !hasAtLeastOneFilledPlayer(teamTwoPlayers)) {
       continue;
     }

@@ -6,9 +6,15 @@ import { updateGameStatuses } from "../getTournamentMatches/queries";
 import type { AuthenticatedRequest } from "../../../shared/authContext";
 import { buildErrorPayload } from "../../../shared/errors";
 import type { GameStatus, MatchType } from "../../../types/domain/game";
+import { getGameSides } from "../../../shared/gameSides";
 import { parseDurationMinutes, resolveTimedGameStatus } from "../../../shared/matchTiming";
 
-type MatchStatusResponse = "completed" | "inProgress" | "scheduled" | "cancelled";
+type MatchStatusResponse =
+  | "completed"
+  | "inProgress"
+  | "scheduled"
+  | "cancelled"
+  | "pendingScore";
 
 interface MatchPlayerResponse {
   id: string;
@@ -44,13 +50,12 @@ interface LiveMatchGameDoc {
   status: GameStatus;
   startTime?: Date | null;
   matchType: MatchType;
-  teams: Array<{
-    players: Array<PopulatedPlayer | Types.ObjectId | null>;
-  }>;
+  side1?: { players: Array<PopulatedPlayer | Types.ObjectId | null> };
+  side2?: { players: Array<PopulatedPlayer | Types.ObjectId | null> };
   tournament?: {
     _id: Types.ObjectId;
     name?: string | null;
-    duration?: string | null;
+    duration?: number | null;
   } | null;
   schedule?: {
     _id: Types.ObjectId;
@@ -73,6 +78,10 @@ function toResponseStatus(status: GameStatus): MatchStatusResponse {
 
   if (status === "cancelled") {
     return "cancelled";
+  }
+
+  if (status === "pendingScore") {
+    return "pendingScore";
   }
 
   return "scheduled";
@@ -98,7 +107,9 @@ function mapPlayer(value: PopulatedPlayer | Types.ObjectId): MatchPlayerResponse
   };
 }
 
-function mapTeamPlayers(team: { players: Array<PopulatedPlayer | Types.ObjectId | null> } | undefined) {
+function mapTeamPlayers(team: {
+  players?: Array<PopulatedPlayer | Types.ObjectId | null>;
+} | undefined) {
   if (!team || !Array.isArray(team.players)) {
     return [] as MatchPlayerResponse[];
   }
@@ -109,7 +120,10 @@ function mapTeamPlayers(team: { players: Array<PopulatedPlayer | Types.ObjectId 
 }
 
 function resolveTeamsForUser(game: LiveMatchGameDoc, userId: string) {
-  const mappedTeams = [mapTeamPlayers(game.teams[0]), mapTeamPlayers(game.teams[1])];
+  const sides = getGameSides(game);
+  const mappedTeams = sides
+    ? [mapTeamPlayers(sides[0]), mapTeamPlayers(sides[1])]
+    : [[], []];
 
   const userTeamIndex = mappedTeams.findIndex((team) =>
     team.some((player) => player.id === userId)
@@ -176,11 +190,12 @@ export async function getTournamentLiveMatch(req: AuthenticatedRequest, res: Res
     const games = await Game.find({
       gameMode: "tournament",
       status: { $nin: ["finished", "cancelled"] },
-      "teams.players": req.user._id,
+      $or: [{ "side1.players": req.user._id }, { "side2.players": req.user._id }],
       startTime: { $ne: null, $gte: startTimeLowerBound },
     })
-      .select("_id status startTime matchType teams tournament schedule court")
-      .populate("teams.players", "name alias")
+      .select("_id status startTime matchType side1 side2 tournament schedule court")
+      .populate("side1.players", "name alias")
+      .populate("side2.players", "name alias")
       .populate("tournament", "name duration")
       .populate("schedule", "matchDurationMinutes")
       .populate("court", "name")
@@ -230,7 +245,10 @@ export async function getTournamentLiveMatch(req: AuthenticatedRequest, res: Res
       }
     }
 
-    const liveGame = games.find((game) => game.status === "active") ?? null;
+    const liveGame =
+      games.find((game) => game.status === "active") ??
+      games.find((game) => game.status === "pendingScore") ??
+      null;
     // resolveTimedGameStatus advances draft→active when start time passes, but we
     // still require a future startTime here so "next" only means upcoming
     // scheduled matches (avoids surfacing stale draft rows with past start times).
