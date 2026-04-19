@@ -76,14 +76,20 @@ export async function ensurePreviousRoundFinished(
     );
   }
 
-  const hasUnfinishedMatch = previousRoundEntries.some((entry) => {
-    const status = statusByGameId.get(entry.game.toString());
-    return status !== "finished" && status !== "cancelled";
-  });
+  for (const entry of previousRoundEntries) {
+    const gameId = entry.game.toString();
+    const status = statusByGameId.get(gameId);
 
-  if (hasUnfinishedMatch) {
-    throw new Error(
-      `Round ${previousRound} is not finished yet. Complete all match scores before generating round ${targetRound}.`
-    );
+    if (status === undefined) {
+      throw new Error(
+        `Missing game data for game ${gameId} in round ${previousRound} (expected in schedule before generating round ${targetRound})`
+      );
+    }
+
+    if (status !== "finished" && status !== "cancelled") {
+      throw new Error(
+        `Round ${previousRound} is not finished yet. Complete all match scores before generating round ${targetRound}.`
+      );
+    }
   }
 }

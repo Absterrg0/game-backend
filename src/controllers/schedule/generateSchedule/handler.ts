@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { type Types } from "mongoose";
 import Game from "../../../models/Game";
 import Schedule from "../../../models/Schedule";
 import Tournament from "../../../models/Tournament";
@@ -22,7 +22,11 @@ type ScheduleRoundEntryLike = {
 export async function persistSinglesScheduleRound(
   tournament: TournamentScheduleContext,
   body: GenerateScheduleBody
-) {
+): Promise<{
+  scheduleId: Types.ObjectId;
+  currentRound: number;
+  generatedMatches: number;
+}> {
   const availableCourtIds = new Set(
     (tournament.club?.courts ?? []).map((court) => court._id.toString())
   );

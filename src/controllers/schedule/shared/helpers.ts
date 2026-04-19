@@ -142,7 +142,8 @@ export function computeMatchStartTime(
   dateRef.setHours(hour, minute, 0, 0);
 
   const timeBlock = body.matchDurationMinutes + body.breakTimeMinutes;
-  const normalizedSlot = slotNumber >= 1 ? Math.trunc(slotNumber) : 1;
+  const normalizedSlot =
+    Number.isFinite(slotNumber) && slotNumber >= 1 ? Math.trunc(slotNumber) : 1;
   const wave = Math.max(0, normalizedSlot - 1);
   dateRef.setMinutes(dateRef.getMinutes() + wave * timeBlock);
 

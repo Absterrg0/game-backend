@@ -51,7 +51,7 @@ export async function pullTournamentParticipantIfNotScheduled(
 
 export async function findTournamentForLeaveConflictCheck(tournamentId: string) {
   return Tournament.findById(tournamentId)
-    .select("participants firstRoundScheduledAt")
+    .select("participants firstRoundScheduledAt schedule")
     .populate({
       path: "schedule",
       select: "currentRound rounds.round",

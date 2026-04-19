@@ -25,8 +25,9 @@ export interface ITournament extends Document {
 	entryFee: number;
 	minMember: number;
 	maxMember: number;
-	duration: number;
-	breakDuration: number;
+	/** Omitted on some drafts until publish; persisted tournaments should set both. */
+	duration?: number | null;
+	breakDuration?: number | null;
 	totalRounds: number;
 	foodInfo?: string;
 	descriptionInfo?: string;
@@ -109,22 +110,26 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 		},
 		duration: {
 			type: Number,
-			required: true,
+			required: false,
 			min: [5, 'duration must be at least 5 minutes'],
 			max: [240, 'duration must be at most 240 minutes'],
+			default: 60,
 			validate: {
-				validator: (v: unknown) => typeof v === 'number' && Number.isInteger(v),
-				message: 'duration must be an integer number of minutes'
+				validator: (v: unknown) =>
+					v == null || (typeof v === 'number' && Number.isInteger(v) && v >= 5 && v <= 240),
+				message: 'duration must be an integer between 5 and 240 minutes, or omitted'
 			}
 		},
 		breakDuration: {
 			type: Number,
-			required: true,
+			required: false,
 			min: [0, 'breakDuration must be at least 0 minutes'],
 			max: [120, 'breakDuration must be at most 120 minutes'],
+			default: 0,
 			validate: {
-				validator: (v: unknown) => typeof v === 'number' && Number.isInteger(v),
-				message: 'breakDuration must be an integer number of minutes'
+				validator: (v: unknown) =>
+					v == null || (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 120),
+				message: 'breakDuration must be an integer between 0 and 120 minutes, or omitted'
 			}
 		},
 		totalRounds: {

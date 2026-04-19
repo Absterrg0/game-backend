@@ -76,8 +76,8 @@ export interface TournamentDetailResponse {
   minMember: number;
   maxMember: number;
   totalRounds: number;
-  duration: number | null;
-  breakDuration: number | null;
+  duration: number;
+  breakDuration: number;
   courts: CourtInfo[];
   foodInfo: string;
   descriptionInfo: string;
@@ -283,8 +283,14 @@ export function mapTournamentDetail(
       Number.isFinite(Number(tournament.totalRounds)) && Math.trunc(Number(tournament.totalRounds)) >= 1
         ? Math.trunc(Number(tournament.totalRounds))
         : 1,
-    duration: tournament.duration ?? null,
-    breakDuration: tournament.breakDuration ?? null,
+    duration:
+      typeof tournament.duration === "number" && Number.isFinite(tournament.duration)
+        ? Math.trunc(tournament.duration)
+        : 0,
+    breakDuration:
+      typeof tournament.breakDuration === "number" && Number.isFinite(tournament.breakDuration)
+        ? Math.trunc(tournament.breakDuration)
+        : 0,
     courts,
     foodInfo: tournament.foodInfo ?? "",
     descriptionInfo: tournament.descriptionInfo ?? "",

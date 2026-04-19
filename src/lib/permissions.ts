@@ -20,7 +20,7 @@ export function isOwnerOrSuperAdmin(
 ) {
   if (session.role === ROLES.SUPER_ADMIN) return true;
   if (!resourceCreatedBy) return false;
-  return resourceCreatedBy.equals?.(session._id);
+  return resourceCreatedBy.equals(session._id);
 }
 
 /**

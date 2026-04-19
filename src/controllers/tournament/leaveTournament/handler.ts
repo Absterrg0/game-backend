@@ -24,9 +24,16 @@ export async function leaveTournamentFlow(
   }
 
   const participantIds = tournament.participants ?? [];
-  const userIsParticipant = participantIds.some(
-    (id) => id._id?.equals(authSession._id)
-  );
+  const userIsParticipant = participantIds.some((id) => {
+    if (id instanceof mongoose.Types.ObjectId) {
+      return id.equals(authSession._id);
+    }
+    if (typeof id === "object" && id !== null && "_id" in id) {
+      const oid = (id as { _id: mongoose.Types.ObjectId })._id;
+      return oid.equals(authSession._id);
+    }
+    return false;
+  });
 
   if (!userIsParticipant) {
     return error(400, "You are not a participant in this tournament");

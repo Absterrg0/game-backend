@@ -170,10 +170,64 @@ function pairSinglesFromDemand(participants: ScheduleParticipantInfo[], demandBy
   return pairs;
 }
 
+function buddyKey(a: string, b: string): string {
+  return a < b ? `${a}:${b}` : `${b}:${a}`;
+}
+
+function scoreDoublesCandidate(
+  teamOne: [Types.ObjectId, Types.ObjectId],
+  teamTwo: [Types.ObjectId, Types.ObjectId],
+  teammateHist: Map<string, number>,
+  opponentHist: Map<string, number>
+): number {
+  const s = (id: Types.ObjectId) => id.toString();
+  const t1a = s(teamOne[0]);
+  const t1b = s(teamOne[1]);
+  const t2a = s(teamTwo[0]);
+  const t2b = s(teamTwo[1]);
+
+  let score = 0;
+  score += teammateHist.get(buddyKey(t1a, t1b)) ?? 0;
+  score += teammateHist.get(buddyKey(t2a, t2b)) ?? 0;
+  for (const x of [t1a, t1b]) {
+    for (const y of [t2a, t2b]) {
+      score += opponentHist.get(buddyKey(x, y)) ?? 0;
+    }
+  }
+  return score;
+}
+
+function recordDoublesCandidate(
+  teamOne: [Types.ObjectId, Types.ObjectId],
+  teamTwo: [Types.ObjectId, Types.ObjectId],
+  teammateHist: Map<string, number>,
+  opponentHist: Map<string, number>
+) {
+  const s = (id: Types.ObjectId) => id.toString();
+  const t1a = s(teamOne[0]);
+  const t1b = s(teamOne[1]);
+  const t2a = s(teamTwo[0]);
+  const t2b = s(teamTwo[1]);
+
+  const bump = (m: Map<string, number>, k: string) => {
+    m.set(k, (m.get(k) ?? 0) + 1);
+  };
+
+  bump(teammateHist, buddyKey(t1a, t1b));
+  bump(teammateHist, buddyKey(t2a, t2b));
+  for (const x of [t1a, t1b]) {
+    for (const y of [t2a, t2b]) {
+      bump(opponentHist, buddyKey(x, y));
+    }
+  }
+}
+
 function pairDoublesFromDemand(participants: ScheduleParticipantInfo[], demandById: Map<string, number>) {
   const byId = new Map(participants.map((participant) => [participant._id.toString(), participant]));
   const participantIndex = new Map(participants.map((participant, index) => [participant._id.toString(), index]));
   const pairs: DoublesMatchPair[] = [];
+  const teammateHist = new Map<string, number>();
+  const opponentHist = new Map<string, number>();
 
   while (demandById.size > 0) {
     const selected: string[] = [];
@@ -195,11 +249,40 @@ function pairDoublesFromDemand(participants: ScheduleParticipantInfo[], demandBy
       throw new Error("Unable to resolve doubles participants for pairing");
     }
 
-    pairs.push({
+    const snake: DoublesMatchPair = {
       kind: "doubles",
       teamOne: [playerA._id, playerD._id],
       teamTwo: [playerB._id, playerC._id],
-    });
+    };
+    const alt1: DoublesMatchPair = {
+      kind: "doubles",
+      teamOne: [playerA._id, playerB._id],
+      teamTwo: [playerC._id, playerD._id],
+    };
+    const alt2: DoublesMatchPair = {
+      kind: "doubles",
+      teamOne: [playerA._id, playerC._id],
+      teamTwo: [playerB._id, playerD._id],
+    };
+
+    const candidates = [snake, alt1, alt2];
+    let best = snake;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const candidate of candidates) {
+      const sc = scoreDoublesCandidate(
+        candidate.teamOne,
+        candidate.teamTwo,
+        teammateHist,
+        opponentHist
+      );
+      if (sc < bestScore) {
+        bestScore = sc;
+        best = candidate;
+      }
+    }
+
+    pairs.push(best);
+    recordDoublesCandidate(best.teamOne, best.teamTwo, teammateHist, opponentHist);
 
     decrementDemand(demandById, a);
     decrementDemand(demandById, b);

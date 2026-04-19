@@ -47,12 +47,7 @@ export async function authorizeScheduleOrMatchParticipant(
     return primary;
   }
 
-  let matchObjectId: Types.ObjectId;
-  try {
-    matchObjectId = new Types.ObjectId(matchId);
-  } catch {
-    return primary;
-  }
+  const matchObjectId = new Types.ObjectId(matchId);
 
   const isParticipant = await Game.exists({
     _id: matchObjectId,
@@ -62,8 +57,10 @@ export async function authorizeScheduleOrMatchParticipant(
   });
 
   if (isParticipant) {
-    const clubId = tournament.club?._id.toString() ?? "";
-    return ok({ clubId }, { status: 200, message: "Authorized" });
+    if (!tournament.club || tournament.club._id == null) {
+      return error(400, "Tournament has no club");
+    }
+    return ok({ clubId: tournament.club._id.toString() }, { status: 200, message: "Authorized" });
   }
 
   return primary;
