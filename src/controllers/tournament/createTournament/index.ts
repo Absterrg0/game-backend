@@ -12,6 +12,29 @@ import { AuthenticatedRequest } from "../../../shared";
  */
 export async function createTournament(req: AuthenticatedRequest, res: Response) {
   try {
+    // #region agent log
+    const body = req.body as Record<string, unknown>;
+    fetch("http://127.0.0.1:7679/ingest/811fd15d-6f4d-4d49-bd5c-4454dc516274", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b0a976" },
+      body: JSON.stringify({
+        sessionId: "b0a976",
+        runId: "pre-parse",
+        hypothesisId: "H2",
+        location: "createTournament/index.ts:createTournament",
+        message: "POST /api/tournaments body types",
+        data: {
+          typeofDuration: typeof body?.duration,
+          typeofBreakDuration: typeof body?.breakDuration,
+          duration: body?.duration,
+          breakDuration: body?.breakDuration,
+          status: body?.status,
+          tournamentMode: body?.tournamentMode,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     const parsed = createTournamentSchema.safeParse(req.body);
     if (!parsed.success) {
