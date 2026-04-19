@@ -51,8 +51,8 @@ export interface TournamentScheduleContext {
   tournamentMode: TournamentMode;
   date: Date | null;
   startTime: string | null;
-  duration: string | null;
-  breakDuration: string | null;
+  duration: number | null;
+  breakDuration: number | null;
   matchesPerPlayer: number;
   totalRounds: number;
   playMode: TournamentPlayMode;
@@ -70,15 +70,15 @@ export interface TournamentScheduleContextRaw {
   tournamentMode?: TournamentMode | null;
   date?: Date | null;
   startTime?: string | null;
-  duration?: string | null;
-  breakDuration?: string | null;
+  duration?: number | null;
+  breakDuration?: number | null;
   matchesPerPlayer?: number | null;
   totalRounds?: number | null;
   playMode?: TournamentPlayMode | null;
   createdBy?: DbIdLike | null;
   club?: ScheduleClubInfoRaw | null;
   participants?: ScheduleParticipantInfoRaw[] | null;
-  schedule?: DbIdLike | null;
+  schedule?: DbIdLike | { _id?: DbIdLike; matchesPerPlayer?: number | null } | null;
 }
 
 export interface ScheduleInputResponse {

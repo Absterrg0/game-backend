@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { z } from "zod";
 import type { DbIdLike } from "../domain/common";
+import type { SchedulePopulatedLean } from "../domain/tournamentSchedule";
 import {
   TOURNAMENT_MODES,
   TOURNAMENT_PLAY_MODES,
@@ -62,16 +63,15 @@ export interface TournamentForUpdateAuth {
   playMode?: (typeof TOURNAMENT_PLAY_MODES)[number];
   tournamentMode?: (typeof TOURNAMENT_MODES)[number];
   entryFee?: number;
-  duration?: string | null;
-  breakDuration?: string | null;
-  matchesPerPlayer?: number;
+  duration?: number | null;
+  breakDuration?: number | null;
   foodInfo?: string | null;
   descriptionInfo?: string | null;
 }
 
 export type TournamentPopulated = Omit<
 	ITournament,
-  'club' | 'sponsor' | 'participants'
+  'club' | 'sponsor' | 'participants' | 'schedule'
 > & {
   club?: {
     _id: mongoose.Types.ObjectId;
@@ -85,19 +85,15 @@ export type TournamentPopulated = Omit<
 		logoUrl?: string | null;
 		link?: string | null;
 	} | null;
-	participants?: Array<{
-		_id?: mongoose.Types.ObjectId | string;
-		name?: string | null;
-		alias?: string | null;
-	}>;
-  schedule?:
-    | mongoose.Types.ObjectId
-    | {
-        _id?: mongoose.Types.ObjectId;
-        currentRound?: number;
-        rounds?: Array<{ round?: number }>;
-      }
-    | null;
+	participants?: Array<
+		mongoose.Types.ObjectId | {
+			_id?: mongoose.Types.ObjectId;
+			name?: string | null;
+			alias?: string | null;
+		}
+	>;
+  /** Set when `schedule` is populated (lean); `null` if ref is broken; omit if no ref. */
+  schedule?: SchedulePopulatedLean | null;
 };
 
 
@@ -105,6 +101,25 @@ export type TournamentPopulated = Omit<
 const dbIdLikeSchema = z.union([
   z.instanceof(mongoose.Types.ObjectId),
   z.string().regex(/^[0-9a-fA-F]{24}$/),
+]);
+
+/** Matches stored minutes (number) or numeric strings from atypical DB/JSON shapes. */
+const tournamentDurationMinutes = z.union([
+  z.number().int().min(5).max(240),
+  z
+    .string()
+    .regex(/^\s*\d+\s*$/)
+    .transform((s) => Number.parseInt(s.trim(), 10))
+    .pipe(z.number().int().min(5).max(240)),
+]);
+
+const tournamentBreakMinutes = z.union([
+  z.number().int().min(0).max(120),
+  z
+    .string()
+    .regex(/^\s*\d+\s*$/)
+    .transform((s) => Number.parseInt(s.trim(), 10))
+    .pipe(z.number().int().min(0).max(120)),
 ]);
 
 /**
@@ -127,8 +142,8 @@ export const tournamentPublishSourceSchema = z
     entryFee: z.number().optional(),
     minMember: z.number().int().min(1),
     maxMember: z.number().int().min(1),
-    duration: z.string().optional(),
-    breakDuration: z.string().optional(),
+    duration: z.union([z.null(), tournamentDurationMinutes]).optional(),
+    breakDuration: z.union([z.null(), tournamentBreakMinutes]).optional(),
     foodInfo: z.string().optional(),
     descriptionInfo: z.string().optional(),
   })
@@ -151,8 +166,8 @@ export type NormalizedTournamentPublishSource = {
   entryFee?: number;
   minMember: number;
   maxMember: number;
-  duration?: string;
-  breakDuration?: string;
+  duration?: number | null;
+  breakDuration?: number | null;
   foodInfo: string;
   descriptionInfo: string;
 };

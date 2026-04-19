@@ -16,15 +16,18 @@ function normalizeDurationMinutes(value: number | null | undefined): number | nu
 }
 
 export function parseDurationMinutes(
-  durationText: string | null | undefined,
+  durationText: string | number | null | undefined,
   fallback: number = DEFAULT_MATCH_DURATION_MINUTES
 ): number {
   const fallbackMinutes = normalizeDurationMinutes(fallback) ?? DEFAULT_MATCH_DURATION_MINUTES;
+  if (typeof durationText === "number" && Number.isFinite(durationText)) {
+    return normalizeDurationMinutes(durationText) ?? fallbackMinutes;
+  }
   if (!durationText) {
     return fallbackMinutes;
   }
 
-  const match = durationText.match(/(\d+)/);
+  const match = String(durationText).match(/(\d+)/);
   if (!match) {
     return fallbackMinutes;
   }
@@ -41,7 +44,11 @@ interface ResolveTimedGameStatusInput {
 }
 
 export function resolveTimedGameStatus(input: ResolveTimedGameStatusInput): GameStatus {
-  if (input.persistedStatus === "cancelled" || input.persistedStatus === "finished") {
+  if (
+    input.persistedStatus === "cancelled" ||
+    input.persistedStatus === "finished" ||
+    input.persistedStatus === "pendingScore"
+  ) {
     return input.persistedStatus;
   }
 
