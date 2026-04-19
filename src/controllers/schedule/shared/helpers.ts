@@ -1,45 +1,24 @@
-import type { Types } from "mongoose";
-import type {
-  GenerateScheduleBody,
-  ScheduleParticipantInfo,
-  TournamentScheduleContext,
-} from "./types";
+import type { ScheduleParticipantInfo, TournamentScheduleContext } from "./types";
+import {
+  DEFAULT_BREAK_TIME_MINUTES,
+  DEFAULT_MATCH_DURATION_MINUTES,
+  DEFAULT_MATCHES_PER_PLAYER,
+  DEFAULT_SCHEDULE_START_TIME,
+} from "./constants";
 
-const DEFAULT_MATCH_DURATION_MINUTES = 60;
-const DEFAULT_BREAK_TIME_MINUTES = 5;
-const DEFAULT_MATCHES_PER_PLAYER = 1;
-const DEFAULT_START_TIME = "13:40";
-
-function parseMinutesFromText(value: string | null, fallback: number, allowZero = false): number {
-  if (!value) {
-    return fallback;
-  }
-
-  const match = value.match(/(\d+)/);
-  if (!match) {
-    return fallback;
-  }
-
-  const parsed = Number.parseInt(match[1], 10);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-  if (allowZero && parsed >= 0) {
-    return parsed;
-  }
-  return parsed > 0 ? parsed : fallback;
-}
-
-export function getDefaultScheduleInput(tournament: TournamentScheduleContext) {
+export function getDefaultScheduleInput(
+  tournament: TournamentScheduleContext,
+  options?: { matchesPerPlayer?: number | null }
+) {
   const courts = tournament.club?.courts ?? [];
   const selectedDefault = new Set(courts.slice(0, Math.min(2, courts.length)).map((court) => court._id.toString()));
 
+  const resolvedMatchesPerPlayer =
+    options?.matchesPerPlayer ?? DEFAULT_MATCHES_PER_PLAYER;
+
   const base = {
-    matchesPerPlayer:
-      Number.isFinite(tournament.matchesPerPlayer) && tournament.matchesPerPlayer >= 1
-        ? Math.trunc(tournament.matchesPerPlayer)
-        : DEFAULT_MATCHES_PER_PLAYER,
-    startTime: tournament.startTime ?? DEFAULT_START_TIME,
+    matchesPerPlayer: resolvedMatchesPerPlayer,
+    startTime: tournament.startTime ?? DEFAULT_SCHEDULE_START_TIME,
     mode: "singles" as const,
     availableCourts: courts.map((court) => ({
       id: court._id.toString(),
@@ -54,15 +33,8 @@ export function getDefaultScheduleInput(tournament: TournamentScheduleContext) {
 
   return {
     ...base,
-    matchDurationMinutes: parseMinutesFromText(
-      tournament.duration,
-      DEFAULT_MATCH_DURATION_MINUTES
-    ),
-    breakTimeMinutes: parseMinutesFromText(
-      tournament.breakDuration,
-      DEFAULT_BREAK_TIME_MINUTES,
-      true
-    ),
+    matchDurationMinutes: tournament.duration ?? DEFAULT_MATCH_DURATION_MINUTES,
+    breakTimeMinutes: tournament.breakDuration ?? DEFAULT_BREAK_TIME_MINUTES,
   };
 }
 
@@ -110,8 +82,8 @@ export function getParticipantOrder(
 
 export function sortParticipantsForScheduling(participants: ScheduleParticipantInfo[]) {
   return [...participants].sort((left, right) => {
-    const leftRating = typeof left.elo?.rating === "number" ? left.elo.rating : 1500;
-    const rightRating = typeof right.elo?.rating === "number" ? right.elo.rating : 1500;
+    const leftRating = left.elo.rating ?? 1500;
+    const rightRating = right.elo.rating ?? 1500;
     if (leftRating !== rightRating) {
       return rightRating - leftRating;
     }
@@ -145,22 +117,6 @@ export function buildDoublesPairs(
   return { teams, unpaired };
 }
 
-export function buildSinglesRoundPairs(
-  participants: ScheduleParticipantInfo[]
-): Array<{ playerOneId: Types.ObjectId; playerTwoId: Types.ObjectId }> {
-  const pairs: Array<{ playerOneId: Types.ObjectId; playerTwoId: Types.ObjectId }> = [];
-
-  // Odd participant counts intentionally leave the final participant unpaired for this round.
-  for (let index = 0; index + 1 < participants.length; index += 2) {
-    pairs.push({
-      playerOneId: participants[index]._id,
-      playerTwoId: participants[index + 1]._id,
-    });
-  }
-
-  return pairs;
-}
-
 export function computeMatchStartTime(
   baseDate: Date | null,
   startTime: string,
@@ -186,8 +142,7 @@ export function computeMatchStartTime(
   dateRef.setHours(hour, minute, 0, 0);
 
   const timeBlock = body.matchDurationMinutes + body.breakTimeMinutes;
-  const normalizedSlot =
-    Number.isFinite(slotNumber) && slotNumber >= 1 ? Math.trunc(slotNumber) : 1;
+  const normalizedSlot = slotNumber >= 1 ? Math.trunc(slotNumber) : 1;
   const wave = Math.max(0, normalizedSlot - 1);
   dateRef.setMinutes(dateRef.getMinutes() + wave * timeBlock);
 
