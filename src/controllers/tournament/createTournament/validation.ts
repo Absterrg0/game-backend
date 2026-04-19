@@ -11,6 +11,12 @@ export const playModeEnum = z.enum([
 
 export const statusEnum = z.enum(["draft", "active"]);
 
+const entryFeeSchema = z.coerce.number().min(0).nonnegative().default(0);
+const memberCountSchema = z.coerce.number().int().min(1);
+const totalRoundsSchema = z.coerce.number().int().min(1).max(100);
+const durationMinutesSchema = z.coerce.number().int().min(5).max(240);
+const breakMinutesSchema = z.coerce.number().int().min(0).max(120);
+
 
 const baseTournament = z.object({
     club: objectId,
@@ -22,14 +28,13 @@ const baseTournament = z.object({
   
     playMode: playModeEnum,
   
-    entryFee: z.number().min(0).nonnegative().default(0),
-    minMember: z.number().int().min(1),
-    maxMember: z.number().int().min(1),
-    totalRounds: z.number().int().min(1).max(100).optional(),
+    entryFee: entryFeeSchema,
+    minMember: memberCountSchema,
+    maxMember: memberCountSchema,
+    totalRounds: totalRoundsSchema.optional(),
   
-    duration: z.string(),
-    breakDuration: z.string(),
-    matchesPerPlayer: z.number().int().min(1).max(20).optional(),
+    duration: durationMinutesSchema,
+    breakDuration: breakMinutesSchema,
   
     foodInfo: z.string().optional(),
     descriptionInfo: z.string().optional(),
@@ -121,13 +126,6 @@ const baseTournament = z.object({
           code: z.ZodIssueCode.custom,
           path: ["totalRounds"],
           message: "totalRounds is required when status is active",
-        });
-      }
-      if (d.matchesPerPlayer === undefined) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["matchesPerPlayer"],
-          message: "matchesPerPlayer is required when status is active",
         });
       }
     })
