@@ -121,8 +121,8 @@ export const tournamentPublishSourceSchema = z
     entryFee: z.number().optional(),
     minMember: z.number().int().min(1),
     maxMember: z.number().int().min(1),
-    duration: z.number().int().min(5).max(240).optional(),
-    breakDuration: z.number().int().min(0).max(120).optional(),
+    duration: z.number().int().min(5).max(240).optional().nullable(),
+    breakDuration: z.number().int().min(0).max(120).optional().nullable(),
     foodInfo: z.string().optional(),
     descriptionInfo: z.string().optional(),
   })
@@ -145,8 +145,8 @@ export type NormalizedTournamentPublishSource = {
   entryFee?: number;
   minMember: number;
   maxMember: number;
-  duration?: number;
-  breakDuration?: number;
+  duration?: number | null;
+  breakDuration?: number | null;
   foodInfo: string;
   descriptionInfo: string;
 };

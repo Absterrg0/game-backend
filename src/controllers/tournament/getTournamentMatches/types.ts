@@ -29,7 +29,9 @@ export interface PopulatedMatchCourtDoc {
 
 export interface GameForMatchesDoc {
   _id: Types.ObjectId;
-  teams: [
+  side1?: { players: Array<PopulatedMatchPlayerDoc | Types.ObjectId | null> };
+  side2?: { players: Array<PopulatedMatchPlayerDoc | Types.ObjectId | null> };
+  teams?: [
     { players: Array<PopulatedMatchPlayerDoc | Types.ObjectId | null> },
     { players: Array<PopulatedMatchPlayerDoc | Types.ObjectId | null> }
   ];
@@ -54,7 +56,8 @@ export type MatchStatusResponse =
   | "completed"
   | "inProgress"
   | "scheduled"
-  | "cancelled";
+  | "cancelled"
+  | "pendingScore";
 
 export interface MatchPlayerResponse {
   id: string;

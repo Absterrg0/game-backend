@@ -16,11 +16,11 @@ export interface TournamentPermissionContext {
  */
 export function isOwnerOrSuperAdmin(
   session: AuthenticatedSession,
-  resourceCreatedBy: mongoose.Types.ObjectId | undefined
-) {
+  resourceCreatedBy: mongoose.Types.ObjectId | null | undefined
+): boolean {
   if (session.role === ROLES.SUPER_ADMIN) return true;
   if (!resourceCreatedBy) return false;
-  return resourceCreatedBy.equals?.(session._id);
+  return resourceCreatedBy.equals(session._id);
 }
 
 /**

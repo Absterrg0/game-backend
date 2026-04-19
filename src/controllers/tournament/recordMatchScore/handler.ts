@@ -1,5 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import { rateGlicko2HeadToHead, rateGlicko2Player } from "../../../lib/glicko2";
+import { getGameSides } from "../../../shared/gameSides";
 import Game from "../../../models/Game";
 import Schedule from "../../../models/Schedule";
 import Tournament from "../../../models/Tournament";
@@ -128,8 +129,12 @@ function getStateOrThrow(states: Map<string, RatingState>, id: string) {
   return state;
 }
 
-function getTeamPlayerIds(game: { teams?: Array<{ players?: unknown[] }> }, teamIndex: number) {
-  const team = Array.isArray(game.teams) ? game.teams[teamIndex] : null;
+function getTeamPlayerIds(
+  game: Parameters<typeof getGameSides>[0],
+  teamIndex: number
+) {
+  const sides = getGameSides(game);
+  const team = sides ? sides[teamIndex] : null;
   if (!team || !Array.isArray(team.players)) {
     return [] as string[];
   }
@@ -176,8 +181,9 @@ export async function recordTournamentMatchScoreFlow(
         throw new Error("Tournament match not found");
       }
 
-      const participantIds = Array.isArray(game.teams)
-        ? game.teams.flatMap((team) =>
+      const sides = getGameSides(game);
+      const participantIds = sides
+        ? sides.flatMap((team) =>
             Array.isArray(team.players) ? team.players.filter(isObjectId) : []
           )
         : [];

@@ -78,7 +78,7 @@ export interface TournamentScheduleContextRaw {
   createdBy?: DbIdLike | null;
   club?: ScheduleClubInfoRaw | null;
   participants?: ScheduleParticipantInfoRaw[] | null;
-  schedule?: DbIdLike | null;
+  schedule?: DbIdLike | { _id?: DbIdLike; matchesPerPlayer?: number | null } | null;
 }
 
 export interface ScheduleInputResponse {

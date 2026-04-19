@@ -14,5 +14,10 @@ export function isTournamentSchedulingLocked(tournament: TournamentPopulated) {
     return false;
   }
 
-  return Math.trunc(schedule.currentRound ?? 0) >= 1;
+  if (Math.trunc(schedule.currentRound ?? 0) >= 1) {
+    return true;
+  }
+
+  const rounds = schedule.rounds;
+  return Array.isArray(rounds) && rounds.length > 0;
 }

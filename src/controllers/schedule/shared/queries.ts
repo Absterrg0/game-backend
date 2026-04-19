@@ -37,13 +37,11 @@ function normalizeScheduleContext(raw: TournamentScheduleContextRaw): Tournament
   }
 
   const rawSchedule = raw.schedule;
-  const scheduleId = toObjectId(
-    rawSchedule != null &&
-      typeof rawSchedule === "object" &&
-      "_id" in rawSchedule
+  const scheduleRefForId: DbIdLike | null | undefined =
+    rawSchedule != null && typeof rawSchedule === "object" && "_id" in rawSchedule
       ? (rawSchedule as { _id: DbIdLike })._id
-      : rawSchedule
-  );
+      : (rawSchedule as DbIdLike | null | undefined);
+  const scheduleId = toObjectId(scheduleRefForId);
 
   const courts: ScheduleCourtInfo[] = [];
   const rawCourts = raw.club?.courts ?? [];
@@ -83,6 +81,18 @@ function normalizeScheduleContext(raw: TournamentScheduleContextRaw): Tournament
     });
   }
 
+  let scheduleMatchesPerPlayer: number | undefined;
+  if (
+    rawSchedule != null &&
+    typeof rawSchedule === "object" &&
+    "matchesPerPlayer" in rawSchedule
+  ) {
+    const mp = (rawSchedule as { matchesPerPlayer?: unknown }).matchesPerPlayer;
+    if (typeof mp === "number" && Number.isFinite(mp)) {
+      scheduleMatchesPerPlayer = Math.max(1, Math.min(20, Math.trunc(mp)));
+    }
+  }
+
   return {
     _id: tournamentId,
     name: raw.name?.trim() || "Tournament",
@@ -97,9 +107,10 @@ function normalizeScheduleContext(raw: TournamentScheduleContextRaw): Tournament
     duration: raw.duration ?? null,
     breakDuration: raw.breakDuration ?? null,
     matchesPerPlayer:
-      typeof raw.matchesPerPlayer === "number" && Number.isFinite(raw.matchesPerPlayer)
+      scheduleMatchesPerPlayer ??
+      (typeof raw.matchesPerPlayer === "number" && Number.isFinite(raw.matchesPerPlayer)
         ? Math.max(1, Math.min(20, Math.trunc(raw.matchesPerPlayer)))
-        : 1,
+        : 1),
     totalRounds:
       typeof raw.totalRounds === "number" && Number.isFinite(raw.totalRounds)
         ? Math.max(1, Math.min(100, Math.trunc(raw.totalRounds)))
@@ -117,7 +128,7 @@ export async function fetchTournamentScheduleContext(
 ): Promise<TournamentScheduleContext | null> {
   const raw = await Tournament.findById(tournamentId)
     .select(
-      "_id name minMember firstRoundScheduledAt tournamentMode date startTime duration breakDuration matchesPerPlayer totalRounds playMode createdBy club participants schedule"
+      "_id name minMember firstRoundScheduledAt tournamentMode date startTime duration breakDuration totalRounds playMode createdBy club participants schedule"
     )
     .populate({
       path: "club",
@@ -128,6 +139,7 @@ export async function fetchTournamentScheduleContext(
       },
     })
     .populate("participants", "name alias elo.rating")
+    .populate("schedule", "matchesPerPlayer")
     .lean<TournamentScheduleContextRaw>()
     .exec();
 

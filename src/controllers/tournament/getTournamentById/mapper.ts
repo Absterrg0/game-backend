@@ -283,8 +283,14 @@ export function mapTournamentDetail(
       Number.isFinite(Number(tournament.totalRounds)) && Math.trunc(Number(tournament.totalRounds)) >= 1
         ? Math.trunc(Number(tournament.totalRounds))
         : 1,
-    duration: tournament.duration ?? null,
-    breakDuration: tournament.breakDuration ?? null,
+    duration:
+      tournament.duration == null
+        ? null
+        : String(Math.trunc(Number(tournament.duration))),
+    breakDuration:
+      tournament.breakDuration == null
+        ? null
+        : String(Math.trunc(Number(tournament.breakDuration))),
     courts,
     foodInfo: tournament.foodInfo ?? "",
     descriptionInfo: tournament.descriptionInfo ?? "",
