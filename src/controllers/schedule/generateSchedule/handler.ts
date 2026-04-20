@@ -10,7 +10,7 @@ import {
 import { resolveTimedGameStatus } from "../../../shared/matchTiming";
 import type { GenerateScheduleBody, TournamentScheduleContext } from "../shared/types";
 import { ensurePreviousRoundFinished } from "./ensurePreviousRoundFinished";
-import { buildRoundPairs, ensureMinimumParticipants } from "./pairingFromDemand";
+import { buildRoundPairs, ensureMinimumParticipants, type MatchPair } from "./pairingFromDemand";
 
 type ScheduleRoundEntryLike = {
   game: mongoose.Types.ObjectId;
@@ -18,6 +18,69 @@ type ScheduleRoundEntryLike = {
   round: number;
   mode: GenerateScheduleBody["mode"];
 };
+
+type PairSlotAssignment = {
+  slot: number;
+  courtIndex: number;
+};
+
+function getPairParticipantIds(pair: MatchPair): string[] {
+  if (pair.kind === "singles") {
+    return [pair.teamOne[0].toString(), pair.teamTwo[0].toString()];
+  }
+
+  return [
+    pair.teamOne[0].toString(),
+    pair.teamOne[1].toString(),
+    pair.teamTwo[0].toString(),
+    pair.teamTwo[1].toString(),
+  ];
+}
+
+function buildPairSlotAssignments(pairs: MatchPair[], courtCount: number): PairSlotAssignment[] {
+  const assignments: PairSlotAssignment[] = [];
+  const slotState = new Map<number, { usedCourts: number; participantIds: Set<string> }>();
+  const safeCourtCount = Math.max(1, courtCount);
+
+  for (const pair of pairs) {
+    const participantIds = getPairParticipantIds(pair);
+    let assigned = false;
+
+    for (let slot = 1; !assigned; slot += 1) {
+      const state =
+        slotState.get(slot) ??
+        (() => {
+          const next = { usedCourts: 0, participantIds: new Set<string>() };
+          slotState.set(slot, next);
+          return next;
+        })();
+
+      if (state.usedCourts >= safeCourtCount) {
+        continue;
+      }
+
+      const hasConflict = participantIds.some((participantId) => state.participantIds.has(participantId));
+      if (hasConflict) {
+        continue;
+      }
+
+      const assignment: PairSlotAssignment = {
+        slot,
+        courtIndex: state.usedCourts,
+      };
+
+      state.usedCourts += 1;
+      for (const participantId of participantIds) {
+        state.participantIds.add(participantId);
+      }
+
+      assignments.push(assignment);
+      assigned = true;
+    }
+  }
+
+  return assignments;
+}
 
 export async function persistSinglesScheduleRound(
   tournament: TournamentScheduleContext,
@@ -149,11 +212,16 @@ export async function persistSinglesScheduleRound(
         throw new Error("At least one match is required to generate a schedule round");
       }
 
-      const matchesPerWave = Math.max(1, selectedCourtIds.length);
+      const pairSlotAssignments = buildPairSlotAssignments(pairs, selectedCourtIds.length);
       const generationTimestamp = new Date();
 
       const gameDocs = pairs.map((pair, index) => {
-        const slot = Math.floor(index / matchesPerWave) + 1;
+        const assignment = pairSlotAssignments[index];
+        if (!assignment) {
+          throw new Error("Failed to assign schedule slot for one or more matches");
+        }
+
+        const slot = assignment.slot;
         const startTime = computeMatchStartTime(
           tournament.date,
           body.startTime,
@@ -172,7 +240,7 @@ export async function persistSinglesScheduleRound(
         });
 
         const common = {
-          court: new mongoose.Types.ObjectId(selectedCourtIds[index % selectedCourtIds.length]),
+          court: new mongoose.Types.ObjectId(selectedCourtIds[assignment.courtIndex]),
           tournament: tournament._id,
           schedule: scheduleDoc._id,
           score: {
@@ -207,7 +275,7 @@ export async function persistSinglesScheduleRound(
       const newRoundEntries = createdGames.map((game, index) => ({
         game: game._id,
         mode: body.mode,
-        slot: Math.floor(index / matchesPerWave) + 1,
+        slot: pairSlotAssignments[index]?.slot ?? 1,
         round: targetRound,
       }));
 

@@ -105,6 +105,7 @@ export function buildDoublesPairs(
   unpaired: ScheduleParticipantInfo[];
 } {
   const teams: Array<{ team: number; players: [ScheduleParticipantInfo, ScheduleParticipantInfo] }> = [];
+  let oddParticipant: ScheduleParticipantInfo | null = null;
 
   for (let index = 0; index + 1 < participants.length; index += 2) {
     teams.push({
@@ -113,8 +114,20 @@ export function buildDoublesPairs(
     });
   }
 
-  const unpaired = participants.length % 2 === 1 ? [participants[participants.length - 1]] : [];
-  return { teams, unpaired };
+  if (participants.length % 2 === 1) {
+    oddParticipant = participants[participants.length - 1];
+  }
+
+  if (oddParticipant && participants.length >= 2) {
+    // Keep everyone active by assigning the odd participant to an extra pair.
+    const extraPartner = participants[0];
+    teams.push({
+      team: teams.length + 1,
+      players: [oddParticipant, extraPartner],
+    });
+  }
+
+  return { teams, unpaired: [] };
 }
 
 export function computeMatchStartTime(
