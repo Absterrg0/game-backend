@@ -306,6 +306,19 @@ export function buildRoundPairs(
     throw new Error("Unable to distribute matches per player with current participants");
   }
 
+  if (mode === "doubles") {
+    const maxDemand = Math.max(0, ...demandById.values());
+    const appearancesPerMatch = 4;
+    if (
+      participants.length < appearancesPerMatch ||
+      maxDemand > Math.floor(totalAppearances / appearancesPerMatch)
+    ) {
+      throw new Error(
+        "Unable to complete doubles pairing with current constraints: demand distribution is not feasible"
+      );
+    }
+  }
+
   const pairs =
     mode === "singles"
       ? pairSinglesFromDemand(participants, demandById)

@@ -81,7 +81,7 @@ function mapTeam(team: GameForMatchesDoc["side1"] | GameForMatchesDoc["side2"]) 
 function mapGameToMatch(
   game: GameForMatchesDoc | undefined,
   entry: ScheduleRoundDoc
-) {
+): TournamentMatchResponse | null {
   if (!game?.side1 || !game.side2) {
     return null;
   }
@@ -92,11 +92,11 @@ function mapGameToMatch(
   const playerOne = team1[0] ?? EMPTY_PLAYER;
   const playerTwo = team2[0] ?? EMPTY_PLAYER;
 
-  const primaryPlayers = [playerOne, playerTwo];
-  const side1 = [playerOne, team1[1] ?? null];
-  const side2 = [playerTwo, team2[1] ?? null];
+  const primaryPlayers: [MatchPlayerResponse, MatchPlayerResponse] = [playerOne, playerTwo];
+  const side1: [MatchPlayerResponse, MatchPlayerResponse | null] = [playerOne, team1[1] ?? null];
+  const side2: [MatchPlayerResponse, MatchPlayerResponse | null] = [playerTwo, team2[1] ?? null];
 
-  const base = {
+  const base: TournamentMatchResponse = {
     id: game._id.toString(),
     round: Math.max(1, Math.trunc(entry.round)),
     slot: Math.max(1, Math.trunc(entry.slot)),
@@ -117,9 +117,7 @@ function mapGameToMatch(
     side2,
   };
 
-  return {
-    ...base,
-  };
+  return base;
 }
 
 export function mapTournamentMatchesResponse(

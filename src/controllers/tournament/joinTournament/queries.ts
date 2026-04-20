@@ -28,14 +28,15 @@ export async function addParticipantIfCapacityAllows(
       _id: tournamentId,
       status: "active",
       firstRoundScheduledAt: null,
-      $or: [
-        { maxMember: null },
-        {
-          $expr: {
+      $expr: {
+        $or: [
+          { $not: [{ $isNumber: "$maxMember" }] },
+          { $ne: ["$maxMember", "$maxMember"] },
+          {
             $lt: [{ $size: { $ifNull: ["$participants", []] } }, "$maxMember"],
           },
-        },
-      ],
+        ],
+      },
     },
     { $addToSet: { participants: userId } },
     { new: true }

@@ -47,31 +47,29 @@ function buildPairSlotAssignments(pairs: MatchPair[], courtCount: number): PairS
     let assigned = false;
 
     for (let slot = 1; !assigned; slot += 1) {
-      const state =
-        slotState.get(slot) ??
-        (() => {
-          const next = { usedCourts: 0, participantIds: new Set<string>() };
-          slotState.set(slot, next);
-          return next;
-        })();
+      const state = slotState.get(slot);
+      const usedCourts = state?.usedCourts ?? 0;
+      const participantSet = state?.participantIds ?? new Set<string>();
 
-      if (state.usedCourts >= safeCourtCount) {
+      if (usedCourts >= safeCourtCount) {
         continue;
       }
 
-      const hasConflict = participantIds.some((participantId) => state.participantIds.has(participantId));
+      const hasConflict = participantIds.some((participantId) => participantSet.has(participantId));
       if (hasConflict) {
         continue;
       }
 
       const assignment: PairSlotAssignment = {
         slot,
-        courtIndex: state.usedCourts,
+        courtIndex: usedCourts,
       };
 
-      state.usedCourts += 1;
+      const acceptedState = state ?? { usedCourts, participantIds: participantSet };
+      slotState.set(slot, acceptedState);
+      acceptedState.usedCourts += 1;
       for (const participantId of participantIds) {
-        state.participantIds.add(participantId);
+        acceptedState.participantIds.add(participantId);
       }
 
       assignments.push(assignment);
@@ -82,7 +80,7 @@ function buildPairSlotAssignments(pairs: MatchPair[], courtCount: number): PairS
   return assignments;
 }
 
-export async function persistSinglesScheduleRound(
+export async function persistScheduleRound(
   tournament: TournamentScheduleContext,
   body: GenerateScheduleBody
 ): Promise<{

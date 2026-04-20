@@ -245,7 +245,7 @@ export async function recordTournamentMatchScoreFlow(
         input.playerOneScores.length !== input.playerTwoScores.length
       ) {
         throw new AppError(
-          `Matching playerOneScores/playerTwoScores arrays (at most ${setsRequired}) are required before flattenOutcomeSegments for ${game.playMode} matches`,
+          `Both playerOneScores and playerTwoScores must have the same number of entries and no more than ${setsRequired} sets for ${game.playMode} matches`,
           400
         );
       }

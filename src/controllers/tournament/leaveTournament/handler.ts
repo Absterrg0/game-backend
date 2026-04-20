@@ -10,6 +10,28 @@ import {
 } from "./queries";
 const LEAVE_SCHEDULE_LOCKED = "LEAVE_SCHEDULE_LOCKED";
 
+function isSameParticipantId(id: unknown, authId: mongoose.Types.ObjectId) {
+  if (id instanceof mongoose.Types.ObjectId) {
+    return id.equals(authId);
+  }
+
+  if (typeof id === "object" && id !== null && "_id" in id) {
+    const nestedId = (id as { _id?: unknown })._id;
+    if (nestedId instanceof mongoose.Types.ObjectId) {
+      return nestedId.equals(authId);
+    }
+    if (nestedId != null) {
+      return String(nestedId) === authId.toString();
+    }
+  }
+
+  if (id == null) {
+    return false;
+  }
+
+  return String(id) === authId.toString();
+}
+
 /**
  * Atomically removes the user from tournament participants.
  */
@@ -24,16 +46,9 @@ export async function leaveTournamentFlow(
   }
 
   const participantIds = tournament.participants ?? [];
-  const userIsParticipant = participantIds.some((id) => {
-    if (id instanceof mongoose.Types.ObjectId) {
-      return id.equals(authSession._id);
-    }
-    if (typeof id === "object" && id !== null && "_id" in id) {
-      const oid = (id as { _id: mongoose.Types.ObjectId })._id;
-      return oid.equals(authSession._id);
-    }
-    return false;
-  });
+  const userIsParticipant = participantIds.some((id) =>
+    isSameParticipantId(id, authSession._id)
+  );
 
   if (!userIsParticipant) {
     return error(400, "You are not a participant in this tournament");
@@ -47,7 +62,9 @@ export async function leaveTournamentFlow(
   }
 
   const mongoSession = await mongoose.startSession();
-  let returnedDoc = null;
+  let returnedDoc: Awaited<
+    ReturnType<typeof pullTournamentParticipantIfNotScheduled>
+  > | null = null;
 
   try {
     returnedDoc = await mongoSession.withTransaction(async () => {
@@ -94,7 +111,7 @@ export async function leaveTournamentFlow(
     }
 
     const stillParticipant = (fresh.participants ?? []).some(
-      (id) => id.toString() === authSession._id.toString()
+      (id) => isSameParticipantId(id, authSession._id)
     );
 
     if (!stillParticipant) {

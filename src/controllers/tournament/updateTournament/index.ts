@@ -105,12 +105,22 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
         res.status(400).json(buildErrorPayload(message || "Tournament publish validation failed"));
         return;
       }
+      const normalizedPublishCandidate = {
+        ...publishValidation.data,
+        duration: publishValidation.data.duration ?? 60,
+        breakDuration: publishValidation.data.breakDuration ?? 0,
+      };
 
       const clubCourtIds = await getClubCourtIds(clubId);
       if (clubCourtIds.length === 0) {
         res.status(400).json(
           buildErrorPayload("Selected club has no courts. Add at least one court before publishing this tournament.")
         );
+        return;
+      }
+
+      if (normalizedPublishCandidate.tournamentMode === "singleDay" && normalizedPublishCandidate.date == null) {
+        res.status(400).json(buildErrorPayload("Tournament date is required"));
         return;
       }
     }

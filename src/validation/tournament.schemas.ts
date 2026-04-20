@@ -77,18 +77,8 @@ const publishFields = {
 	maxMember: memberCountSchema,
 	totalRounds: totalRoundsSchema,
 	status: z.literal('active'),
-	duration: z
-		.coerce
-		.number()
-		.int('Playing time must be a whole number of minutes')
-		.min(5, 'Playing time must be at least 5 minutes')
-		.max(240, 'Playing time must be at most 240 minutes'),
-	breakDuration: z
-		.coerce
-		.number()
-		.int('Game pause time must be a whole number of minutes')
-		.min(0, 'Game pause time cannot be negative')
-		.max(120, 'Game pause time must be at most 120 minutes'),
+	duration: nullableDurationMinutes,
+	breakDuration: nullableBreakMinutes,
 	startTime: z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)').optional().nullable(),
 	endTime: z.string().trim().regex(timeRegex, 'Invalid end time (expected HH:mm)').optional().nullable()
 } satisfies z.ZodRawShape;

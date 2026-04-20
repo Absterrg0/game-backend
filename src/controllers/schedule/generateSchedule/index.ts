@@ -4,7 +4,7 @@ import type { AuthenticatedRequest } from "../../../shared/authContext";
 import { buildErrorPayload } from "../../../shared/errors";
 import { guardIdParam } from "../../../shared/guards";
 import { mapGenerateScheduleResponse } from "./mapper";
-import { persistSinglesScheduleRound } from "./handler";
+import { persistScheduleRound } from "./handler";
 import { generateScheduleSchema } from "../shared/validation";
 import { authorizeScheduleAccess } from "../shared/authorize";
 import { fetchTournamentScheduleContext } from "../shared/queries";
@@ -55,7 +55,7 @@ export async function generateSchedule(req: AuthenticatedRequest, res: Response)
     }
 
     try {
-      const result = await persistSinglesScheduleRound(tournament, bodyResult.data);
+      const result = await persistScheduleRound(tournament, bodyResult.data);
 
       res.status(200).json(
         mapGenerateScheduleResponse(

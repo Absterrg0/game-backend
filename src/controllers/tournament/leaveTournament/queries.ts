@@ -3,15 +3,22 @@ import Schedule from "../../../models/Schedule";
 import Tournament from "../../../models/Tournament";
 import type { LeaveTournamentPullLean, LeaveTournamentTournamentDoc } from "./types";
 
-export async function findTournamentForLeave(tournamentId: string) {
+function buildLeaveTournamentQuery(tournamentId: string) {
   return Tournament.findById(tournamentId)
     .select("participants firstRoundScheduledAt schedule")
+    .populate({
+      path: "participants",
+      select: "name alias",
+    })
     .populate({
       path: "schedule",
       select: "currentRound rounds.round",
     })
-    .lean<LeaveTournamentTournamentDoc>()
-    .exec();
+    .lean<LeaveTournamentTournamentDoc>();
+}
+
+export async function findTournamentForLeave(tournamentId: string) {
+  return buildLeaveTournamentQuery(tournamentId).exec();
 }
 
 export async function scheduleHasProgressBlockingLeave(
@@ -50,12 +57,5 @@ export async function pullTournamentParticipantIfNotScheduled(
 }
 
 export async function findTournamentForLeaveConflictCheck(tournamentId: string) {
-  return Tournament.findById(tournamentId)
-    .select("participants firstRoundScheduledAt schedule")
-    .populate({
-      path: "schedule",
-      select: "currentRound rounds.round",
-    })
-    .lean<LeaveTournamentTournamentDoc>()
-    .exec();
+  return buildLeaveTournamentQuery(tournamentId).exec();
 }
