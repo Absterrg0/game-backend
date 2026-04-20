@@ -23,6 +23,10 @@ export interface PopulatedMatchPlayerDoc {
   _id: Types.ObjectId;
   name?: string | null;
   alias?: string | null;
+  elo?: {
+    rating?: number | null;
+    rd?: number | null;
+  } | null;
 }
 
 /**
@@ -75,7 +79,7 @@ export interface TournamentMatchResponse {
   startTime: string | null;
   score: MatchScoreResponse;
   court: MatchCourtResponse;
-  primaryPlayers: [MatchPlayerResponse, MatchPlayerResponse];
+  players: [MatchPlayerResponse, MatchPlayerResponse];
   side1: [MatchPlayerResponse, MatchPlayerResponse | null];
   side2: [MatchPlayerResponse, MatchPlayerResponse | null];
 }

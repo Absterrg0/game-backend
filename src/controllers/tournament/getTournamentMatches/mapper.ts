@@ -14,6 +14,10 @@ const EMPTY_PLAYER: MatchPlayerResponse = {
   id: "",
   name: null,
   alias: null,
+  elo: {
+    rating: null,
+    rd: null,
+  },
 };
 
 function mapStatus(status: GameStatus): MatchStatusResponse {
@@ -56,10 +60,23 @@ function mapPlayer(player: GameMatchPlayerSlot) {
     return null;
   }
 
+  const rating =
+    typeof player.elo?.rating === "number" && Number.isFinite(player.elo.rating)
+      ? player.elo.rating
+      : null;
+  const rd =
+    typeof player.elo?.rd === "number" && Number.isFinite(player.elo.rd)
+      ? player.elo.rd
+      : null;
+
   return {
     id: player._id.toString(),
     name: player.name ?? null,
     alias: player.alias ?? null,
+    elo: {
+      rating,
+      rd,
+    },
   };
 }
 
@@ -92,7 +109,7 @@ function mapGameToMatch(
   const playerOne = team1[0] ?? EMPTY_PLAYER;
   const playerTwo = team2[0] ?? EMPTY_PLAYER;
 
-  const primaryPlayers: [MatchPlayerResponse, MatchPlayerResponse] = [playerOne, playerTwo];
+  const players: [MatchPlayerResponse, MatchPlayerResponse] = [playerOne, playerTwo];
   const side1: [MatchPlayerResponse, MatchPlayerResponse | null] = [playerOne, team1[1] ?? null];
   const side2: [MatchPlayerResponse, MatchPlayerResponse | null] = [playerTwo, team2[1] ?? null];
 
@@ -112,7 +129,7 @@ function mapGameToMatch(
       id: game.court?._id?.toString() ?? null,
       name: game.court?.name ?? null,
     },
-    primaryPlayers,
+    players,
     side1,
     side2,
   };
