@@ -27,6 +27,7 @@ export interface ScheduleClubInfoRaw {
 
 export interface ScheduleParticipantElo {
   rating: number | null;
+  rd: number | null;
 }
 
 export interface ScheduleParticipantInfo {
@@ -40,7 +41,7 @@ export interface ScheduleParticipantInfoRaw {
   _id?: DbIdLike | null;
   name?: string | null;
   alias?: string | null;
-  elo?: { rating?: number | null } | null;
+  elo?: { rating?: number | null; rd?: number | null } | null;
 }
 
 export interface TournamentScheduleContext {
@@ -53,7 +54,6 @@ export interface TournamentScheduleContext {
   startTime: string | null;
   duration: number | null;
   breakDuration: number | null;
-  matchesPerPlayer: number;
   totalRounds: number;
   playMode: TournamentPlayMode;
   createdBy: Types.ObjectId;
@@ -72,13 +72,12 @@ export interface TournamentScheduleContextRaw {
   startTime?: string | null;
   duration?: number | null;
   breakDuration?: number | null;
-  matchesPerPlayer?: number | null;
   totalRounds?: number | null;
   playMode?: TournamentPlayMode | null;
   createdBy?: DbIdLike | null;
   club?: ScheduleClubInfoRaw | null;
   participants?: ScheduleParticipantInfoRaw[] | null;
-  schedule?: DbIdLike | { _id?: DbIdLike; matchesPerPlayer?: number | null } | null;
+  schedule?: DbIdLike | null;
 }
 
 export interface ScheduleInputResponse {
@@ -100,6 +99,7 @@ export interface ScheduleParticipantResponse {
   alias: string | null;
   skillLabel: string;
   rating: number;
+  rd: number;
   order: number;
 }
 
@@ -121,7 +121,7 @@ export interface GenerateScheduleBody {
   mode: ScheduleMode;
   matchDurationMinutes?: number;
   breakTimeMinutes?: number;
-  matchesPerPlayer: number;
+  matchesPerPlayer?: number;
   startTime: string;
   courtIds: string[];
   participantOrder: string[];
