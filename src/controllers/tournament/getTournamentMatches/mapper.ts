@@ -92,7 +92,7 @@ function mapGameToMatch(
   const playerOne = team1[0] ?? EMPTY_PLAYER;
   const playerTwo = team2[0] ?? EMPTY_PLAYER;
 
-  const players = [playerOne, playerTwo];
+  const primaryPlayers = [playerOne, playerTwo];
   const side1 = [playerOne, team1[1] ?? null];
   const side2 = [playerTwo, team2[1] ?? null];
 
@@ -112,7 +112,7 @@ function mapGameToMatch(
       id: game.court?._id?.toString() ?? null,
       name: game.court?.name ?? null,
     },
-    players,
+    primaryPlayers,
     side1,
     side2,
   };

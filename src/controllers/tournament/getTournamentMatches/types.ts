@@ -75,7 +75,7 @@ export interface TournamentMatchResponse {
   startTime: string | null;
   score: MatchScoreResponse;
   court: MatchCourtResponse;
-  players: [MatchPlayerResponse, MatchPlayerResponse];
+  primaryPlayers: [MatchPlayerResponse, MatchPlayerResponse];
   side1: [MatchPlayerResponse, MatchPlayerResponse | null];
   side2: [MatchPlayerResponse, MatchPlayerResponse | null];
 }

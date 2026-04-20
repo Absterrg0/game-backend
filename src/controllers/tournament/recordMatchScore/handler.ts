@@ -4,6 +4,7 @@ import Game from "../../../models/Game";
 import Schedule from "../../../models/Schedule";
 import Tournament from "../../../models/Tournament";
 import User from "../../../models/User";
+import { AppError } from "../../../shared/errors";
 import type { GamePlayMode } from "../../../types/domain/game";
 import type { RecordMatchScoreInput } from "./validation";
 
@@ -124,7 +125,7 @@ function toRatingState(user: {
 function getStateOrThrow(states: Map<string, RatingState>, id: string) {
   const state = states.get(id);
   if (!state) {
-    throw new Error("Unable to resolve player rating state");
+    throw new AppError(`Unable to resolve player rating state for participant ${id}`, 400);
   }
   return state;
 }
@@ -227,7 +228,7 @@ export async function recordTournamentMatchScoreFlow(
         .exec();
 
       if (!game) {
-        throw new Error("Tournament match not found");
+        throw new AppError("Tournament match not found", 404);
       }
 
       const now = new Date();
@@ -238,9 +239,14 @@ export async function recordTournamentMatchScoreFlow(
       game.startTime = game.startTime ?? now;
 
       const setsRequired = requiredSetCount(game.playMode);
-      if (input.playerOneScores.length > setsRequired || input.playerTwoScores.length > setsRequired) {
-        throw new Error(
-          `At most ${setsRequired} set scores are required for this ${game.playMode} match (required)`
+      if (
+        input.playerOneScores.length > setsRequired ||
+        input.playerTwoScores.length > setsRequired ||
+        input.playerOneScores.length !== input.playerTwoScores.length
+      ) {
+        throw new AppError(
+          `Matching playerOneScores/playerTwoScores arrays (at most ${setsRequired}) are required before flattenOutcomeSegments for ${game.playMode} matches`,
+          400
         );
       }
 
@@ -261,7 +267,7 @@ export async function recordTournamentMatchScoreFlow(
 
       const outcomes = flattenOutcomeSegments(input);
       if (outcomes.length === 0) {
-        throw new Error("At least one score outcome is required");
+        throw new AppError("At least one score outcome is required", 400);
       }
 
       game.status = "finished";
@@ -275,7 +281,7 @@ export async function recordTournamentMatchScoreFlow(
 
       const uniqueParticipantIds = [...new Set(participantIds.map((id) => id.toString()))];
       if (uniqueParticipantIds.length < 2) {
-        throw new Error("Match is missing participants");
+        throw new AppError("Match is missing participants", 400);
       }
 
       const users = await User.find({ _id: { $in: uniqueParticipantIds } })
@@ -287,14 +293,14 @@ export async function recordTournamentMatchScoreFlow(
 
       const byUserId = new Map(users.map((user) => [user._id.toString(), user]));
       if (byUserId.size !== uniqueParticipantIds.length) {
-        throw new Error("One or more match participants no longer exist");
+        throw new AppError("One or more match participants no longer exist", 400);
       }
 
       const states = new Map<string, RatingState>();
       for (const participantId of uniqueParticipantIds) {
         const user = byUserId.get(participantId);
         if (!user) {
-          throw new Error("Unable to resolve participant rating");
+          throw new AppError("Unable to resolve participant rating", 400);
         }
         states.set(participantId, toRatingState(user));
       }
@@ -304,7 +310,7 @@ export async function recordTournamentMatchScoreFlow(
 
       if (game.matchType === "singles") {
         if (teamOneIds.length !== 1 || teamTwoIds.length !== 1) {
-          throw new Error("Singles match must contain exactly one player per team");
+          throw new AppError("Singles match must contain exactly one player per team", 400);
         }
 
         const playerOneId = teamOneIds[0];
@@ -320,7 +326,7 @@ export async function recordTournamentMatchScoreFlow(
         }
       } else {
         if (teamOneIds.length !== 2 || teamTwoIds.length !== 2) {
-          throw new Error("Doubles match must contain exactly two players per team");
+          throw new AppError("Doubles match must contain exactly two players per team", 400);
         }
 
         for (const score of outcomes) {
@@ -435,8 +441,9 @@ export async function recordTournamentMatchScoreFlow(
     });
 
     if (!persisted) {
-      throw new Error(
-        `Transaction aborted: failed to persist tournament match score (matchId=${matchId}, tournamentId=${tournamentId})`
+      throw new AppError(
+        `Transaction aborted: failed to persist tournament match score (matchId=${matchId}, tournamentId=${tournamentId})`,
+        500
       );
     }
 

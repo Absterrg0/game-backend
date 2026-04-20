@@ -86,7 +86,7 @@ export type TournamentPopulated = Omit<
 		link?: string | null;
 	} | null;
 	participants?: Array<{
-		_id?: mongoose.Types.ObjectId;
+		_id: mongoose.Types.ObjectId;
 		name?: string | null;
 		alias?: string | null;
 	}>;

@@ -201,7 +201,7 @@ tournamentSchema.pre('save', async function () {
 	if (this.schedule) return;
 
 	try {
-		const session = this.$session?.();
+		const session = this.$session();
 		const schedule = await Schedule.findOneAndUpdate(
 			{ tournament: this._id },
 			{ $setOnInsert: { tournament: this._id, currentRound: 0 } },
@@ -217,9 +217,11 @@ tournamentSchema.pre('save', async function () {
 			.lean()
 			.exec();
 
-		if (schedule?._id) {
-			this.schedule = schedule._id;
+		if (!schedule?._id) {
+			LogError('Tournament', 'save', 'pre(save)/schedule-missing', new Error('Schedule upsert returned without _id'));
+			throw new Error('Unable to resolve schedule id during tournament save');
 		}
+		this.schedule = schedule._id;
 	} catch (err) {
 		LogError('Tournament', 'save', 'pre(save)/schedule-link', err);
 		throw err;
