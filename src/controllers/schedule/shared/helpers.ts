@@ -134,10 +134,13 @@ export function computeMatchStartTime(
   baseDate: Date | null,
   startTime: string,
   slotNumber: number,
-  body: { matchDurationMinutes: number; breakTimeMinutes: number }
+  body: { matchDurationMinutes: number; breakTimeMinutes: number },
+  options?: { windowEndTime?: string | null }
 ): Date {
   const now = new Date();
-  const dateRef = baseDate ? new Date(baseDate) : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateRef = baseDate
+    ? new Date(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate(), 0, 0, 0, 0)
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
   if (!/^\d{1,2}:\d{1,2}$/.test(startTime)) {
     throw new Error(`Invalid startTime format: expected "HH:MM", got "${startTime}"`);
@@ -152,13 +155,50 @@ export function computeMatchStartTime(
     throw new Error(`Invalid startTime values: hour=${hourText}, minute=${minuteText}`);
   }
 
-  dateRef.setUTCHours(hour, minute, 0, 0);
+  const toMinutes = (value: string | null | undefined): number | null => {
+    if (!value || !/^\d{1,2}:\d{1,2}$/.test(value)) {
+      return null;
+    }
+    const [hText, mText] = value.split(":");
+    const h = Number.parseInt(hText, 10);
+    const m = Number.parseInt(mText, 10);
+    if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+      return null;
+    }
+    return h * 60 + m;
+  };
 
-  const timeBlock = body.matchDurationMinutes + body.breakTimeMinutes;
+  const startMinutes = hour * 60 + minute;
+
+  const timeBlock = Math.max(1, body.matchDurationMinutes + body.breakTimeMinutes);
   const normalizedSlot =
     Number.isFinite(slotNumber) && slotNumber >= 1 ? Math.trunc(slotNumber) : 1;
   const wave = Math.max(0, normalizedSlot - 1);
-  dateRef.setUTCMinutes(dateRef.getUTCMinutes() + wave * timeBlock);
+
+  let waveInDay = wave;
+  let dayOffset = 0;
+
+  const endMinutes = toMinutes(options?.windowEndTime ?? null);
+  const canUseWindow = endMinutes != null && endMinutes > startMinutes;
+
+  if (canUseWindow) {
+    const windowMinutes = endMinutes - startMinutes;
+    const hasRoomForOneMatch = windowMinutes >= body.matchDurationMinutes;
+
+    if (hasRoomForOneMatch) {
+      const wavesPerDay =
+        Math.floor((windowMinutes - body.matchDurationMinutes) / timeBlock) + 1;
+      const normalizedWavesPerDay = Math.max(1, wavesPerDay);
+      dayOffset = Math.floor(wave / normalizedWavesPerDay);
+      waveInDay = wave % normalizedWavesPerDay;
+    }
+    // If no match can finish inside the configured window, we intentionally do
+    // not roll over to the next day and allow overflow from the tournament day.
+  }
+
+  dateRef.setDate(dateRef.getDate() + dayOffset);
+  dateRef.setHours(hour, minute, 0, 0);
+  dateRef.setMinutes(dateRef.getMinutes() + waveInDay * timeBlock);
 
   return dateRef;
 }
