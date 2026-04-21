@@ -19,14 +19,11 @@ function nullableStringEqual(
 }
 
 /**
- * When a tournament is active and has enrolled participants, blocks schedule
- * changes and ensures capacity stays consistent with enrollment. Applies even
- * when the payload sets status to draft/inactive so mixed updates cannot bypass
- * these checks.
- *
- * Note: `minMember` is intentionally not tied to current enrollment here.
- * Tournament start is gated by schedule-generation rules, not by update-time
- * enrollment checks.
+ * When a tournament is active and has enrolled participants, blocks changing
+ * date/times and ensures maxMember is not below current enrollment. minMember
+ * may exceed enrollment until a single-day schedule is committed (see
+ * scheduleActivationEnrollment). Applies even when the payload sets status to
+ * draft/inactive so mixed updates cannot bypass these checks.
  */
 export function validateActiveTournamentEnrolledUpdate(
   tournament: TournamentForUpdateAuth,
