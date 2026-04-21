@@ -4,252 +4,28 @@ import Schedule from "../../../models/Schedule.js";
 import Tournament from "../../../models/Tournament";
 import type { GameStatus } from "../../../types/domain/game";
 import {
+  buildRoundPairs,
+  ensureMinimumParticipants,
+  type MatchPair,
+} from "./pairingFromDemand";
+import {
   computeMatchStartTime,
   getParticipantOrder,
 } from "../shared/helpers";
 import { parseDurationMinutes, resolveTimedGameStatus } from "../../../shared/matchTiming";
 import type {
   GenerateScheduleBody,
-  ScheduleParticipantInfo,
-  ScheduleMode,
   TournamentScheduleContext,
 } from "../shared/types";
-
-interface SinglesMatchPair {
-  kind: "singles";
-  teamOne: [mongoose.Types.ObjectId];
-  teamTwo: [mongoose.Types.ObjectId];
-}
-
-interface DoublesMatchPair {
-  kind: "doubles";
-  teamOne: [mongoose.Types.ObjectId, mongoose.Types.ObjectId];
-  teamTwo: [mongoose.Types.ObjectId, mongoose.Types.ObjectId];
-}
-
-type MatchPair = SinglesMatchPair | DoublesMatchPair;
 type ScheduleRoundEntryLike = {
   game: mongoose.Types.ObjectId;
   slot: number;
   round: number;
-  mode: ScheduleMode;
+  mode: GenerateScheduleBody["mode"];
 };
 
 const DEFAULT_MATCH_DURATION_MINUTES = 60;
 const DEFAULT_BREAK_TIME_MINUTES = 5;
-
-function ensureMinimumParticipants(mode: ScheduleMode, count: number) {
-  if (mode === "singles" && count < 2) {
-    throw new Error("At least two participants are required for singles scheduling");
-  }
-  if (mode === "doubles" && count < 4) {
-    throw new Error("At least four participants are required for doubles scheduling");
-  }
-}
-
-function selectExtraRecipients(participantIds: string[], extrasNeeded: number, roundSeed: number) {
-  if (extrasNeeded <= 0 || participantIds.length === 0) {
-    return [] as string[];
-  }
-
-  const indexed = participantIds.map((id, index) => ({ id, index, rotated: 0 }));
-  const seed = ((Math.trunc(roundSeed) % participantIds.length) + participantIds.length) % participantIds.length;
-
-  for (const item of indexed) {
-    item.rotated = (item.index - seed + participantIds.length) % participantIds.length;
-  }
-
-  indexed.sort((left, right) => left.rotated - right.rotated || left.id.localeCompare(right.id));
-
-  return indexed.slice(0, Math.min(extrasNeeded, indexed.length)).map((item) => item.id);
-}
-
-function getDemandForRound(
-  participants: ScheduleParticipantInfo[],
-  mode: ScheduleMode,
-  matchesPerPlayer: number,
-  roundSeed: number
-) {
-  const participantIds = participants.map((participant) => participant._id.toString());
-  const demandById = new Map<string, number>();
-  for (const participantId of participantIds) {
-    demandById.set(participantId, matchesPerPlayer);
-  }
-
-  const baseAppearances = participantIds.length * matchesPerPlayer;
-  const bucketSize = mode === "singles" ? 2 : 4;
-  let extrasNeeded = (bucketSize - (baseAppearances % bucketSize)) % bucketSize;
-
-  const extraRecipients = selectExtraRecipients(participantIds, extrasNeeded, roundSeed);
-
-  for (const playerId of extraRecipients) {
-    const current = demandById.get(playerId) ?? matchesPerPlayer;
-    demandById.set(playerId, current + 1);
-  }
-
-  return {
-    demandById,
-    totalAppearances: [...demandById.values()].reduce((sum, value) => sum + value, 0),
-  };
-}
-
-function nextHighestDemand(
-  demandById: Map<string, number>,
-  participantIndex: Map<string, number>,
-  excluded: Set<string>,
-  preferredPairKey?: string,
-  pairCounts?: Map<string, number>
-) {
-  const candidates = [...demandById.entries()]
-    .filter(([id, demand]) => demand > 0 && !excluded.has(id))
-    .map(([id, demand]) => ({ id, demand }));
-
-  candidates.sort((left, right) => {
-    if (left.demand !== right.demand) {
-      return right.demand - left.demand;
-    }
-
-    if (preferredPairKey && pairCounts) {
-      const leftPairCount = pairCounts.get(`${preferredPairKey}:${left.id}`) ?? pairCounts.get(`${left.id}:${preferredPairKey}`) ?? 0;
-      const rightPairCount = pairCounts.get(`${preferredPairKey}:${right.id}`) ?? pairCounts.get(`${right.id}:${preferredPairKey}`) ?? 0;
-      if (leftPairCount !== rightPairCount) {
-        return leftPairCount - rightPairCount;
-      }
-    }
-
-    const leftIndex = participantIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-    const rightIndex = participantIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-    if (leftIndex !== rightIndex) {
-      return leftIndex - rightIndex;
-    }
-
-    return left.id.localeCompare(right.id);
-  });
-
-  return candidates[0]?.id ?? null;
-}
-
-function decrementDemand(demandById: Map<string, number>, playerId: string) {
-  const next = (demandById.get(playerId) ?? 0) - 1;
-  if (next <= 0) {
-    demandById.delete(playerId);
-    return;
-  }
-  demandById.set(playerId, next);
-}
-
-function buildSinglesPairs(participants: ScheduleParticipantInfo[], demandById: Map<string, number>) {
-  const byId = new Map(participants.map((participant) => [participant._id.toString(), participant]));
-  const participantIndex = new Map(participants.map((participant, index) => [participant._id.toString(), index]));
-  const pairCounts = new Map<string, number>();
-  const pairs: SinglesMatchPair[] = [];
-
-  while (demandById.size > 0) {
-    const playerOneId = nextHighestDemand(demandById, participantIndex, new Set<string>());
-    if (!playerOneId) {
-      break;
-    }
-
-    const playerTwoId = nextHighestDemand(
-      demandById,
-      participantIndex,
-      new Set([playerOneId]),
-      playerOneId,
-      pairCounts
-    );
-
-    if (!playerTwoId) {
-      throw new Error("Unable to complete singles pairing with current constraints");
-    }
-
-    const playerOne = byId.get(playerOneId);
-    const playerTwo = byId.get(playerTwoId);
-    if (!playerOne || !playerTwo) {
-      throw new Error("Unable to resolve singles participants for pairing");
-    }
-
-    pairs.push({
-      kind: "singles",
-      teamOne: [playerOne._id],
-      teamTwo: [playerTwo._id],
-    });
-
-    decrementDemand(demandById, playerOneId);
-    decrementDemand(demandById, playerTwoId);
-
-    const key = playerOneId < playerTwoId ? `${playerOneId}:${playerTwoId}` : `${playerTwoId}:${playerOneId}`;
-    pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
-  }
-
-  return pairs;
-}
-
-function buildDoublesPairs(participants: ScheduleParticipantInfo[], demandById: Map<string, number>) {
-  const byId = new Map(participants.map((participant) => [participant._id.toString(), participant]));
-  const participantIndex = new Map(participants.map((participant, index) => [participant._id.toString(), index]));
-  const pairs: DoublesMatchPair[] = [];
-
-  while (demandById.size > 0) {
-    const selected: string[] = [];
-    for (let i = 0; i < 4; i += 1) {
-      const next = nextHighestDemand(demandById, participantIndex, new Set(selected));
-      if (!next) {
-        throw new Error("Unable to complete doubles pairing with current constraints");
-      }
-      selected.push(next);
-    }
-
-    const [a, b, c, d] = selected;
-    const playerA = byId.get(a);
-    const playerB = byId.get(b);
-    const playerC = byId.get(c);
-    const playerD = byId.get(d);
-
-    if (!playerA || !playerB || !playerC || !playerD) {
-      throw new Error("Unable to resolve doubles participants for pairing");
-    }
-
-    // Snake team split keeps rating/order balance tighter than adjacent pairing.
-    pairs.push({
-      kind: "doubles",
-      teamOne: [playerA._id, playerD._id],
-      teamTwo: [playerB._id, playerC._id],
-    });
-
-    decrementDemand(demandById, a);
-    decrementDemand(demandById, b);
-    decrementDemand(demandById, c);
-    decrementDemand(demandById, d);
-  }
-
-  return pairs;
-}
-
-function buildRoundPairs(
-  participants: ScheduleParticipantInfo[],
-  mode: ScheduleMode,
-  matchesPerPlayer: number,
-  round: number
-) {
-  const { demandById, totalAppearances } = getDemandForRound(
-    participants,
-    mode,
-    matchesPerPlayer,
-    round
-  );
-
-  const bucket = mode === "singles" ? 2 : 4;
-  if (totalAppearances % bucket !== 0) {
-    throw new Error("Unable to distribute matches per player with current participants");
-  }
-
-  const pairs =
-    mode === "singles"
-      ? buildSinglesPairs(participants, demandById)
-      : buildDoublesPairs(participants, demandById);
-
-  return { pairs };
-}
 
 async function ensurePreviousRoundFinished(
   scheduleDoc: {
@@ -337,22 +113,6 @@ export async function persistScheduleRound(
   currentRound: number;
   generatedMatches: number;
 }> {
-  const availableCourtIds = new Set(
-    (tournament.club?.courts ?? []).map((court) => court._id.toString())
-  );
-  const invalidCourtIds = body.courtIds.filter((courtId) => !availableCourtIds.has(courtId));
-  if (invalidCourtIds.length > 0) {
-    throw new Error(`Invalid courtIds provided: ${invalidCourtIds.join(", ")}`);
-  }
-  const uniqueCourtIds = [...new Set(body.courtIds)];
-  if (uniqueCourtIds.length === 0) {
-    throw new Error("At least one valid court must be selected");
-  }
-
-  const selectedParticipants = getParticipantOrder(body.participantOrder, tournament.participants);
-  ensureMinimumParticipants(body.mode, selectedParticipants.length);
-  const resolvedMatchesPerPlayer = body.matchesPerPlayer ?? 1;
-
   const session = await mongoose.startSession();
   let result: {
     scheduleId: mongoose.Types.ObjectId;
@@ -362,17 +122,57 @@ export async function persistScheduleRound(
 
   try {
     await session.withTransaction(async () => {
-      let scheduleDoc = tournament.schedule
-        ? await Schedule.findById(tournament.schedule).session(session).exec()
+      const freshTournament = await Tournament.findById(tournament._id)
+        .select(
+          "_id totalRounds tournamentMode date startTime duration breakDuration playMode participants club schedule"
+        )
+        .populate({
+          path: "club",
+          select: "_id",
+          populate: {
+            path: "courts",
+            select: "_id name",
+          },
+        })
+        .populate("participants", "name alias elo.rating elo.rd")
+        .session(session)
+        .lean<TournamentScheduleContext | null>()
+        .exec();
+
+      if (!freshTournament) {
+        throw new Error("Tournament not found");
+      }
+
+      const availableCourtIds = new Set(
+        (freshTournament.club?.courts ?? []).map((court) => court._id.toString())
+      );
+      const invalidCourtIds = body.courtIds.filter((courtId) => !availableCourtIds.has(courtId));
+      if (invalidCourtIds.length > 0) {
+        throw new Error(`Invalid courtIds provided: ${invalidCourtIds.join(", ")}`);
+      }
+      const uniqueCourtIds = [...new Set(body.courtIds)];
+      if (uniqueCourtIds.length === 0) {
+        throw new Error("At least one valid court must be selected");
+      }
+
+      const selectedParticipants = getParticipantOrder(
+        body.participantOrder,
+        freshTournament.participants
+      );
+      ensureMinimumParticipants(body.mode, selectedParticipants.length);
+
+      let scheduleDoc = freshTournament.schedule
+        ? await Schedule.findById(freshTournament.schedule).session(session).exec()
         : null;
 
       if (!scheduleDoc) {
         scheduleDoc = await Schedule.findOneAndUpdate(
-          { tournament: tournament._id },
+          { tournament: freshTournament._id },
           {
             $setOnInsert: {
-              tournament: tournament._id,
+              tournament: freshTournament._id,
               currentRound: 0,
+              matchesPerPlayer: body.matchesPerPlayer ?? 1,
               rounds: [],
               status: "draft",
             },
@@ -392,14 +192,16 @@ export async function persistScheduleRound(
       }
 
       const targetRound = body.round;
-      if (targetRound > tournament.totalRounds) {
-        throw new Error(`Round ${targetRound} exceeds totalRounds limit (${tournament.totalRounds})`);
+      if (targetRound > freshTournament.totalRounds) {
+        throw new Error(`Round ${targetRound} exceeds totalRounds limit (${freshTournament.totalRounds})`);
       }
 
       const roundMatchDurationMinutes =
         typeof scheduleDoc.matchDurationMinutes === "number" && Number.isFinite(scheduleDoc.matchDurationMinutes)
           ? Math.max(5, Math.trunc(scheduleDoc.matchDurationMinutes))
-          : parseDurationMinutes(tournament.duration ?? null, DEFAULT_MATCH_DURATION_MINUTES);
+          : parseDurationMinutes(freshTournament.duration ?? null, DEFAULT_MATCH_DURATION_MINUTES);
+
+      const resolvedMatchesPerPlayer = body.matchesPerPlayer ?? scheduleDoc.matchesPerPlayer ?? 1;
 
       await ensurePreviousRoundFinished(
         scheduleDoc,
@@ -451,7 +253,7 @@ export async function persistScheduleRound(
         targetRound
       );
 
-      const isScheduledTournament = tournament.tournamentMode === "singleDay";
+      const isScheduledTournament = freshTournament.tournamentMode === "singleDay";
       const resolvedMatchDurationMinutes =
         body.matchDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES;
       const resolvedBreakTimeMinutes =
@@ -478,14 +280,14 @@ export async function persistScheduleRound(
         const slot = Math.floor(index / matchesPerWave) + 1;
         const common = {
           court: new mongoose.Types.ObjectId(uniqueCourtIds[index % uniqueCourtIds.length]),
-          tournament: tournament._id,
+          tournament: freshTournament._id,
           schedule: scheduleDoc._id,
           score: {
             playerOneScores: [],
             playerTwoScores: [],
           },
           startTime: computeMatchStartTime(
-            tournament.date,
+            freshTournament.date,
             body.startTime,
             slot,
             {
@@ -495,7 +297,7 @@ export async function persistScheduleRound(
           ),
           status: "draft" as const,
           gameMode: "tournament" as const,
-          playMode: tournament.playMode,
+          playMode: freshTournament.playMode,
         };
 
         if (pair.kind === "singles") {
@@ -534,6 +336,7 @@ export async function persistScheduleRound(
 
       scheduleDoc.currentRound = Math.max(scheduleDoc.currentRound, targetRound);
       scheduleDoc.status = "active";
+      scheduleDoc.matchesPerPlayer = resolvedMatchesPerPlayer;
       scheduleDoc.matchDurationMinutes = isScheduledTournament
         ? resolvedMatchDurationMinutes
         : null;
@@ -555,7 +358,7 @@ export async function persistScheduleRound(
       }
 
       await Tournament.updateOne(
-        { _id: tournament._id },
+        { _id: freshTournament._id },
         {
           $set: tournamentSet,
         },
@@ -565,7 +368,7 @@ export async function persistScheduleRound(
       if (targetRound === 1) {
         await Tournament.updateOne(
           {
-            _id: tournament._id,
+            _id: freshTournament._id,
             $or: [
               { firstRoundScheduledAt: { $exists: false } },
               { firstRoundScheduledAt: null },

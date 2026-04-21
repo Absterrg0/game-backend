@@ -12,6 +12,20 @@ import { validateActiveTournamentEnrolledUpdate } from "./activeEnrolledUpdate";
 import { validateScheduleActivationEnrollment } from "./scheduleActivationEnrollment";
 import { publishSchema } from "../../../validation/tournament.schemas";
 
+function normalizePublishCandidateWithValidation(publishCandidate: Record<string, unknown>) {
+  const publishValidation = publishSchema.safeParse(publishCandidate);
+  if (!publishValidation.success) {
+    const message = publishValidation.error.issues.map((issue) => issue.message).join("; ");
+    throw new Error(`publish validation failed: ${message || "Tournament publish validation failed"}`);
+  }
+
+  return {
+    ...publishValidation.data,
+    duration: publishValidation.data.duration ?? 60,
+    breakDuration: publishValidation.data.breakDuration ?? 0,
+  };
+}
+
 /**
  * PATCH /api/tournaments/:id
  * Update tournament. Existing draft and published tournaments can be updated.
@@ -111,24 +125,14 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
         status: "active" as const,
       };
 
-      const shouldValidate =
+      // Skip strict publish validation only when no rounds are provided/stored and this is not draft->active.
+      const needsPublishValidation =
         d.totalRounds !== undefined ||
         t.totalRounds !== undefined ||
         (t.status !== "active" && publishCandidate.status === "active");
 
-      const normalizedPublishCandidate = shouldValidate
-        ? (() => {
-            const publishValidation = publishSchema.safeParse(publishCandidate);
-            if (!publishValidation.success) {
-              const message = publishValidation.error.issues.map((issue) => issue.message).join("; ");
-              throw new Error(`publish validation failed: ${message || "Tournament publish validation failed"}`);
-            }
-            return {
-              ...publishValidation.data,
-              duration: publishValidation.data.duration ?? 60,
-              breakDuration: publishValidation.data.breakDuration ?? 0,
-            };
-          })()
+      const normalizedPublishCandidate = needsPublishValidation
+        ? normalizePublishCandidateWithValidation(publishCandidate)
         : {
             ...publishCandidate,
             duration: publishCandidate.duration ?? 60,

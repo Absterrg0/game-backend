@@ -123,19 +123,14 @@ function toScoreBreakdown(scoreValues: unknown[] | undefined): ScoreBreakdown {
 	};
 }
 
-function resolveMatchMode(playMode: string | null | undefined): MyScoreMatchMode {
-	const mode = playMode?.trim().toLowerCase() ?? '';
-	if (mode.includes('double')) {
-		return 'doubles';
-	}
-
-	return 'singles';
+function resolveMatchMode(_playMode: string | null | undefined): MyScoreMatchMode | null {
+	return null;
 }
 
 function resolveMatchModeFromType(
 	matchType: string | null | undefined,
 	playMode: string | null | undefined
-): MyScoreMatchMode {
+): MyScoreMatchMode | null {
 	if (matchType === 'doubles') {
 		return 'doubles';
 	}
@@ -210,6 +205,9 @@ export function mapGameToMyScoreEntry(game: MyScoreGameDoc, userId: string): MyS
 	}
 
 	const resolvedMode = resolveMatchModeFromType(game.matchType, game.playMode);
+	if (!resolvedMode) {
+		return null;
+	}
 	const isDoubles = resolvedMode === 'doubles';
 	const teamOnePlayers = Array.isArray(game.side1?.players) ? game.side1.players : [];
 	const teamTwoPlayers = Array.isArray(game.side2?.players) ? game.side2.players : [];
