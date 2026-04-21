@@ -23,6 +23,7 @@ const SCHEDULE_CLIENT_ERROR_EXACT = new Set([
   "Failed to assign schedule slot for one or more matches",
   "matchDurationMinutes and breakTimeMinutes are required for scheduled tournaments",
   "Configured schedule window is shorter than a single match duration",
+  "Invalid schedule window endTime: must be a valid HH:MM later than startTime",
 ]);
 
 function isClientScheduleGenerationError(message: string) {

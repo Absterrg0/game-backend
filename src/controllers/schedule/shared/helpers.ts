@@ -178,7 +178,13 @@ export function computeMatchStartTime(
   let waveInDay = wave;
   let dayOffset = 0;
 
+  const hasWindowEndTime = options?.windowEndTime != null;
   const endMinutes = toMinutes(options?.windowEndTime ?? null);
+  if (hasWindowEndTime && (endMinutes == null || endMinutes <= startMinutes)) {
+    throw new Error(
+      "Invalid schedule window endTime: must be a valid HH:MM later than startTime"
+    );
+  }
   const canUseWindow = endMinutes != null && endMinutes > startMinutes;
 
   if (canUseWindow) {
