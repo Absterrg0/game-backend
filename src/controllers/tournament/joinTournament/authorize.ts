@@ -45,7 +45,7 @@ export async function authorizeJoin(
     .select("currentRound")
     .lean<{ currentRound?: number } | null>()
     .exec();
-  if (schedule && (!tournament.firstRoundScheduledAt || (schedule.currentRound ?? 0) >= 1)) {
+  if (schedule && (schedule.currentRound ?? 0) >= 1 && !tournament.firstRoundScheduledAt) {
     return error(400, "Tournament join is closed because scheduling has already started");
   }
 

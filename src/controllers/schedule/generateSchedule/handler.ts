@@ -318,7 +318,8 @@ async function ensurePreviousRoundFinished(
 
   const hasUnfinishedMatch = previousRoundEntries.some((entry) => {
     const status = statusByGameId.get(entry.game.toString());
-    return status !== "finished";
+    // Tournament progression ignores cancelled matches.
+    return status !== "finished" && status !== "cancelled";
   });
 
   if (hasUnfinishedMatch) {
@@ -343,9 +344,8 @@ export async function persistScheduleRound(
   if (invalidCourtIds.length > 0) {
     throw new Error(`Invalid courtIds provided: ${invalidCourtIds.join(", ")}`);
   }
-  const selectedCourtIds = body.courtIds.filter((courtId) => availableCourtIds.has(courtId));
-  const uniqueCourtIds = [...new Set(selectedCourtIds)];
-  if (selectedCourtIds.length === 0) {
+  const uniqueCourtIds = [...new Set(body.courtIds)];
+  if (uniqueCourtIds.length === 0) {
     throw new Error("At least one valid court must be selected");
   }
 
@@ -502,20 +502,16 @@ export async function persistScheduleRound(
           return {
             ...common,
             matchType: "singles" as const,
-            teams: [
-              { players: [pair.teamOne[0]] },
-              { players: [pair.teamTwo[0]] },
-            ],
+            side1: { players: [pair.teamOne[0]] },
+            side2: { players: [pair.teamTwo[0]] },
           };
         }
 
         return {
           ...common,
           matchType: "doubles" as const,
-          teams: [
-            { players: [pair.teamOne[0], pair.teamOne[1]] },
-            { players: [pair.teamTwo[0], pair.teamTwo[1]] },
-          ],
+          side1: { players: [pair.teamOne[0], pair.teamOne[1]] },
+          side2: { players: [pair.teamTwo[0], pair.teamTwo[1]] },
         };
       });
 

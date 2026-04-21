@@ -10,25 +10,36 @@ import type { TournamentForUpdateAuth } from "../../../types/api";
  */
 export async function fetchTournamentForUpdate(id: string) {
   try{
-    const tournament = await Tournament.findById(id)
-      .select(
-        "club createdBy status sponsor name minMember maxMember totalRounds date startTime endTime playMode tournamentMode entryFee duration breakDuration foodInfo descriptionInfo"
-      )
-      .lean<TournamentForUpdateAuth>()
-      .exec();
-    if(!tournament){
-      return error(404, "Tournament not found");
-    }
-    const [meta] = await Tournament.aggregate<{ participantCount: number }>([
+    const [tournament] = await Tournament.aggregate<TournamentForUpdateAuth>([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
       {
         $project: {
+          club: 1,
+          createdBy: 1,
+          status: 1,
+          sponsor: 1,
+          name: 1,
+          minMember: 1,
+          maxMember: 1,
+          totalRounds: 1,
+          date: 1,
+          startTime: 1,
+          endTime: 1,
+          playMode: 1,
+          tournamentMode: 1,
+          entryFee: 1,
+          duration: 1,
+          breakDuration: 1,
+          foodInfo: 1,
+          descriptionInfo: 1,
           participantCount: { $size: { $ifNull: ["$participants", []] } },
         },
       },
     ]);
-    const participantCount = meta?.participantCount ?? 0;
-    return ok({ ...tournament, participantCount } , { status: 200, message: "Tournament fetched successfully" });
+    if(!tournament){
+      return error(404, "Tournament not found");
+    }
+    return ok(tournament , { status: 200, message: "Tournament fetched successfully" });
   }
   catch(err){
     logger.error("Error fetching tournament for update", { err });

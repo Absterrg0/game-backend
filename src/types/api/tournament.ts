@@ -122,6 +122,7 @@ export const tournamentPublishSourceSchema = z
     entryFee: z.number().optional(),
     minMember: z.number().int().min(1),
     maxMember: z.number().int().min(1),
+    totalRounds: z.number().int().min(1).max(100).nullable().optional(),
     duration: z.number().int().min(5).max(240).nullable().optional(),
     breakDuration: z.number().int().min(0).max(120).nullable().optional(),
     foodInfo: z.string().optional(),
@@ -146,6 +147,7 @@ export type NormalizedTournamentPublishSource = {
   entryFee?: number;
   minMember: number;
   maxMember: number;
+  totalRounds?: number;
   duration?: number;
   breakDuration?: number;
   foodInfo: string;
@@ -173,6 +175,7 @@ export function normalizeTournamentPublishSource(
     entryFee: source.entryFee,
     minMember: source.minMember ,
     maxMember: source.maxMember,
+    totalRounds: source.totalRounds ?? undefined,
     duration: source.duration ?? undefined,
     breakDuration: source.breakDuration ?? undefined,
     foodInfo: source.foodInfo ?? "",

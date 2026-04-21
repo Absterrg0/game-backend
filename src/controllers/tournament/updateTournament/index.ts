@@ -11,7 +11,6 @@ import { computeEffectiveSponsor } from "./computeEffectiveSponsor";
 import { validateActiveTournamentEnrolledUpdate } from "./activeEnrolledUpdate";
 import { validateScheduleActivationEnrollment } from "./scheduleActivationEnrollment";
 import { publishSchema } from "../../../validation/tournament.schemas";
-import { getClubCourtIds } from "../createTournament/queries";
 
 /**
  * PATCH /api/tournaments/:id
@@ -112,25 +111,29 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
         status: "active" as const,
       };
 
-      const publishValidation = publishSchema.safeParse(publishCandidate);
-      if (!publishValidation.success) {
-        const message = publishValidation.error.issues.map((issue) => issue.message).join("; ");
-        res.status(400).json(buildErrorPayload(message || "Tournament publish validation failed"));
-        return;
-      }
-      const normalizedPublishCandidate = {
-        ...publishValidation.data,
-        duration: publishValidation.data.duration ?? 60,
-        breakDuration: publishValidation.data.breakDuration ?? 0,
-      };
+      const shouldValidate =
+        d.totalRounds !== undefined ||
+        t.totalRounds !== undefined ||
+        (t.status !== "active" && publishCandidate.status === "active");
 
-      const clubCourtIds = await getClubCourtIds(clubId);
-      if (clubCourtIds.length === 0) {
-        res.status(400).json(
-          buildErrorPayload("Selected club has no courts. Add at least one court before publishing this tournament.")
-        );
-        return;
-      }
+      const normalizedPublishCandidate = shouldValidate
+        ? (() => {
+            const publishValidation = publishSchema.safeParse(publishCandidate);
+            if (!publishValidation.success) {
+              const message = publishValidation.error.issues.map((issue) => issue.message).join("; ");
+              throw new Error(message || "Tournament publish validation failed");
+            }
+            return {
+              ...publishValidation.data,
+              duration: publishValidation.data.duration ?? 60,
+              breakDuration: publishValidation.data.breakDuration ?? 0,
+            };
+          })()
+        : {
+            ...publishCandidate,
+            duration: publishCandidate.duration ?? 60,
+            breakDuration: publishCandidate.breakDuration ?? 0,
+          };
 
       publishUpdatePayload = {
         ...bodyParse.data,
@@ -155,6 +158,17 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       tournament: result.tournament,
     });
   } catch (err: unknown) {
+    if (err instanceof Error) {
+      if (err.message.includes("publish validation failed") || err.message.includes("Tournament publish validation failed")) {
+        res.status(400).json(buildErrorPayload(err.message));
+        return;
+      }
+      if (err.message.includes("Selected club has no courts")) {
+        res.status(400).json(buildErrorPayload(err.message));
+        return;
+      }
+    }
+
     const mongoErr = err as { code?: number; keyPattern?: Record<string, number> };
     if (mongoErr?.code === 11000) {
       if (mongoErr.keyPattern?.club === 1 && mongoErr.keyPattern?.name === 1) {

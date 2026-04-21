@@ -52,7 +52,7 @@ export async function getTournamentMatches(req: AuthenticatedRequest, res: Respo
     );
 
     // Schedule may override minutes; otherwise use tournament.duration minutes.
-    const matchDurationMinutes = schedule?.matchDurationMinutes ?? tournament.duration;
+    const matchDurationMinutes = schedule?.matchDurationMinutes ?? tournament.duration ?? 60;
 
     const now = new Date();
     const statusUpdates: Array<{

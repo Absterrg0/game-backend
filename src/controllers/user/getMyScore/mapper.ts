@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { logger } from '../../../lib/logger';
 import type { MyScoreEntry, MyScoreMatchMode } from './types';
 import type { MyScoreGameDoc } from './queries';
 
@@ -157,9 +158,19 @@ function compareSetScore(left: unknown, right: unknown): number {
     return 1;
   }
   if (typeof left !== "number" || !Number.isFinite(left)) {
+    logger.debug("compareSetScore: non-finite score", {
+      function: "compareSetScore",
+      side: "left",
+      value: left,
+    });
     return 0;
   }
   if (typeof right !== "number" || !Number.isFinite(right)) {
+    logger.debug("compareSetScore: non-finite score", {
+      function: "compareSetScore",
+      side: "right",
+      value: right,
+    });
     return 0;
   }
   if (left === right) {
