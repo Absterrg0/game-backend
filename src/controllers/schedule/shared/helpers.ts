@@ -139,8 +139,8 @@ export function computeMatchStartTime(
 ): Date {
   const now = new Date();
   const dateRef = baseDate
-    ? new Date(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate(), 0, 0, 0, 0)
-    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    ? new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate(), 0, 0, 0, 0))
+    : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
   if (!/^\d{1,2}:\d{1,2}$/.test(startTime)) {
     throw new Error(`Invalid startTime format: expected "HH:MM", got "${startTime}"`);
@@ -191,14 +191,16 @@ export function computeMatchStartTime(
       const normalizedWavesPerDay = Math.max(1, wavesPerDay);
       dayOffset = Math.floor(wave / normalizedWavesPerDay);
       waveInDay = wave % normalizedWavesPerDay;
+    } else {
+      // Window is configured but cannot fit even one match: allow one slot per day.
+      dayOffset = wave;
+      waveInDay = 0;
     }
-    // If no match can finish inside the configured window, we intentionally do
-    // not roll over to the next day and allow overflow from the tournament day.
   }
 
-  dateRef.setDate(dateRef.getDate() + dayOffset);
-  dateRef.setHours(hour, minute, 0, 0);
-  dateRef.setMinutes(dateRef.getMinutes() + waveInDay * timeBlock);
+  dateRef.setUTCDate(dateRef.getUTCDate() + dayOffset);
+  dateRef.setUTCHours(hour, minute, 0, 0);
+  dateRef.setUTCMinutes(dateRef.getUTCMinutes() + waveInDay * timeBlock);
 
   return dateRef;
 }
