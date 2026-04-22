@@ -11,6 +11,7 @@ import { computeEffectiveSponsor } from "./computeEffectiveSponsor";
 import { validateActiveTournamentEnrolledUpdate } from "./activeEnrolledUpdate";
 import { validateScheduleActivationEnrollment } from "./scheduleActivationEnrollment";
 import { publishSchema } from "../../../validation/tournament.schemas";
+import { resolveTournamentTimezoneFromClub } from "../shared/resolveTournamentTimezone";
 
 function normalizePublishCandidateWithValidation(publishCandidate: Record<string, unknown>) {
   const publishValidation = publishSchema.safeParse(publishCandidate);
@@ -82,6 +83,8 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       return;
     }
 
+    const resolvedTournamentTimezone = await resolveTournamentTimezoneFromClub(authResult.data.clubId);
+
     const nextStatus = bodyParse.data.status ?? tournament.data.status;
     let publishUpdatePayload: UpdateDraftInput | null = null;
     if (nextStatus === "active") {
@@ -102,8 +105,7 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
         startTime:
           d.startTime !== undefined ? d.startTime : t.startTime ?? null,
         endTime: d.endTime !== undefined ? d.endTime : t.endTime ?? null,
-        timezone:
-          d.timezone !== undefined ? d.timezone : t.timezone ?? null,
+        timezone: resolvedTournamentTimezone,
         playMode:
           d.playMode !== undefined ? d.playMode : t.playMode,
         tournamentMode:
@@ -147,9 +149,14 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       };
     }
 
+    const effectiveUpdatePayload: UpdateDraftInput = {
+      ...bodyParse.data,
+      timezone: resolvedTournamentTimezone,
+    };
+
     const result = await updateTournamentFlow(
       idResult.data,
-      publishUpdatePayload ?? bodyParse.data,
+      publishUpdatePayload ?? effectiveUpdatePayload,
       {
         clubChanged: authResult.data.clubChanged,
       }
@@ -165,6 +172,13 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
     });
   } catch (err: unknown) {
     if (err instanceof Error) {
+      if (
+        err.message.includes("timezone resolution") ||
+        err.message.includes("coordinates")
+      ) {
+        res.status(400).json(buildErrorPayload(err.message));
+        return;
+      }
       if (err.message.startsWith("publish validation failed:")) {
         res.status(400).json(buildErrorPayload(err.message));
         return;
