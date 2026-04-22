@@ -2,6 +2,7 @@ import type { TournamentPopulated } from "../../../types/api/tournament";
 import { ROLES } from "../../../constants/roles";
 import type { DetailViewContext } from "../shared/authorizeGetById";
 import { computeSpotsTotal } from "../computeSpotsTotal";
+import type { TournamentLeaveBlockers } from "../shared/fetchTournamentById";
 import {
   DEFAULT_TOURNAMENT_TIMEZONE,
   getZonedDateParts,
@@ -134,7 +135,8 @@ export function mapTournamentDetail(
   tournament: TournamentPopulated,
   context: DetailViewContext,
   clubSponsorsList: ClubSponsorDoc[],
-  sessionUserId: string
+  sessionUserId: string,
+  leaveBlockers?: TournamentLeaveBlockers
 ): TournamentDetailResponse {
   if (!tournament) {
     throw new Error("Invalid tournament data: missing tournament");
@@ -201,7 +203,11 @@ export function mapTournamentDetail(
     isActive &&
     !isParticipant &&
     hasAvailableSpots;
-  const canLeave = isParticipant;
+  const hasLeaveBlockers =
+    isParticipant &&
+    ((leaveBlockers?.hasPendingScoreMatches ?? false) ||
+      (leaveBlockers?.hasUnfinishedMatches ?? false));
+  const canLeave = isParticipant && !hasLeaveBlockers;
 
   /* =========================
      Courts
@@ -276,6 +282,8 @@ export function mapTournamentDetail(
      Final Response
   ========================= */
 
+  const effectiveTimezone = tournament.timezone ?? DEFAULT_TOURNAMENT_TIMEZONE;
+
   return {
     id: tournamentId,
     name: tournament.name,
@@ -284,11 +292,11 @@ export function mapTournamentDetail(
     clubSponsors,
     date:
       tournament.date instanceof Date
-        ? formatDateOnlyUtc(tournament.date, tournament.timezone)
+        ? formatDateOnlyUtc(tournament.date, effectiveTimezone)
         : null,
     startTime: tournament.startTime ?? null,
     endTime: tournament.endTime ?? null,
-    timezone: tournament.timezone ?? null,
+    timezone: effectiveTimezone,
     playMode: tournament.playMode,
     tournamentMode: tournament.tournamentMode,
     entryFee: Number.isFinite(tournament.entryFee) ? tournament.entryFee : 0,

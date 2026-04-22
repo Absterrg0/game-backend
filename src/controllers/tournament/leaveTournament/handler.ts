@@ -4,6 +4,8 @@ import { error, ok } from "../../../shared/helpers";
 import Tournament from "../../../models/Tournament";
 import Game from "../../../models/Game";
 
+const CONCURRENT_MATCH_UPDATE_ERROR = "CONCURRENT_MATCH_UPDATE";
+
 function isSameParticipantId(id: unknown, authId: mongoose.Types.ObjectId) {
   if (id instanceof mongoose.Types.ObjectId) {
     return id.equals(authId);
@@ -126,12 +128,18 @@ export async function leaveTournamentFlow(
           { session: mongoSession }
         ).exec();
         if (updateResult.matchedCount !== 1) {
-          return { outcome: "concurrent_match_update" as const };
+          throw new Error(CONCURRENT_MATCH_UPDATE_ERROR);
         }
       }
 
       return { outcome: "left" as const, tournament: updatedTournament };
     });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === CONCURRENT_MATCH_UPDATE_ERROR) {
+      returnedDoc = { outcome: "concurrent_match_update" };
+    } else {
+      throw err;
+    }
   } finally {
     await mongoSession.endSession();
   }

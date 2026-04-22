@@ -66,15 +66,33 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       return;
     }
 
-    const resolvedTournamentTimezone = await resolveTournamentTimezoneFromClub(authResult.data.clubId);
-    const dataWithResolvedTimezone: UpdateDraftInput = {
-      ...bodyParse.data,
-      timezone: resolvedTournamentTimezone,
-    };
+    const timezoneImpliedByUpdateFields =
+      authResult.data.clubChanged ||
+      bodyParse.data.date !== undefined ||
+      bodyParse.data.startTime !== undefined ||
+      bodyParse.data.endTime !== undefined ||
+      bodyParse.data.tournamentMode !== undefined;
+
+    const shouldApplyResolvedTimezone =
+      bodyParse.data.timezone !== undefined || timezoneImpliedByUpdateFields;
+
+    const resolvedTournamentTimezone = shouldApplyResolvedTimezone
+      ? await resolveTournamentTimezoneFromClub(authResult.data.clubId)
+      : undefined;
+
+    const dataWithResolvedTimezone: UpdateDraftInput =
+      resolvedTournamentTimezone !== undefined
+        ? {
+            ...bodyParse.data,
+            timezone: resolvedTournamentTimezone,
+          }
+        : {
+            ...bodyParse.data,
+          };
 
     const enrolledGuard = validateActiveTournamentEnrolledUpdate(
       tournament.data,
-      dataWithResolvedTimezone
+      bodyParse.data
     );
     if (!enrolledGuard.ok) {
       res.status(enrolledGuard.status).json(buildErrorPayload(enrolledGuard.message));
@@ -112,7 +130,9 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
         startTime:
           d.startTime !== undefined ? d.startTime : t.startTime ?? null,
         endTime: d.endTime !== undefined ? d.endTime : t.endTime ?? null,
-        timezone: resolvedTournamentTimezone,
+        timezone:
+          resolvedTournamentTimezone ??
+          (d.timezone !== undefined ? d.timezone : t.timezone ?? null),
         playMode:
           d.playMode !== undefined ? d.playMode : t.playMode,
         tournamentMode:
