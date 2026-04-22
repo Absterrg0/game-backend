@@ -2,7 +2,6 @@ import type { TournamentPopulated } from "../../../types/api/tournament";
 import { ROLES } from "../../../constants/roles";
 import type { DetailViewContext } from "../shared/authorizeGetById";
 import { computeSpotsTotal } from "../computeSpotsTotal";
-import { isTournamentSchedulingLocked } from "../schedulingLock";
 
 /* =========================
    Response Types
@@ -190,14 +189,11 @@ export function mapTournamentDetail(
   // Verification: tournaments without maxMember normalize to Infinity and remain joinable.
   const hasAvailableSpots =
     rawSpotsTotal === Infinity || spotsFilled < rawSpotsTotal;
-  const joinLockedByScheduling = isTournamentSchedulingLocked(tournament);
-
   const canJoin =
     isActive &&
     !isParticipant &&
-    hasAvailableSpots &&
-    !joinLockedByScheduling;
-  const canLeave = isParticipant && !joinLockedByScheduling;
+    hasAvailableSpots;
+  const canLeave = isParticipant;
 
   /* =========================
      Courts

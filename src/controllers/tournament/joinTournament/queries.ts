@@ -1,5 +1,4 @@
 import type mongoose from "mongoose";
-import Schedule from "../../../models/Schedule";
 import Tournament from "../../../models/Tournament";
 
 export interface JoinTournamentLeanDoc {
@@ -17,41 +16,18 @@ export async function getTournamentById(tournamentId: string) {
 }
 
 /**
- * Atomically adds the user if the tournament is active, scheduling has not started,
- * and participant count is still below maxMember (Mongo `$expr` + `$addToSet`).
- * Returns the updated document, or null if the filter matched nothing (full / closed / wrong state).
+ * Atomically adds the user if the tournament is active and participant count is
+ * still below maxMember (Mongo `$expr` + `$addToSet`).
+ * Returns the updated document, or null if the filter matched nothing (full / wrong state).
  */
 export async function addParticipantIfCapacityAllows(
   tournamentId: string,
   userId: mongoose.Types.ObjectId
 ) {
-  const scheduleDoc = await Schedule.findOne({ tournament: tournamentId })
-    .select("_id currentRound")
-    .lean<{ _id: mongoose.Types.ObjectId; currentRound?: number } | null>()
-    .exec();
-
-  if (scheduleDoc && Math.trunc(scheduleDoc.currentRound ?? 0) >= 1) {
-    return null;
-  }
-
-  const scheduleFilter = scheduleDoc
-    ? {
-        $or: [
-          { schedule: scheduleDoc._id },
-          { schedule: { $exists: false } },
-          { schedule: null },
-        ],
-      }
-    : {
-        $or: [{ schedule: { $exists: false } }, { schedule: null }],
-      };
-
   return Tournament.findOneAndUpdate(
     {
       _id: tournamentId,
       status: "active",
-      firstRoundScheduledAt: null,
-      ...scheduleFilter,
       $expr: {
         $or: [
           { $not: [{ $isNumber: "$maxMember" }] },

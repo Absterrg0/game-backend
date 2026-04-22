@@ -82,8 +82,7 @@ export async function generateSchedule(req: AuthenticatedRequest, res: Response)
 
     const enrolledParticipants = tournament.participants.length;
     const minimumRequiredParticipants = Math.max(1, tournament.minMember);
-    const isBeforeFirstRoundScheduling = tournament.firstRoundScheduledAt == null;
-    if (isBeforeFirstRoundScheduling && enrolledParticipants < minimumRequiredParticipants) {
+    if (enrolledParticipants < minimumRequiredParticipants) {
       res
         .status(400)
         .json(
