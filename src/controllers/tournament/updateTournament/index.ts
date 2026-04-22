@@ -11,7 +11,10 @@ import { computeEffectiveSponsor } from "./computeEffectiveSponsor";
 import { validateActiveTournamentEnrolledUpdate } from "./activeEnrolledUpdate";
 import { validateScheduleActivationEnrollment } from "./scheduleActivationEnrollment";
 import { publishSchema } from "../../../validation/tournament.schemas";
-import { resolveTournamentTimezoneFromClub } from "../shared/resolveTournamentTimezone";
+import {
+  resolveTournamentTimezoneFromClub,
+  TournamentTimezoneResolutionError,
+} from "../shared/resolveTournamentTimezone";
 
 function normalizePublishCandidateWithValidation(publishCandidate: Record<string, unknown>) {
   const publishValidation = publishSchema.safeParse(publishCandidate);
@@ -57,9 +60,21 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       return;
     }
 
+    const authResult = await authorizeUpdate(tournament.data, bodyParse.data, req.user);
+    if (authResult.status !== 200) {
+      res.status(authResult.status).json(buildErrorPayload(authResult.message));
+      return;
+    }
+
+    const resolvedTournamentTimezone = await resolveTournamentTimezoneFromClub(authResult.data.clubId);
+    const dataWithResolvedTimezone: UpdateDraftInput = {
+      ...bodyParse.data,
+      timezone: resolvedTournamentTimezone,
+    };
+
     const enrolledGuard = validateActiveTournamentEnrolledUpdate(
       tournament.data,
-      bodyParse.data
+      dataWithResolvedTimezone
     );
     if (!enrolledGuard.ok) {
       res.status(enrolledGuard.status).json(buildErrorPayload(enrolledGuard.message));
@@ -68,7 +83,7 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
 
     const scheduleEnrollmentGuard = validateScheduleActivationEnrollment(
       tournament.data,
-      bodyParse.data
+      dataWithResolvedTimezone
     );
     if (!scheduleEnrollmentGuard.ok) {
       res
@@ -77,19 +92,11 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       return;
     }
 
-    const authResult = await authorizeUpdate(tournament.data, bodyParse.data, req.user);
-    if (authResult.status !== 200) {
-      res.status(authResult.status).json(buildErrorPayload(authResult.message));
-      return;
-    }
-
-    const resolvedTournamentTimezone = await resolveTournamentTimezoneFromClub(authResult.data.clubId);
-
-    const nextStatus = bodyParse.data.status ?? tournament.data.status;
+    const nextStatus = dataWithResolvedTimezone.status ?? tournament.data.status;
     let publishUpdatePayload: UpdateDraftInput | null = null;
     if (nextStatus === "active") {
       const clubId = authResult.data.clubId;
-      const d = bodyParse.data;
+      const d = dataWithResolvedTimezone;
       const t = tournament.data;
       const effectiveSponsor = computeEffectiveSponsor(
         authResult.data.clubChanged,
@@ -144,13 +151,13 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
           };
 
       publishUpdatePayload = {
-        ...bodyParse.data,
+        ...dataWithResolvedTimezone,
         ...normalizedPublishCandidate,
       };
     }
 
     const effectiveUpdatePayload: UpdateDraftInput = {
-      ...bodyParse.data,
+      ...dataWithResolvedTimezone,
       timezone: resolvedTournamentTimezone,
     };
 
@@ -171,14 +178,11 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
       tournament: result.tournament,
     });
   } catch (err: unknown) {
+    if (err instanceof TournamentTimezoneResolutionError) {
+      res.status(400).json(buildErrorPayload(err.message));
+      return;
+    }
     if (err instanceof Error) {
-      if (
-        err.message.includes("timezone resolution") ||
-        err.message.includes("coordinates")
-      ) {
-        res.status(400).json(buildErrorPayload(err.message));
-        return;
-      }
       if (err.message.startsWith("publish validation failed:")) {
         res.status(400).json(buildErrorPayload(err.message));
         return;

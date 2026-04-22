@@ -152,7 +152,7 @@ export type NormalizedTournamentPublishSource = {
   date: Date | null;
   startTime?: string | null;
   endTime?: string | null;
-  timezone?: string | null;
+  timezone?: string;
   playMode: PublishInput["playMode"];
   tournamentMode: PublishInput["tournamentMode"];
   entryFee?: number;
@@ -181,7 +181,7 @@ export function normalizeTournamentPublishSource(
     date: source.date ?? null,
     startTime: source.startTime,
     endTime: source.endTime,
-    timezone: source.timezone ?? null,
+    timezone: source.timezone ?? undefined,
     playMode: source.playMode ?? DEFAULT_PLAY_MODE,
     tournamentMode: source.tournamentMode ?? DEFAULT_TOURNAMENT_MODE,
     entryFee: source.entryFee,

@@ -5,6 +5,19 @@ import {
   isValidIanaTimeZone,
 } from "../../../shared/timezone";
 
+export class TournamentTimezoneResolutionError extends Error {
+  code: "MISSING_COORDINATES" | "INVALID_COORDINATES";
+
+  constructor(
+    code: "MISSING_COORDINATES" | "INVALID_COORDINATES",
+    message: string
+  ) {
+    super(message);
+    this.name = "TournamentTimezoneResolutionError";
+    this.code = code;
+  }
+}
+
 type ClubCoordinateDoc = {
   coordinates?: {
     coordinates?: [number, number];
@@ -25,7 +38,10 @@ export async function resolveTournamentTimezoneFromClub(
 
   const coords = club?.coordinates?.coordinates;
   if (!coords || coords.length !== 2) {
-    throw new Error("Selected club is missing valid coordinates for timezone resolution");
+    throw new TournamentTimezoneResolutionError(
+      "MISSING_COORDINATES",
+      "Selected club is missing valid coordinates for timezone resolution"
+    );
   }
 
   const [longitude, latitude] = coords;
@@ -37,7 +53,10 @@ export async function resolveTournamentTimezoneFromClub(
     latitude < -90 ||
     latitude > 90
   ) {
-    throw new Error("Selected club coordinates are invalid for timezone resolution");
+    throw new TournamentTimezoneResolutionError(
+      "INVALID_COORDINATES",
+      "Selected club coordinates are invalid for timezone resolution"
+    );
   }
 
   const timezone = tzLookup(latitude, longitude);

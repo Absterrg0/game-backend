@@ -6,6 +6,7 @@ import {
   DEFAULT_TOURNAMENT_TIMEZONE,
   getZonedDateParts,
 } from "../../../shared/timezone";
+import { isTournamentSchedulingLocked } from "../schedulingLock";
 
 /* =========================
    Response Types
@@ -194,14 +195,16 @@ export function mapTournamentDetail(
   const canEdit = context.isCreator || context.role === ROLES.SUPER_ADMIN;
 
   const isActive = tournament.status === "active";
+  const isSchedulingLocked = isTournamentSchedulingLocked(tournament);
   // Verification: tournaments without maxMember normalize to Infinity and remain joinable.
   const hasAvailableSpots =
     rawSpotsTotal === Infinity || spotsFilled < rawSpotsTotal;
   const canJoin =
     isActive &&
+    !isSchedulingLocked &&
     !isParticipant &&
     hasAvailableSpots;
-  const canLeave = isParticipant;
+  const canLeave = isParticipant && !isSchedulingLocked;
 
   /* =========================
      Courts

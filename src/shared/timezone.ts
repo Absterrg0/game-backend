@@ -11,6 +11,11 @@ type ZonedDateParts = {
 
 export function isValidIanaTimeZone(value: string | null | undefined): value is string {
   if (!value) return false;
+  const offsetPattern =
+    /^(?:[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?|UTC[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)$/i;
+  if (offsetPattern.test(value.trim())) {
+    return false;
+  }
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
     return true;
