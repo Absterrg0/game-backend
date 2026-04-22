@@ -5,6 +5,10 @@ import Tournament from "../../../models/Tournament";
 import Game from "../../../models/Game";
 
 const CONCURRENT_MATCH_UPDATE_ERROR = "CONCURRENT_MATCH_UPDATE";
+type TournamentParticipantStateLean = {
+  participants?: mongoose.Types.ObjectId[];
+  maxMember?: number;
+};
 
 function isSameParticipantId(id: unknown, authId: mongoose.Types.ObjectId) {
   if (id instanceof mongoose.Types.ObjectId) {
@@ -55,6 +59,7 @@ export async function leaveTournamentFlow(
       const fresh = await Tournament.findById(tournamentId)
         .select("_id participants maxMember")
         .session(mongoSession)
+        .lean<TournamentParticipantStateLean | null>()
         .exec();
       if (!fresh) return null;
 

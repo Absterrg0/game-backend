@@ -6,6 +6,7 @@ import type { TournamentLeaveBlockers } from "../shared/fetchTournamentById";
 import {
   DEFAULT_TOURNAMENT_TIMEZONE,
   getZonedDateParts,
+  isValidIanaTimeZone,
 } from "../../../shared/timezone";
 
 /* =========================
@@ -117,10 +118,10 @@ function formatDateOnlyUtc(value: Date, timezone?: string | null): string | null
     return null;
   }
 
-  const parts = getZonedDateParts(
-    value,
-    timezone ?? DEFAULT_TOURNAMENT_TIMEZONE
-  );
+  const safeTimezone = isValidIanaTimeZone(timezone)
+    ? timezone
+    : DEFAULT_TOURNAMENT_TIMEZONE;
+  const parts = getZonedDateParts(value, safeTimezone);
   const year = parts.year;
   const month = String(parts.month).padStart(2, "0");
   const day = String(parts.day).padStart(2, "0");
