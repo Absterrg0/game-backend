@@ -24,6 +24,7 @@ const SCHEDULE_CLIENT_ERROR_EXACT = new Set([
   "matchDurationMinutes and breakTimeMinutes are required for scheduled tournaments",
   "Configured schedule window is shorter than a single match duration",
   "Invalid schedule window endTime: must be a valid HH:MM later than startTime",
+  "Tournament timezone is missing or invalid. Update tournament settings before scheduling.",
 ]);
 
 function isClientScheduleGenerationError(message: string) {

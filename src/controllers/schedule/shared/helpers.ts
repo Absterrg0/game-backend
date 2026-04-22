@@ -5,6 +5,9 @@ import {
   DEFAULT_MATCHES_PER_PLAYER,
   DEFAULT_SCHEDULE_START_TIME,
 } from "./constants";
+import {
+  zonedDateTimeToUtcDate,
+} from "../../../shared/timezone";
 
 export function getDefaultScheduleInput(
   tournament: TournamentScheduleContext,
@@ -135,12 +138,13 @@ export function computeMatchStartTime(
   startTime: string,
   slotNumber: number,
   body: { matchDurationMinutes: number; breakTimeMinutes: number },
-  options?: { windowEndTime?: string | null }
+  options?: {
+    windowEndTime?: string | null;
+    tournamentTimezone: string;
+  }
 ): Date {
   const now = new Date();
-  const dateRef = baseDate
-    ? new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate(), 0, 0, 0, 0))
-    : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  const dateRef = baseDate ?? now;
 
   if (!/^\d{1,2}:\d{1,2}$/.test(startTime)) {
     throw new Error(`Invalid startTime format: expected "HH:MM", got "${startTime}"`);
@@ -204,9 +208,39 @@ export function computeMatchStartTime(
     waveInDay = wave % normalizedWavesPerDay;
   }
 
-  dateRef.setUTCDate(dateRef.getUTCDate() + dayOffset);
-  dateRef.setUTCHours(hour, minute, 0, 0);
-  dateRef.setUTCMinutes(dateRef.getUTCMinutes() + waveInDay * timeBlock);
+  const totalMinutesFromStart = startMinutes + waveInDay * timeBlock;
+  const carryDays = Math.floor(totalMinutesFromStart / (24 * 60));
+  const normalizedMinutesInDay = ((totalMinutesFromStart % (24 * 60)) + (24 * 60)) % (24 * 60);
+  const targetHour = Math.floor(normalizedMinutesInDay / 60);
+  const targetMinute = normalizedMinutesInDay % 60;
+  const totalDayOffset = dayOffset + carryDays;
 
-  return dateRef;
+  const targetDate = new Date(
+    Date.UTC(
+      dateRef.getUTCFullYear(),
+      dateRef.getUTCMonth(),
+      dateRef.getUTCDate() + totalDayOffset,
+      0,
+      0,
+      0,
+      0
+    )
+  );
+
+  const timezone = options?.tournamentTimezone;
+  if (!timezone) {
+    throw new Error("Tournament timezone is missing or invalid. Update tournament settings before scheduling.");
+  }
+
+  return zonedDateTimeToUtcDate(
+    {
+      year: targetDate.getUTCFullYear(),
+      month: targetDate.getUTCMonth() + 1,
+      day: targetDate.getUTCDate(),
+      hour: targetHour,
+      minute: targetMinute,
+      second: 0,
+    },
+    timezone
+  );
 }

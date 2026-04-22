@@ -61,6 +61,7 @@ export interface TournamentForUpdateAuth {
   date?: Date | null;
   startTime?: string | null;
   endTime?: string | null;
+  timezone?: string | null;
   playMode?: (typeof TOURNAMENT_PLAY_MODES)[number];
   tournamentMode?: (typeof TOURNAMENT_MODES)[number];
   entryFee?: number;
@@ -117,6 +118,7 @@ export const tournamentPublishSourceSchema = z
     date: z.coerce.date().optional().nullable(),
     startTime: z.string().optional().nullable(),
     endTime: z.string().optional().nullable(),
+    timezone: z.string().optional().nullable(),
     playMode: z.enum(TOURNAMENT_PLAY_MODES).optional(),
     tournamentMode: z.enum(TOURNAMENT_MODES).optional(),
     entryFee: z.number().optional(),
@@ -142,6 +144,7 @@ export type NormalizedTournamentPublishSource = {
   date: Date | null;
   startTime?: string | null;
   endTime?: string | null;
+  timezone?: string | null;
   playMode: PublishInput["playMode"];
   tournamentMode: PublishInput["tournamentMode"];
   entryFee?: number;
@@ -170,6 +173,7 @@ export function normalizeTournamentPublishSource(
     date: source.date ?? null,
     startTime: source.startTime,
     endTime: source.endTime,
+    timezone: source.timezone ?? null,
     playMode: source.playMode ?? DEFAULT_PLAY_MODE,
     tournamentMode: source.tournamentMode ?? DEFAULT_TOURNAMENT_MODE,
     entryFee: source.entryFee,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { objectId } from "../../../validation/base-helpers";
+import { isValidIanaTimeZone } from "../../../shared/timezone";
 
 export const playModeEnum = z.enum([
   "TieBreak10",
@@ -16,6 +17,11 @@ const memberCountSchema = z.coerce.number().int().min(1);
 const totalRoundsSchema = z.coerce.number().int().min(1).max(100);
 const durationMinutesSchema = z.coerce.number().int().min(5).max(240).default(60);
 const breakMinutesSchema = z.coerce.number().int().min(0).max(120).default(0);
+const timezoneSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(isValidIanaTimeZone, "Invalid timezone (expected IANA timezone like Asia/Kolkata)");
 
 
 const baseTournament = z.object({
@@ -25,6 +31,8 @@ const baseTournament = z.object({
     sponsorId: objectId.nullable().optional(),
   
     name: z.string().min(1),
+
+    timezone: timezoneSchema.optional(),
   
     playMode: playModeEnum,
   
@@ -49,6 +57,7 @@ const baseTournament = z.object({
     date: z.coerce.date().optional(),
     startTime: z.string().optional(),
     endTime: z.string().optional(),
+    timezone: timezoneSchema.optional(),
   })
 
   const draftUnscheduled = baseTournament.partial().extend({
@@ -62,6 +71,7 @@ const baseTournament = z.object({
     date: z.coerce.date(),
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
+    timezone: timezoneSchema,
   })
 
   const publishUnscheduled = baseTournament.extend({

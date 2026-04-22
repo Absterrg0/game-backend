@@ -102,6 +102,8 @@ export async function updateTournament(req: AuthenticatedRequest ,res: Response)
         startTime:
           d.startTime !== undefined ? d.startTime : t.startTime ?? null,
         endTime: d.endTime !== undefined ? d.endTime : t.endTime ?? null,
+        timezone:
+          d.timezone !== undefined ? d.timezone : t.timezone ?? null,
         playMode:
           d.playMode !== undefined ? d.playMode : t.playMode,
         tournamentMode:

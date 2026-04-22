@@ -70,6 +70,7 @@ export interface TournamentDetailResponse {
   date: string | null;
   startTime: string | null;
   endTime: string | null;
+  timezone: string | null;
   playMode: string;
   tournamentMode: string;
   entryFee: number;
@@ -105,6 +106,17 @@ function toSafeStringId(id: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+function formatDateOnlyUtc(value: Date): string | null {
+  if (!Number.isFinite(value.getTime())) {
+    return null;
+  }
+
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(value.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 /* =========================
@@ -266,9 +278,10 @@ export function mapTournamentDetail(
     club,
     sponsor,
     clubSponsors,
-    date: tournament.date instanceof Date ? tournament.date.toISOString() : null,
+    date: tournament.date instanceof Date ? formatDateOnlyUtc(tournament.date) : null,
     startTime: tournament.startTime ?? null,
     endTime: tournament.endTime ?? null,
+    timezone: tournament.timezone ?? null,
     playMode: tournament.playMode,
     tournamentMode: tournament.tournamentMode,
     entryFee: Number.isFinite(tournament.entryFee) ? tournament.entryFee : 0,

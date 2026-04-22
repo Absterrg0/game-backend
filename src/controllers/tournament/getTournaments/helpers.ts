@@ -3,6 +3,11 @@ import type { ListFilterContext } from "./authorize";
 import { error, ok } from "../../../shared/helpers";
 import { TournamentStatus } from "./validation";
 import { escapeRegex } from "../../../lib/validation";
+import {
+  getCurrentTimeInTimeZone,
+  getStartOfTodayInTimeZoneUtc,
+  resolveTournamentTimeZone,
+} from "../../../shared/timezone";
 
 function intersectIds(
     base: string[] | null,
@@ -13,20 +18,13 @@ function intersectIds(
   }
   
   function getTimeWindowFilter(
-    when: "future" | "past"
+    when: "future" | "past",
+    timezone?: string
   ): TournamentFilter {
-    const now = new Date();
-  
-    const startOfToday = new Date(now);
-    startOfToday.setUTCHours(0, 0, 0, 0);
-  
-    const startOfTomorrow = new Date(startOfToday);
-    startOfTomorrow.setUTCDate(startOfTomorrow.getUTCDate() + 1);
-  
-    const nowTime = `${String(now.getUTCHours()).padStart(
-      2,
-      "0"
-    )}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
+    const resolvedTimeZone = resolveTournamentTimeZone(timezone);
+    const startOfToday = getStartOfTodayInTimeZoneUtc(resolvedTimeZone);
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const nowTime = getCurrentTimeInTimeZone(resolvedTimeZone);
   
     if (when === "future") {
       return {
@@ -144,7 +142,7 @@ function intersectIds(
   
     // --- WHEN ---
     if (query.when) {
-      const timeWindow = getTimeWindowFilter(query.when);
+      const timeWindow = getTimeWindowFilter(query.when, query.timezone);
       const timeBranches =
         "$or" in timeWindow && Array.isArray(timeWindow.$or)
           ? timeWindow.$or
