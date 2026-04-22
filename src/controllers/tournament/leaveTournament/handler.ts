@@ -33,13 +33,16 @@ function isSameParticipantId(id: unknown, authId: mongoose.Types.ObjectId) {
  */
 export async function leaveTournamentFlow(
   tournamentId: string,
-  authSession: AuthenticatedSession
+  authSession: AuthenticatedSession,
+  options?: { confirmLeaveWithWalkover?: boolean }
 ) {
+  const confirmLeaveWithWalkover = options?.confirmLeaveWithWalkover === true;
   const mongoSession = await mongoose.startSession();
   type LeaveTransactionResult =
     | { outcome: "left"; tournament: { participants?: mongoose.Types.ObjectId[]; maxMember?: number } }
     | { outcome: "not_participant" }
     | { outcome: "pending_score_matches" }
+    | { outcome: "confirmation_required" }
     | { outcome: "concurrent_leave" }
     | null;
   let returnedDoc: LeaveTransactionResult = null;
@@ -59,18 +62,6 @@ export async function leaveTournamentFlow(
         return { outcome: "not_participant" as const };
       }
 
-      const updatedTournament = await Tournament.findOneAndUpdate(
-        { _id: tournamentId, participants: authSession._id },
-        { $pull: { participants: authSession._id } },
-        { returnDocument: "after", session: mongoSession }
-      )
-        .select("participants maxMember")
-        .lean<{ participants?: mongoose.Types.ObjectId[]; maxMember?: number } | null>()
-        .exec();
-      if (!updatedTournament) {
-        return { outcome: "concurrent_leave" as const };
-      }
-
       const hasPendingScoreMatches = await Game.exists({
         tournament: tournamentId,
         status: "pendingScore",
@@ -85,7 +76,7 @@ export async function leaveTournamentFlow(
 
       const unfinishedMatches = await Game.find({
         tournament: tournamentId,
-        status: { $nin: ["finished", "cancelled"] },
+        status: { $nin: ["finished", "cancelled", "pendingScore"] },
         $or: [{ "side1.players": authSession._id }, { "side2.players": authSession._id }],
       })
         .select("_id side1.players side2.players")
@@ -98,6 +89,21 @@ export async function leaveTournamentFlow(
           }>
         >()
         .exec();
+      if (unfinishedMatches.length > 0 && !confirmLeaveWithWalkover) {
+        return { outcome: "confirmation_required" as const };
+      }
+
+      const updatedTournament = await Tournament.findOneAndUpdate(
+        { _id: tournamentId, participants: authSession._id },
+        { $pull: { participants: authSession._id } },
+        { returnDocument: "after", session: mongoSession }
+      )
+        .select("participants maxMember")
+        .lean<{ participants?: mongoose.Types.ObjectId[]; maxMember?: number } | null>()
+        .exec();
+      if (!updatedTournament) {
+        return { outcome: "concurrent_leave" as const };
+      }
 
       const now = new Date();
       for (const match of unfinishedMatches) {
@@ -108,7 +114,7 @@ export async function leaveTournamentFlow(
           ? { playerOneScores: ["wo" as const], playerTwoScores: [1] }
           : { playerOneScores: [1], playerTwoScores: ["wo" as const] };
         await Game.updateOne(
-          { _id: match._id, status: { $nin: ["pendingScore"] } },
+          { _id: match._id, status: { $nin: ["finished", "cancelled"] } },
           {
             $set: {
               score,
@@ -133,6 +139,9 @@ export async function leaveTournamentFlow(
   if (returnedDoc.outcome === "not_participant") {
     return error(400, "Not a participant in this tournament");
   }
+  if (returnedDoc.outcome === "confirmation_required") {
+    return error(400, "LEAVE_CONFIRM_WO_REQUIRED");
+  }
   if (returnedDoc.outcome === "pending_score_matches") {
     return error(400, "Cannot leave tournament while pendingScore matches include this participant");
   }
@@ -140,7 +149,7 @@ export async function leaveTournamentFlow(
     return error(409, "Unable to leave tournament due to a concurrent update. Please retry.");
   }
 
-  const stillParticipant = (returnedDoc.tournament.participants ?? []).some((id) =>
+  const stillParticipant = (returnedDoc.tournament.participants ?? []).some((id: mongoose.Types.ObjectId) =>
     isSameParticipantId(id, authSession._id)
   );
   if (stillParticipant) {
