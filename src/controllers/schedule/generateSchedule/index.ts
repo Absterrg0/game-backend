@@ -40,6 +40,9 @@ function isClientScheduleGenerationError(message: string) {
   if (message.startsWith("Cannot regenerate this round:")) {
     return true;
   }
+  if (message.startsWith("RESCHEDULE_WITH_SCORES_CONFIRMATION_REQUIRED:")) {
+    return true;
+  }
   if (message.startsWith("Missing game data for game")) {
     return true;
   }
@@ -107,7 +110,11 @@ export async function generateSchedule(req: AuthenticatedRequest, res: Response)
       return;
     } catch (flowError) {
       const message = flowError instanceof Error ? flowError.message : "Failed to generate schedule";
-      const status = isClientScheduleGenerationError(message) ? 400 : 500;
+      const status = message.startsWith("RESCHEDULE_WITH_SCORES_CONFIRMATION_REQUIRED:")
+        ? 409
+        : isClientScheduleGenerationError(message)
+          ? 400
+          : 500;
       res.status(status).json(buildErrorPayload(message));
       return;
     }
