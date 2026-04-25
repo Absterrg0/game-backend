@@ -29,6 +29,25 @@ const DEFAULT_MATCH_DURATION_MINUTES = 60;
 const DEFAULT_BREAK_TIME_MINUTES = 5;
 const RESCHEDULE_WITH_SCORES_CONFIRMATION_PREFIX = "RESCHEDULE_WITH_SCORES_CONFIRMATION_REQUIRED:";
 
+type ReplaceableGame = {
+  _id: mongoose.Types.ObjectId;
+  status: GameStatus;
+  score?: { playerOneScores?: Array<number | "wo">; playerTwoScores?: Array<number | "wo"> } | null;
+};
+
+function hasScoresOrRelevantStatus(
+  game: ReplaceableGame,
+  includeActiveStatus: boolean
+): boolean {
+  const playerOneScores = game.score?.playerOneScores ?? [];
+  const playerTwoScores = game.score?.playerTwoScores ?? [];
+  const hasScoreValues = playerOneScores.length > 0 || playerTwoScores.length > 0;
+  if (hasScoreValues || game.status === "pendingScore" || game.status === "finished") {
+    return true;
+  }
+  return includeActiveStatus && game.status === "active";
+}
+
 async function ensurePreviousRoundFinished(
   scheduleDoc: {
     _id: mongoose.Types.ObjectId;
@@ -232,19 +251,12 @@ export async function persistScheduleRound(
         })
           .select("_id status score")
           .session(session)
-          .lean<Array<{
-            _id: mongoose.Types.ObjectId;
-            status: GameStatus;
-            score?: { playerOneScores?: Array<number | "wo">; playerTwoScores?: Array<number | "wo"> } | null;
-          }>>()
+          .lean<ReplaceableGame[]>()
           .exec();
 
-        const gamesWithRecordedScores = gamesToReplace.filter((game) => {
-          const playerOneScores = game.score?.playerOneScores ?? [];
-          const playerTwoScores = game.score?.playerTwoScores ?? [];
-          const hasScoreValues = playerOneScores.length > 0 || playerTwoScores.length > 0;
-          return hasScoreValues || game.status === "pendingScore" || game.status === "finished";
-        });
+        const gamesWithRecordedScores = gamesToReplace.filter((game) =>
+          hasScoresOrRelevantStatus(game, false)
+        );
 
         const hasScoredGames = gamesWithRecordedScores.length > 0;
         if (hasScoredGames && body.allowRescheduleWithScores !== true) {
@@ -256,17 +268,9 @@ export async function persistScheduleRound(
         // historicalGamesToPreserve intentionally includes "active" games so history is retained,
         // while gamesWithRecordedScores drives only the confirmation prompt for scored/pending/finished games;
         // preserved active games are later cancelled and detached from schedule during regeneration.
-        const historicalGamesToPreserve = gamesToReplace.filter((game) => {
-          const playerOneScores = game.score?.playerOneScores ?? [];
-          const playerTwoScores = game.score?.playerTwoScores ?? [];
-          const hasScoreValues = playerOneScores.length > 0 || playerTwoScores.length > 0;
-          return (
-            hasScoreValues ||
-            game.status === "pendingScore" ||
-            game.status === "finished" ||
-            game.status === "active"
-          );
-        });
+        const historicalGamesToPreserve = gamesToReplace.filter((game) =>
+          hasScoresOrRelevantStatus(game, true)
+        );
 
         const historicalGameIdsToPreserve = new Set(
           historicalGamesToPreserve.map((game) => game._id.toString())
