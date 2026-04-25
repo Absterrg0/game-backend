@@ -40,9 +40,6 @@ function isClientScheduleGenerationError(message: string) {
   if (message.startsWith("Cannot regenerate this round:")) {
     return true;
   }
-  if (message.startsWith("RESCHEDULE_WITH_SCORES_CONFIRMATION_REQUIRED:")) {
-    return true;
-  }
   if (message.startsWith("Missing game data for game")) {
     return true;
   }

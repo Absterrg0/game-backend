@@ -27,7 +27,7 @@ type ScheduleRoundEntryLike = {
 
 const DEFAULT_MATCH_DURATION_MINUTES = 60;
 const DEFAULT_BREAK_TIME_MINUTES = 5;
-const RESCHEDULE_WITH_SCORES_CONFIRMATION_PREFIX = "RESCHEDULE_WITH_SCORES_CONFIRMATION_REQUIRED";
+const RESCHEDULE_WITH_SCORES_CONFIRMATION_PREFIX = "RESCHEDULE_WITH_SCORES_CONFIRMATION_REQUIRED:";
 
 async function ensurePreviousRoundFinished(
   scheduleDoc: {
@@ -249,10 +249,13 @@ export async function persistScheduleRound(
         const hasScoredGames = gamesWithRecordedScores.length > 0;
         if (hasScoredGames && body.allowRescheduleWithScores !== true) {
           throw new Error(
-            `${RESCHEDULE_WITH_SCORES_CONFIRMATION_PREFIX}: Round ${targetRound} has ${gamesWithRecordedScores.length} scored match(es). Confirm reschedule to preserve historical scores while replacing the active round schedule.`
+            `${RESCHEDULE_WITH_SCORES_CONFIRMATION_PREFIX} Round ${targetRound} has ${gamesWithRecordedScores.length} scored match(es). Confirm reschedule to preserve historical scores while replacing the active round schedule.`
           );
         }
 
+        // historicalGamesToPreserve intentionally includes "active" games so history is retained,
+        // while gamesWithRecordedScores drives only the confirmation prompt for scored/pending/finished games;
+        // preserved active games are later cancelled and detached from schedule during regeneration.
         const historicalGamesToPreserve = gamesToReplace.filter((game) => {
           const playerOneScores = game.score?.playerOneScores ?? [];
           const playerTwoScores = game.score?.playerTwoScores ?? [];
