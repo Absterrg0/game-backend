@@ -21,6 +21,7 @@ export const generateScheduleSchema = z
     startTime: z.string().regex(timeRegex, "Invalid start time (expected HH:mm)"),
     courtIds: z.array(objectId).min(1),
     participantOrder: z.array(objectId).min(2),
+    allowRescheduleWithScores: z.boolean().optional(),
   })
   .strict();
 

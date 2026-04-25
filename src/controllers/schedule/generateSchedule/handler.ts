@@ -27,6 +27,26 @@ type ScheduleRoundEntryLike = {
 
 const DEFAULT_MATCH_DURATION_MINUTES = 60;
 const DEFAULT_BREAK_TIME_MINUTES = 5;
+const RESCHEDULE_WITH_SCORES_CONFIRMATION_PREFIX = "RESCHEDULE_WITH_SCORES_CONFIRMATION_REQUIRED:";
+
+type ReplaceableGame = {
+  _id: mongoose.Types.ObjectId;
+  status: GameStatus;
+  score?: { playerOneScores?: Array<number | "wo">; playerTwoScores?: Array<number | "wo"> } | null;
+};
+
+function hasScoresOrRelevantStatus(
+  game: ReplaceableGame,
+  includeActiveStatus: boolean
+): boolean {
+  const playerOneScores = game.score?.playerOneScores ?? [];
+  const playerTwoScores = game.score?.playerTwoScores ?? [];
+  const hasScoreValues = playerOneScores.length > 0 || playerTwoScores.length > 0;
+  if (hasScoreValues || game.status === "pendingScore" || game.status === "finished") {
+    return true;
+  }
+  return includeActiveStatus && game.status === "active";
+}
 
 async function ensurePreviousRoundFinished(
   scheduleDoc: {
@@ -197,6 +217,11 @@ export async function persistScheduleRound(
         throw new Error(`Round ${targetRound} exceeds totalRounds limit (${freshTournament.totalRounds})`);
       }
 
+      const existingRoundEntries = scheduleDoc.rounds.filter(
+        (entry: ScheduleRoundEntryLike) => entry.round === targetRound
+      );
+      const isRoundRegeneration = existingRoundEntries.length > 0;
+
       const scheduleMatchDurationMinutes = parseDurationMinutes(
         scheduleDoc.matchDurationMinutes ?? null,
         undefined
@@ -207,43 +232,78 @@ export async function persistScheduleRound(
 
       const resolvedMatchesPerPlayer = body.matchesPerPlayer ?? scheduleDoc.matchesPerPlayer ?? 1;
 
-      await ensurePreviousRoundFinished(
-        scheduleDoc,
-        targetRound,
-        roundMatchDurationMinutes,
-        session
-      );
-
-      const existingRoundEntries = scheduleDoc.rounds.filter(
-        (entry: ScheduleRoundEntryLike) => entry.round === targetRound
-      );
+      if (!isRoundRegeneration) {
+        await ensurePreviousRoundFinished(
+          scheduleDoc,
+          targetRound,
+          roundMatchDurationMinutes,
+          session
+        );
+      }
 
       if (existingRoundEntries.length > 0) {
         const gamesToReplaceIds = existingRoundEntries.map(
           (entry: ScheduleRoundEntryLike) => entry.game
         );
-        const startedOrLockedCount = await Game.countDocuments({
+        const gamesToReplace = await Game.find({
           _id: { $in: gamesToReplaceIds },
           schedule: scheduleDoc._id,
-          $or: [
-            { status: { $in: ["active", "pendingScore", "finished"] } },
-            { startTime: { $ne: null, $lte: new Date() } },
-          ],
         })
+          .select("_id status score")
           .session(session)
+          .lean<ReplaceableGame[]>()
           .exec();
-        if (startedOrLockedCount > 0) {
+
+        const gamesWithRecordedScores = gamesToReplace.filter((game) =>
+          hasScoresOrRelevantStatus(game, false)
+        );
+
+        const hasScoredGames = gamesWithRecordedScores.length > 0;
+        if (hasScoredGames && body.allowRescheduleWithScores !== true) {
           throw new Error(
-            "Cannot regenerate this round: one or more matches are already finished"
+            `${RESCHEDULE_WITH_SCORES_CONFIRMATION_PREFIX} Round ${targetRound} has ${gamesWithRecordedScores.length} scored match(es). Confirm reschedule to preserve historical scores while replacing the active round schedule.`
           );
         }
 
-        await Game.deleteMany({
-          _id: { $in: gamesToReplaceIds },
-          schedule: scheduleDoc._id,
-        })
-          .session(session)
-          .exec();
+        // historicalGamesToPreserve intentionally includes "active" games so history is retained,
+        // while gamesWithRecordedScores drives only the confirmation prompt for scored/pending/finished games;
+        // preserved active games are later cancelled and detached from schedule during regeneration.
+        const historicalGamesToPreserve = gamesToReplace.filter((game) =>
+          hasScoresOrRelevantStatus(game, true)
+        );
+
+        const historicalGameIdsToPreserve = new Set(
+          historicalGamesToPreserve.map((game) => game._id.toString())
+        );
+        const gameIdsToDelete = gamesToReplace
+          .filter((game) => !historicalGameIdsToPreserve.has(game._id.toString()))
+          .map((game) => game._id);
+
+        if (historicalGamesToPreserve.length > 0) {
+          await Game.bulkWrite(
+            historicalGamesToPreserve.map((game) => ({
+              updateOne: {
+                filter: { _id: game._id },
+                update: {
+                  $unset: { schedule: "" },
+                  $set: {
+                    status: game.status === "finished" ? "finished" : "cancelled",
+                  },
+                },
+              },
+            })),
+            { session }
+          );
+        }
+
+        if (gameIdsToDelete.length > 0) {
+          await Game.deleteMany({
+            _id: { $in: gameIdsToDelete },
+            schedule: scheduleDoc._id,
+          })
+            .session(session)
+            .exec();
+        }
 
         scheduleDoc.rounds = scheduleDoc.rounds.filter(
           (entry: ScheduleRoundEntryLike) => entry.round !== targetRound
