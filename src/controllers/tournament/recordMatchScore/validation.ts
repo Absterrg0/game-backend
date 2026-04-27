@@ -1,20 +1,13 @@
 import { z } from "zod";
-import { objectId } from "../../../validation/base-helpers";
 
-export const recordMatchScoreParamsSchema = z
-  .object({
-    id: objectId,
-    matchId: objectId,
-  })
-  .strict();
-
-const numericScore = z.number().int().min(0).max(99);
+const MAX_SCORE_ROWS = 5;
+const numericScore = z.number().int().min(0);
 const scoreValue = z.union([numericScore, z.literal("wo")]);
 
 export const recordMatchScoreSchema = z
   .object({
-    playerOneScores: z.array(scoreValue).min(1).max(25),
-    playerTwoScores: z.array(scoreValue).min(1).max(25),
+    playerOneScores: z.array(scoreValue).min(1).max(MAX_SCORE_ROWS),
+    playerTwoScores: z.array(scoreValue).min(1).max(MAX_SCORE_ROWS),
   })
   .strict()
   .refine((value) => value.playerOneScores.length === value.playerTwoScores.length, {

@@ -2,10 +2,11 @@ import type { Response } from "express";
 import { logger } from "../../../lib/logger";
 import type { AuthenticatedRequest } from "../../../shared/authContext";
 import { AppError, buildErrorPayload } from "../../../shared/errors";
+import { parseRouteObjectId } from "../../../shared/validation";
 import { authorizeScheduleOrMatchParticipant } from "../../schedule/shared/authorize";
 import { fetchTournamentScheduleContext } from "../../schedule/shared/queries";
 import { recordTournamentMatchScoreFlow } from "./handler";
-import { recordMatchScoreParamsSchema, recordMatchScoreSchema } from "./validation";
+import { recordMatchScoreSchema } from "./validation";
 
 /**
  * PATCH /api/tournaments/:id/matches/:matchId/score
@@ -13,17 +14,22 @@ import { recordMatchScoreParamsSchema, recordMatchScoreSchema } from "./validati
  */
 export async function recordMatchScore(req: AuthenticatedRequest, res: Response) {
   try {
-    const paramsResult = recordMatchScoreParamsSchema.safeParse({
-      id: req.params.id,
-      matchId: Array.isArray(req.params.matchId) ? req.params.matchId[0] : req.params.matchId,
-    });
-    if (!paramsResult.success) {
-      const message = paramsResult.error.issues.map((issue) => issue.message).join("; ");
-      res.status(400).json(buildErrorPayload(message));
+    const tournamentIdResult = parseRouteObjectId(req.params.id, "tournament ID");
+    if (tournamentIdResult.status !== 200) {
+      res
+        .status(tournamentIdResult.status)
+        .json(buildErrorPayload(tournamentIdResult.message));
       return;
     }
 
-    const { id: tournamentId, matchId: matchIdParam } = paramsResult.data;
+    const matchIdResult = parseRouteObjectId(req.params.matchId, "match ID");
+    if (matchIdResult.status !== 200) {
+      res.status(matchIdResult.status).json(buildErrorPayload(matchIdResult.message));
+      return;
+    }
+
+    const tournamentId = tournamentIdResult.data;
+    const matchIdParam = matchIdResult.data;
 
     const parsedBody = recordMatchScoreSchema.safeParse(req.body);
     if (!parsedBody.success) {
