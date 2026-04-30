@@ -24,6 +24,20 @@ git branch -M main
 git push -uf origin main
 ```
 
+## Development tooling (local conventions)
+
+- Backend: use the legacy Yarn v1 from `npx` to ensure a consistent install environment across developers and CI. Example:
+
+```bash
+# install deps with the specific yarn version
+npx yarn@1.22.22 install
+
+# build
+npx yarn@1.22.22 build
+```
+
+These commands keep backend installs consistent even when different Yarn versions exist globally on developer machines.
+
 ## Integrate with your tools
 
 - [ ] [Set up project integrations](https://gitlab.com/development1950905/Tournament/-/settings/integrations)
