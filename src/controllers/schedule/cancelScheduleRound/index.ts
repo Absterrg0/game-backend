@@ -23,7 +23,11 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
     const roundParam = Array.isArray(req.params.round)
       ? req.params.round[0]
       : req.params.round;
-    const roundRaw = Number.parseInt(roundParam ?? "", 10);
+    if (typeof roundParam !== "string" || !/^[1-9]\d*$/.test(roundParam)) {
+      res.status(400).json(buildErrorPayload("Invalid round parameter"));
+      return;
+    }
+    const roundRaw = Number.parseInt(roundParam, 10);
     const round = Number.isFinite(roundRaw) ? Math.trunc(roundRaw) : Number.NaN;
     if (!Number.isFinite(round) || round < 1) {
       res.status(400).json(buildErrorPayload("Invalid round parameter"));
@@ -116,6 +120,7 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
       round,
     });
   } catch (error) {
+    console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to cancel schedule round";
     const status =
@@ -124,6 +129,7 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
       (message.startsWith("Round ") && message.endsWith("has not been generated yet."))
         ? 400
         : 500;
-    res.status(status).json(buildErrorPayload(message));
+    const safeMessage = status === 500 ? "Internal server error" : message;
+    res.status(status).json(buildErrorPayload(safeMessage));
   }
 }

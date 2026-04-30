@@ -391,8 +391,10 @@ export async function persistScheduleRound(
 
         const toSnapshot = (playerId: mongoose.Types.ObjectId) => {
           const participant = freshTournament.participants.find((p) => p._id.toString() === playerId.toString());
-          const rating = typeof participant?.elo?.rating === "number" ? participant.elo.rating : 1500;
-          const rd = typeof participant?.elo?.rd === "number" ? participant.elo.rd : 200;
+          const participantRating = participant?.elo?.rating;
+          const participantRd = participant?.elo?.rd;
+          const rating = Number.isFinite(participantRating) ? participantRating : 1500;
+          const rd = Number.isFinite(participantRd) ? participantRd : 200;
           return { player: playerId, rating, rd };
         };
 

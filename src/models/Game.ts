@@ -158,6 +158,7 @@ gameSchema.pre('validate', function (this: HydratedDocument<IGame>) {
 
 	for (const side of sides) {
 		const players = Array.isArray(side.value?.players) ? side.value.players : [];
+		const playerSnapshots = Array.isArray(side.value?.playerSnapshots) ? side.value.playerSnapshots : [];
 
 		if (players.length !== expectedSideSize) {
 			this.invalidate(
@@ -165,9 +166,25 @@ gameSchema.pre('validate', function (this: HydratedDocument<IGame>) {
 				`Each side must contain exactly ${expectedSideSize} player${expectedSideSize === 1 ? '' : 's'} for ${this.matchType}`
 			);
 		}
+		if (playerSnapshots.length !== players.length) {
+			this.invalidate(
+				`${side.key}.playerSnapshots`,
+				'playerSnapshots must contain one snapshot per player'
+			);
+		}
+
+		const snapshotByPlayerId = new Set(
+			playerSnapshots.map((snapshot) => snapshot.player?.toString()).filter((id): id is string => Boolean(id))
+		);
 
 		for (const player of players) {
 			allPlayers.push(player.toString());
+			if (!snapshotByPlayerId.has(player.toString())) {
+				this.invalidate(
+					`${side.key}.playerSnapshots`,
+					'each player must have a matching snapshot entry'
+				);
+			}
 		}
 	}
 
