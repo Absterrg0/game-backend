@@ -9,7 +9,7 @@ import { userCanManageClub } from "../../../lib/permissions";
 import { ROLES } from "../../../constants/roles";
 import { authorizeGetById } from "../shared/authorizeGetById";
 import { fetchTournamentById } from "../shared/fetchTournamentById";
-import { sanitizeDoublesPairs } from "../shared/doublesPairs";
+import { sanitizeDoublesPairs, toDoublesPairsObject } from "../shared/doublesPairs";
 
 const saveDoublesPairsSchema = z.object({
   doublesPairs: z.record(z.string(), z.string()).default({}),
@@ -45,6 +45,29 @@ function applyParticipantSelfPairing(
   next[participantId] = requestedPartnerId;
   next[requestedPartnerId] = participantId;
   return { ok: true as const, pairs: next };
+}
+
+function buildRequestedPairs(
+  value: unknown,
+  participantIds: string[]
+): Record<string, string> {
+  const rawPairs = toDoublesPairsObject(value);
+  const validIds = new Set(participantIds);
+  const next: Record<string, string> = {};
+
+  for (const participantId of participantIds) {
+    const partnerRaw = rawPairs[participantId];
+    if (typeof partnerRaw !== "string") {
+      continue;
+    }
+    const partnerId = partnerRaw.trim();
+    if (!partnerId || partnerId === participantId || !validIds.has(partnerId)) {
+      continue;
+    }
+    next[participantId] = partnerId;
+  }
+
+  return next;
 }
 
 /**
@@ -85,52 +108,90 @@ export async function saveDoublesPairs(req: AuthenticatedRequest, res: Response)
       return;
     }
 
-    const participantIds = (tournament.participants ?? []).map((participant) => participant._id.toString());
-    const participantSet = new Set(participantIds);
     const sessionUserId = req.user._id.toString();
-
-    const requestedPairs = sanitizeDoublesPairs(parsedBody.data.doublesPairs, participantIds);
-    const currentPairs = sanitizeDoublesPairs(tournament.doublesPairs, participantIds);
 
     const isManager = await userCanManageClub(buildPermissionContext(req.user), clubId);
     const isCreator = tournament.createdBy.equals(req.user._id);
     const isOrganiser = req.user.role === ROLES.SUPER_ADMIN || isCreator || isManager;
 
-    let nextPairs: Record<string, string>;
-    if (isOrganiser) {
-      nextPairs = requestedPairs;
-    } else {
-      if (!participantSet.has(sessionUserId)) {
-        res.status(403).json(buildErrorPayload("Only participants can set doubles pairing"));
+    const MAX_WRITE_RETRIES = 3;
+    let updatedTournament:
+      | {
+          participants?: Array<{ _id: { toString(): string } }>;
+          doublesPairs?: unknown;
+        }
+      | null = null;
+    let lastWriteConflict = false;
+
+    for (let attempt = 0; attempt < MAX_WRITE_RETRIES; attempt += 1) {
+      const snapshot = await Tournament.findById(idResult.data)
+        .select("participants doublesPairs __v")
+        .lean<{
+          participants?: Array<{ _id: { toString(): string } }>;
+          doublesPairs?: unknown;
+          __v?: number;
+        }>()
+        .exec();
+
+      if (!snapshot) {
+        res.status(404).json(buildErrorPayload("Tournament not found"));
         return;
       }
 
-      const participantUpdate = applyParticipantSelfPairing(
-        currentPairs,
-        requestedPairs,
-        sessionUserId
-      );
-      if (!participantUpdate.ok) {
-        res.status(participantUpdate.status).json(buildErrorPayload(participantUpdate.message));
-        return;
+      const participantIds = (snapshot.participants ?? []).map((participant) => participant._id.toString());
+      const participantSet = new Set(participantIds);
+      const requestedPairs = buildRequestedPairs(parsedBody.data.doublesPairs, participantIds);
+      const currentPairs = sanitizeDoublesPairs(snapshot.doublesPairs, participantIds);
+
+      let nextPairs: Record<string, string>;
+      if (isOrganiser) {
+        nextPairs = requestedPairs;
+      } else {
+        if (!participantSet.has(sessionUserId)) {
+          res.status(403).json(buildErrorPayload("Only participants can set doubles pairing"));
+          return;
+        }
+
+        const participantUpdate = applyParticipantSelfPairing(
+          currentPairs,
+          requestedPairs,
+          sessionUserId
+        );
+        if (!participantUpdate.ok) {
+          res.status(participantUpdate.status).json(buildErrorPayload(participantUpdate.message));
+          return;
+        }
+        nextPairs = participantUpdate.pairs;
       }
-      nextPairs = participantUpdate.pairs;
+
+      const sanitizedNextPairs = sanitizeDoublesPairs(nextPairs, participantIds);
+      updatedTournament = await Tournament.findOneAndUpdate(
+        { _id: idResult.data, __v: snapshot.__v ?? 0 },
+        {
+          $set: { doublesPairs: sanitizedNextPairs },
+          $inc: { __v: 1 },
+        },
+        { returnDocument: "after", runValidators: true }
+      )
+        .select("participants doublesPairs")
+        .lean<{
+          participants?: Array<{ _id: { toString(): string } }>;
+          doublesPairs?: unknown;
+        }>()
+        .exec();
+
+      if (updatedTournament) {
+        break;
+      }
+
+      lastWriteConflict = true;
     }
 
-    const updatedTournament = await Tournament.findByIdAndUpdate(
-      idResult.data,
-      { $set: { doublesPairs: nextPairs } },
-      { returnDocument: "after", runValidators: true }
-    )
-      .select("participants doublesPairs")
-      .lean<{
-        participants?: Array<{ _id: { toString(): string } }>;
-        doublesPairs?: unknown;
-      }>()
-      .exec();
-
     if (!updatedTournament) {
-      res.status(404).json(buildErrorPayload("Tournament not found"));
+      const message = lastWriteConflict
+        ? "Doubles pairs were updated by another request. Please retry."
+        : "Tournament not found";
+      res.status(lastWriteConflict ? 409 : 404).json(buildErrorPayload(message));
       return;
     }
 
