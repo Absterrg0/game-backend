@@ -12,6 +12,11 @@ import {
 
 export interface IGameTeam {
 	players: mongoose.Types.ObjectId[];
+	playerSnapshots: Array<{
+		player: mongoose.Types.ObjectId;
+		rating: number;
+		rd: number;
+	}>;
 }
 
 // Define the IGame interface
@@ -43,6 +48,31 @@ const gameTeamSchema = new mongoose.Schema<IGameTeam>(
 	{
 		players: {
 			type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
+			required: true,
+			default: []
+		},
+		playerSnapshots: {
+			type: [
+				{
+					player: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+					rating: {
+						type: Number,
+						required: true,
+						validate: {
+							validator: Number.isFinite,
+							message: 'rating must be a finite number'
+						}
+					},
+					rd: {
+						type: Number,
+						required: true,
+						validate: {
+							validator: Number.isFinite,
+							message: 'rd must be a finite number'
+						}
+					}
+				}
+			],
 			required: true,
 			default: []
 		}
@@ -142,6 +172,8 @@ gameSchema.pre('validate', function (this: HydratedDocument<IGame>) {
 
 	for (const side of sides) {
 		const players = Array.isArray(side.value?.players) ? side.value.players : [];
+		const playerSnapshots = Array.isArray(side.value?.playerSnapshots) ? side.value.playerSnapshots : [];
+		const playerIds = players.map((p) => p?.toString()).filter((id) => Boolean(id));
 
 		if (players.length !== expectedSideSize) {
 			this.invalidate(
@@ -149,9 +181,29 @@ gameSchema.pre('validate', function (this: HydratedDocument<IGame>) {
 				`Each side must contain exactly ${expectedSideSize} player${expectedSideSize === 1 ? '' : 's'} for ${this.matchType}`
 			);
 		}
+		if (playerIds.length !== players.length) {
+			this.invalidate(`${side.key}.players`, 'each player entry must be a valid user id');
+		}
+		if (playerSnapshots.length !== players.length) {
+			this.invalidate(
+				`${side.key}.playerSnapshots`,
+				'playerSnapshots must contain one snapshot per player'
+			);
+		}
+		const snapshotByPlayerId = new Set(
+			playerSnapshots
+				.map((snapshot) => snapshot?.player?.toString())
+				.filter((id): id is string => Boolean(id))
+		);
 
-		for (const player of players) {
-			allPlayers.push(player.toString());
+		for (const playerId of playerIds) {
+			allPlayers.push(playerId);
+			if (!snapshotByPlayerId.has(playerId)) {
+				this.invalidate(
+					`${side.key}.playerSnapshots`,
+					'each player must have a matching snapshot entry'
+				);
+			}
 		}
 	}
 

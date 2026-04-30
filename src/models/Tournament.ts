@@ -37,6 +37,8 @@ export interface ITournament extends Document {
 	createdAt?: Date;
 	updatedAt?: Date;
 	participants: mongoose.Types.ObjectId[];
+	/** Map of participantId → partnerId for doubles pairing. */
+	doublesPairs: Map<string, string>;
 	firstRoundScheduledAt?: Date | null;
 	completedAt?: Date | null;
 }
@@ -183,6 +185,11 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 				}
 			],
 			default: []
+		},
+		doublesPairs: {
+			type: Map,
+			of: String,
+			default: new Map()
 		},
 		firstRoundScheduledAt: {
 			type: Date,

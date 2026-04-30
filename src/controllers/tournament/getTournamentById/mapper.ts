@@ -8,6 +8,7 @@ import {
   getZonedDateParts,
   isValidIanaTimeZone,
 } from "../../../shared/timezone";
+import { sanitizeDoublesPairs } from "../shared/doublesPairs";
 
 /* =========================
    Response Types
@@ -87,6 +88,7 @@ export interface TournamentDetailResponse {
   descriptionInfo: string;
   status: string;
   participants: ParticipantInfo[];
+  doublesPairs: Record<string, string>;
   progress: ProgressInfo;
   permissions: PermissionsInfo;
   createdAt: string | null;
@@ -164,6 +166,8 @@ export function mapTournamentDetail(
   }
 
   const participantIdSet = new Set(participantItems.map((p) => p.id));
+  const participantIds = participantItems.map((participant) => participant.id);
+  const doublesPairs = sanitizeDoublesPairs(tournament.doublesPairs, participantIds);
 
   /* =========================
      Progress
@@ -320,6 +324,7 @@ export function mapTournamentDetail(
     descriptionInfo: tournament.descriptionInfo ?? "",
     status: tournament.status,
     participants: participantItems,
+    doublesPairs,
     progress: {
       spotsFilled,
       spotsTotal: spotsTotalForResponse,

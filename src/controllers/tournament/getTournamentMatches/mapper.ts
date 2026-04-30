@@ -45,28 +45,17 @@ function normalizeScores(values: Array<number | "wo"> | undefined) {
   return out;
 }
 
-function mapPlayer(player: GameMatchPlayerSlot) {
+function mapPlayer(player: GameMatchPlayerSlot, snapshot: { rating: number; rd: number } | null) {
   if (player == null) {
     return null;
   }
-
-  const rating =
-    typeof player.elo?.rating === "number" && Number.isFinite(player.elo.rating)
-      ? player.elo.rating
-      : null;
-  const rd =
-    typeof player.elo?.rd === "number" && Number.isFinite(player.elo.rd)
-      ? player.elo.rd
-      : null;
 
   return {
     id: player._id.toString(),
     name: player.name ?? null,
     alias: player.alias ?? null,
-    elo: {
-      rating,
-      rd,
-    },
+    snapshotElo: snapshot ? { rating: snapshot.rating, rd: snapshot.rd } : null,
+    elo: null,
   };
 }
 
@@ -77,7 +66,11 @@ function mapTeam(team: GameForMatchesDoc["side1"] | GameForMatchesDoc["side2"]) 
 
   const out: MatchPlayerResponse[] = [];
   for (const player of team.players) {
-    const mapped = mapPlayer(player);
+    const snapshot =
+      player == null
+        ? null
+        : (team.playerSnapshots ?? []).find((entry) => entry.player.toString() === player._id.toString()) ?? null;
+    const mapped = mapPlayer(player, snapshot ? { rating: snapshot.rating, rd: snapshot.rd } : null);
     if (mapped != null) {
       out.push(mapped);
     }

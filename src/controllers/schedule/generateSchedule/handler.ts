@@ -360,6 +360,9 @@ export async function persistScheduleRound(
       const tournamentTimezone = isScheduledTournament
         ? (freshTournament.timezone as string)
         : resolveTournamentTimeZone(freshTournament.timezone);
+      const participantsById = new Map(
+        freshTournament.participants.map((participant) => [participant._id.toString(), participant])
+      );
 
       const gameDocs = pairs.map((pair, index) => {
         const slot = Math.floor(index / matchesPerWave) + 1;
@@ -389,20 +392,35 @@ export async function persistScheduleRound(
           playMode: freshTournament.playMode,
         };
 
+        const toSnapshot = (playerId: mongoose.Types.ObjectId) => {
+          const participant = participantsById.get(playerId.toString());
+          const participantRating = participant?.elo?.rating;
+          const participantRd = participant?.elo?.rd;
+          const rating = Number.isFinite(participantRating) ? participantRating : 1500;
+          const rd = Number.isFinite(participantRd) ? participantRd : 200;
+          return { player: playerId, rating, rd };
+        };
+
         if (pair.kind === "singles") {
           return {
             ...common,
             matchType: "singles" as const,
-            side1: { players: [pair.teamOne[0]] },
-            side2: { players: [pair.teamTwo[0]] },
+            side1: { players: [pair.teamOne[0]], playerSnapshots: [toSnapshot(pair.teamOne[0])] },
+            side2: { players: [pair.teamTwo[0]], playerSnapshots: [toSnapshot(pair.teamTwo[0])] },
           };
         }
 
         return {
           ...common,
           matchType: "doubles" as const,
-          side1: { players: [pair.teamOne[0], pair.teamOne[1]] },
-          side2: { players: [pair.teamTwo[0], pair.teamTwo[1]] },
+          side1: {
+            players: [pair.teamOne[0], pair.teamOne[1]],
+            playerSnapshots: [toSnapshot(pair.teamOne[0]), toSnapshot(pair.teamOne[1])],
+          },
+          side2: {
+            players: [pair.teamTwo[0], pair.teamTwo[1]],
+            playerSnapshots: [toSnapshot(pair.teamTwo[0]), toSnapshot(pair.teamTwo[1])],
+          },
         };
       });
 

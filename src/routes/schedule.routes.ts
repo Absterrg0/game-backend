@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  cancelScheduleRound,
   generateDoublesPairs,
   generateSchedule,
   getSchedule,
@@ -11,6 +12,7 @@ const router = Router();
 const authed = createAuthedRouter(router);
 
 authed.get("/:id", requireOrganiserOrAbove, getSchedule);
+authed.delete("/:id/round/:round", requireOrganiserOrAbove, cancelScheduleRound);
 authed.post("/:id/pairs", requireOrganiserOrAbove, generateDoublesPairs);
 authed.post("/:id", requireOrganiserOrAbove, generateSchedule);
 
