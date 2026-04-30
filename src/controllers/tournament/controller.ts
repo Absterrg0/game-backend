@@ -7,3 +7,5 @@ export { joinTournament } from './joinTournament/index';
 export { leaveTournament } from './leaveTournament/index';
 export { createTournament } from './createTournament/index';
 export { updateTournament } from './updateTournament/index';
+export { getDoublesPairs } from './getDoublesPairs/index';
+export { saveDoublesPairs } from './saveDoublesPairs/index';
