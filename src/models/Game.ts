@@ -12,6 +12,11 @@ import {
 
 export interface IGameTeam {
 	players: mongoose.Types.ObjectId[];
+	playerSnapshots: Array<{
+		player: mongoose.Types.ObjectId;
+		rating: number;
+		rd: number;
+	}>;
 }
 
 // Define the IGame interface
@@ -43,6 +48,17 @@ const gameTeamSchema = new mongoose.Schema<IGameTeam>(
 	{
 		players: {
 			type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
+			required: true,
+			default: []
+		},
+		playerSnapshots: {
+			type: [
+				{
+					player: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+					rating: { type: Number, required: true },
+					rd: { type: Number, required: true }
+				}
+			],
 			required: true,
 			default: []
 		}

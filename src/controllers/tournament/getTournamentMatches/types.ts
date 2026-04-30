@@ -23,10 +23,6 @@ export interface PopulatedMatchPlayerDoc {
   _id: Types.ObjectId;
   name?: string | null;
   alias?: string | null;
-  elo?: {
-    rating?: number | null;
-    rd?: number | null;
-  } | null;
 }
 
 /**
@@ -44,8 +40,14 @@ export interface PopulatedMatchCourtDoc {
 
 export interface GameForMatchesDoc {
   _id: Types.ObjectId;
-  side1: { players: GameMatchPlayerSlot[] };
-  side2: { players: GameMatchPlayerSlot[] };
+  side1: {
+    players: GameMatchPlayerSlot[];
+    playerSnapshots?: Array<{ player: Types.ObjectId; rating: number; rd: number }> | null;
+  };
+  side2: {
+    players: GameMatchPlayerSlot[];
+    playerSnapshots?: Array<{ player: Types.ObjectId; rating: number; rd: number }> | null;
+  };
   court?: PopulatedMatchCourtDoc | null;
   score?: {
     playerOneScores?: Array<number | "wo">;

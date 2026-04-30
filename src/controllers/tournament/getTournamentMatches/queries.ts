@@ -26,24 +26,26 @@ export async function fetchGamesForScheduleRounds(
   scheduleId: Types.ObjectId | null,
   rounds: ScheduleRoundDoc[]
 ) {
-  if (scheduleId == null || rounds.length === 0) {
-    return [];
-  }
-
   const gameIds = rounds.map((entry) => entry.game);
-  const detachedRounds = Array.from(new Set(rounds.map((r) => Math.trunc(r.round))));
 
   // Populate is required: `GameForMatchesDoc` / `GameMatchPlayerSlot` assume
   // populated side players (see getTournamentMatches mapper), not raw refs.
+  const orConditions: Array<Record<string, unknown>> = [
+    // Always include detached historical games for this tournament so cancelled/regenerated
+    // rounds remain visible even after their schedule entries are removed.
+    { tournament: tournamentId, isHistorical: true },
+  ];
+
+  if (scheduleId != null && gameIds.length > 0) {
+    orConditions.push({ schedule: scheduleId, _id: { $in: gameIds } });
+  }
+
   return Game.find({
-    $or: [
-      { schedule: scheduleId, _id: { $in: gameIds } },
-      { tournament: tournamentId, isHistorical: true, detachedFromRound: { $in: detachedRounds } },
-    ],
+    $or: orConditions,
   })
     .select("_id side1 side2 court status matchType playMode startTime score isHistorical detachedFromRound detachedFromSlot")
-    .populate("side1.players", "name alias elo.rating elo.rd")
-    .populate("side2.players", "name alias elo.rating elo.rd")
+    .populate("side1.players", "name alias")
+    .populate("side2.players", "name alias")
     .populate("court", "name")
     .lean<GameForMatchesDoc[]>()
     .exec();

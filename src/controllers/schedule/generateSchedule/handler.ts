@@ -389,20 +389,33 @@ export async function persistScheduleRound(
           playMode: freshTournament.playMode,
         };
 
+        const toSnapshot = (playerId: mongoose.Types.ObjectId) => {
+          const participant = freshTournament.participants.find((p) => p._id.toString() === playerId.toString());
+          const rating = typeof participant?.elo?.rating === "number" ? participant.elo.rating : 1500;
+          const rd = typeof participant?.elo?.rd === "number" ? participant.elo.rd : 200;
+          return { player: playerId, rating, rd };
+        };
+
         if (pair.kind === "singles") {
           return {
             ...common,
             matchType: "singles" as const,
-            side1: { players: [pair.teamOne[0]] },
-            side2: { players: [pair.teamTwo[0]] },
+            side1: { players: [pair.teamOne[0]], playerSnapshots: [toSnapshot(pair.teamOne[0])] },
+            side2: { players: [pair.teamTwo[0]], playerSnapshots: [toSnapshot(pair.teamTwo[0])] },
           };
         }
 
         return {
           ...common,
           matchType: "doubles" as const,
-          side1: { players: [pair.teamOne[0], pair.teamOne[1]] },
-          side2: { players: [pair.teamTwo[0], pair.teamTwo[1]] },
+          side1: {
+            players: [pair.teamOne[0], pair.teamOne[1]],
+            playerSnapshots: [toSnapshot(pair.teamOne[0]), toSnapshot(pair.teamOne[1])],
+          },
+          side2: {
+            players: [pair.teamTwo[0], pair.teamTwo[1]],
+            playerSnapshots: [toSnapshot(pair.teamTwo[0]), toSnapshot(pair.teamTwo[1])],
+          },
         };
       });
 
