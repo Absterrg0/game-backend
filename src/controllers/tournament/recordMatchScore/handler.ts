@@ -13,6 +13,8 @@ export type RecordTournamentMatchScoreOptions = {
   actor: TournamentScoreActor;
   /** When true, organisers may no longer adjust scores (after grace period from tournament completion). */
   organiserGraceExpired: boolean;
+  /** When true, participant score edits are closed because the tournament is complete. */
+  tournamentCompleted: boolean;
 };
 
 type ScoreValue = number | "wo";
@@ -159,6 +161,9 @@ export async function recordTournamentMatchScoreFlow(
           403
         );
       }
+      if (options.actor === "participant" && options.tournamentCompleted) {
+        throw new AppError("Scores can no longer be edited after the tournament is completed", 403);
+      }
 
       const schedule = game.schedule
         ? await Schedule.findById(game.schedule).session(session).exec()
@@ -295,7 +300,7 @@ export async function recordTournamentMatchScoreFlow(
 
             const completionDate = now;
             await Tournament.updateOne(
-              { _id: tournamentId },
+              { _id: tournamentId, completedAt: null },
               { $set: { completedAt: completionDate } },
               { session }
             ).exec();

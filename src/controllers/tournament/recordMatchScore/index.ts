@@ -54,24 +54,24 @@ export async function recordMatchScore(req: AuthenticatedRequest, res: Response)
     }
 
     const isOrganiser = await hasTournamentScheduleAccess(tournament, req.user);
-    let completedAt: Date | null = null;
-    if (isOrganiser) {
-      const meta = await Tournament.findById(tournamentId)
-        .select("completedAt")
-        .lean<{ completedAt?: Date | null } | null>()
-        .exec();
-      completedAt = meta?.completedAt ?? null;
-    }
+    const meta = await Tournament.findById(tournamentId)
+      .select("completedAt")
+      .lean<{ completedAt?: Date | null } | null>()
+      .exec();
+    const completedAt = meta?.completedAt ?? null;
 
     const graceHours = TOURNAMENT_ORGANISER_SCORE_EDIT_GRACE_HOURS;
     const organiserGraceExpired =
       isOrganiser &&
       completedAt instanceof Date &&
       Date.now() > completedAt.getTime() + graceHours * 60 * 60 * 1000;
+    const tournamentCompleted =
+      completedAt instanceof Date && Date.now() > completedAt.getTime();
 
     const result = await recordTournamentMatchScoreFlow(tournamentId, matchIdParam, parsedBody.data, {
       actor: isOrganiser ? "organiser" : "participant",
       organiserGraceExpired,
+      tournamentCompleted,
     });
 
     const responseMessage =

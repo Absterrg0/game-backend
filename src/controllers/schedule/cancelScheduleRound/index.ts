@@ -53,9 +53,8 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
     try {
       await session.withTransaction(async () => {
         const latestTournament = await Tournament.findById(idResult.data)
-          .select("_id schedule")
+          .select("_id schedule completedAt")
           .session(session)
-          .lean<{ _id: mongoose.Types.ObjectId; schedule: mongoose.Types.ObjectId | null }>()
           .exec();
 
         if (!latestTournament) {
@@ -94,8 +93,8 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
               Array<{
                 _id: mongoose.Types.ObjectId;
                 status: string;
-                side1?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number }> };
-                side2?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number }> };
+                side1?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number; vol?: number; tau?: number }> };
+                side2?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number; vol?: number; tau?: number }> };
               }>
             >()
             .exec();
@@ -135,13 +134,15 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
           remainingRounds.length > 0 ? Math.max(...remainingRounds) : 0;
         scheduleDoc.status = scheduleDoc.rounds.length > 0 ? "active" : "draft";
         await scheduleDoc.save({ session });
+        latestTournament.completedAt = null;
+        await latestTournament.save({ session });
 
         if (scheduleDoc.currentRound > 0) {
           await recomputeTournamentGlickoRatingsThroughRound(scheduleDoc._id, scheduleDoc.currentRound, {
             session,
           });
         } else {
-          const baselineByUserId = new Map<string, { rating: number; rd: number }>();
+          const baselineByUserId = new Map<string, { rating: number; rd: number; vol?: number; tau?: number }>();
           const detachedGames = await Game.find({
             tournament: latestTournament._id,
             isHistorical: true,
@@ -151,8 +152,8 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
             .session(session)
             .lean<
               Array<{
-                side1?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number }> };
-                side2?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number }> };
+                side1?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number; vol?: number; tau?: number }> };
+                side2?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number; vol?: number; tau?: number }> };
               }>
             >()
             .exec();
@@ -166,6 +167,8 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
               baselineByUserId.set(snapshot.player.toString(), {
                 rating: snapshot.rating,
                 rd: snapshot.rd,
+                vol: snapshot.vol,
+                tau: snapshot.tau,
               });
             }
           }
@@ -179,6 +182,8 @@ export async function cancelScheduleRound(req: AuthenticatedRequest, res: Respon
                     $set: {
                       "elo.rating": rating.rating,
                       "elo.rd": rating.rd,
+                      ...(Number.isFinite(rating.vol) && rating.vol! > 0 ? { "elo.vol": rating.vol } : {}),
+                      ...(Number.isFinite(rating.tau) && rating.tau! > 0 ? { "elo.tau": rating.tau } : {}),
                     },
                   },
                 },

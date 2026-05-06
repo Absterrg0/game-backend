@@ -61,21 +61,23 @@ function averagePlayers(players: Glicko2Player[]): Glicko2Player {
 async function loadUserRatingDefaults(
   userIds: string[],
   session: ClientSession
-): Promise<Map<string, Pick<Glicko2Player, "vol" | "tau">>> {
+): Promise<Map<string, Glicko2Player>> {
   if (userIds.length === 0) {
     return new Map();
   }
 
   const users = await User.find({ _id: { $in: userIds } })
-    .select("elo.vol elo.tau")
+    .select("elo.rating elo.rd elo.vol elo.tau")
     .session(session)
-    .lean<Array<{ _id: Types.ObjectId; elo?: { vol?: number | null; tau?: number | null } | null }>>()
+    .lean<Array<{ _id: Types.ObjectId; elo?: { rating?: number | null; rd?: number | null; vol?: number | null; tau?: number | null } | null }>>()
     .exec();
 
   return new Map(
     users.map((user) => [
       user._id.toString(),
       {
+        rating: Number.isFinite(user.elo?.rating) ? user.elo!.rating! : 1500,
+        rd: Number.isFinite(user.elo?.rd) ? user.elo!.rd! : 200,
         vol: Number.isFinite(user.elo?.vol) && user.elo!.vol! > 0 ? user.elo!.vol! : 0.06,
         tau: Number.isFinite(user.elo?.tau) && user.elo!.tau! > 0 ? user.elo!.tau! : 0.5,
       },
@@ -86,7 +88,7 @@ async function loadUserRatingDefaults(
 function snapshotRating(
   game: GameDocument,
   playerId: Types.ObjectId,
-  defaultsByUserId: Map<string, Pick<Glicko2Player, "vol" | "tau">>
+  defaultsByUserId: Map<string, Glicko2Player>
 ): Glicko2Player {
   const playerIdString = playerId.toString();
   const snapshots = [
@@ -100,8 +102,8 @@ function snapshotRating(
   return {
     rating: snapshot && Number.isFinite(snapshot.rating) ? snapshot.rating : 1500,
     rd: snapshot && Number.isFinite(snapshot.rd) ? snapshot.rd : 200,
-    vol: defaults?.vol ?? 0.06,
-    tau: defaults?.tau ?? 0.5,
+    vol: snapshot && Number.isFinite(snapshot.vol) && snapshot.vol > 0 ? snapshot.vol : defaults?.vol ?? 0.06,
+    tau: snapshot && Number.isFinite(snapshot.tau) && snapshot.tau > 0 ? snapshot.tau : defaults?.tau ?? 0.5,
   };
 }
 
@@ -109,7 +111,7 @@ function readRating(
   map: RatingMap,
   game: GameDocument,
   playerId: Types.ObjectId,
-  defaultsByUserId: Map<string, Pick<Glicko2Player, "vol" | "tau">>
+  defaultsByUserId: Map<string, Glicko2Player>
 ) {
   const existing = map.get(playerId.toString());
   if (existing) {
@@ -134,9 +136,9 @@ async function loadScheduledGamesThroughRound(
   session: ClientSession
 ) {
   const schedule = await Schedule.findById(scheduleId)
-    .select("rounds")
+    .select("rounds tournament")
     .session(session)
-    .lean<{ rounds?: Array<{ round: number; slot: number; game: Types.ObjectId }> } | null>()
+    .lean<{ tournament?: Types.ObjectId; rounds?: Array<{ round: number; slot: number; game: Types.ObjectId }> } | null>()
     .exec();
   const roundEntries = (schedule?.rounds ?? [])
     .filter((entry) => entry.round <= round)
@@ -144,7 +146,7 @@ async function loadScheduledGamesThroughRound(
   const roundGameIds = roundEntries.map((entry) => entry.game);
 
   if (roundGameIds.length === 0) {
-    return { gamesByRound: new Map<number, GameDocument[]>(), games: [] as GameDocument[] };
+    return { gamesByRound: new Map<number, GameDocument[]>(), games: [] as GameDocument[], resetDefaultsByUserId: new Map<string, Glicko2Player>() };
   }
 
   const roundGames = await Game.find({
@@ -168,7 +170,37 @@ async function loadScheduledGamesThroughRound(
     }
   }
 
-  return { gamesByRound, games };
+  const resetDefaultsByUserId = new Map<string, Glicko2Player>();
+  if (schedule?.tournament) {
+    const detachedGames = await Game.find({
+      tournament: schedule.tournament,
+      isHistorical: true,
+      detachedFromRound: { $gt: round },
+    })
+      .select("side1.playerSnapshots side2.playerSnapshots")
+      .session(session)
+      .exec();
+
+    for (const game of detachedGames) {
+      const snapshots = [
+        ...(Array.isArray(game.side1?.playerSnapshots) ? game.side1.playerSnapshots : []),
+        ...(Array.isArray(game.side2?.playerSnapshots) ? game.side2.playerSnapshots : []),
+      ];
+      for (const snapshot of snapshots) {
+        const userId = snapshot.player.toString();
+        if (!resetDefaultsByUserId.has(userId)) {
+          resetDefaultsByUserId.set(userId, {
+            rating: Number.isFinite(snapshot.rating) ? snapshot.rating : 1500,
+            rd: Number.isFinite(snapshot.rd) ? snapshot.rd : 200,
+            vol: Number.isFinite(snapshot.vol) && snapshot.vol > 0 ? snapshot.vol : 0.06,
+            tau: Number.isFinite(snapshot.tau) && snapshot.tau > 0 ? snapshot.tau : 0.5,
+          });
+        }
+      }
+    }
+  }
+
+  return { gamesByRound, games, resetDefaultsByUserId };
 }
 
 function collectUserIds(games: GameDocument[]) {
@@ -182,7 +214,7 @@ function collectUserIds(games: GameDocument[]) {
 function applyFinishedGamesForRound(
   ratingsByUserId: RatingMap,
   games: GameDocument[],
-  defaultsByUserId: Map<string, Pick<Glicko2Player, "vol" | "tau">>
+  defaultsByUserId: Map<string, Glicko2Player>
 ) {
   const resultsByUserId = new Map<string, Glicko2MatchResult[]>();
 
@@ -265,6 +297,7 @@ async function persistRatings(
     rating: rating.rating,
     rd: rating.rd,
     vol: rating.vol,
+    tau: rating.tau ?? 0.5,
   }));
 
   if (updatedRatings.length > 0) {
@@ -277,6 +310,7 @@ async function persistRatings(
               "elo.rating": entry.rating,
               "elo.rd": entry.rd,
               "elo.vol": entry.vol,
+              "elo.tau": entry.tau,
             },
           },
         },
@@ -299,13 +333,25 @@ export async function recomputeTournamentGlickoRatingsThroughRound(
     return [];
   }
 
-  const { games, gamesByRound } = await loadScheduledGamesThroughRound(scheduleId, round, options.session);
+  const { games, gamesByRound, resetDefaultsByUserId } = await loadScheduledGamesThroughRound(scheduleId, round, options.session);
   if (games.length === 0) {
     return [];
   }
 
-  const defaultsByUserId = await loadUserRatingDefaults(collectUserIds(games), options.session);
+  const scheduledUserIds = collectUserIds(games);
+  const defaultsByUserId = await loadUserRatingDefaults(scheduledUserIds, options.session);
+  const affectedUserIds = new Set([
+    ...scheduledUserIds,
+    ...defaultsByUserId.keys(),
+    ...resetDefaultsByUserId.keys(),
+  ]);
   const ratingsByUserId: RatingMap = new Map();
+  for (const userId of affectedUserIds) {
+    const defaults = resetDefaultsByUserId.get(userId) ?? defaultsByUserId.get(userId);
+    if (defaults) {
+      ratingsByUserId.set(userId, { ...defaults });
+    }
+  }
 
   for (const roundNumber of [...gamesByRound.keys()].sort((left, right) => left - right)) {
     applyFinishedGamesForRound(ratingsByUserId, gamesByRound.get(roundNumber) ?? [], defaultsByUserId);

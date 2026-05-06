@@ -288,7 +288,9 @@ export function mapTournamentDetail(
   const effectiveTimezone = tournament.timezone ?? DEFAULT_TOURNAMENT_TIMEZONE;
 
   const completedAtIso =
-    tournament.completedAt instanceof Date ? tournament.completedAt.toISOString() : null;
+    tournament.completedAt instanceof Date && Number.isFinite(tournament.completedAt.getTime())
+      ? tournament.completedAt.toISOString()
+      : null;
   const organiserScoreEditDeadline =
     tournament.completedAt instanceof Date && Number.isFinite(tournament.completedAt.getTime())
       ? new Date(

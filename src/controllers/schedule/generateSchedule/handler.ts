@@ -37,8 +37,8 @@ type ReplaceableGame = {
   _id: mongoose.Types.ObjectId;
   status: GameStatus;
   score?: { playerOneScores?: Array<number | "wo">; playerTwoScores?: Array<number | "wo"> } | null;
-  side1?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number }> } | null;
-  side2?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number }> } | null;
+  side1?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number; vol?: number; tau?: number }> } | null;
+  side2?: { playerSnapshots?: Array<{ player: mongoose.Types.ObjectId; rating: number; rd: number; vol?: number; tau?: number }> } | null;
 };
 
 function hasScoresOrRelevantStatus(
@@ -83,7 +83,7 @@ export async function persistScheduleRound(
             select: "_id name",
           },
         })
-        .populate("participants", "name alias elo.rating elo.rd")
+        .populate("participants", "name alias elo.rating elo.rd elo.vol elo.tau")
         .session(session)
         .lean<TournamentScheduleContext | null>()
         .exec();
@@ -256,7 +256,7 @@ export async function persistScheduleRound(
         );
 
         if (targetRound === 1) {
-          const baselineByUserId = new Map<string, { rating: number; rd: number }>();
+          const baselineByUserId = new Map<string, { rating: number; rd: number; vol?: number; tau?: number }>();
           for (const game of gamesToReplace) {
             const snapshots = [
               ...(game.side1?.playerSnapshots ?? []),
@@ -266,6 +266,8 @@ export async function persistScheduleRound(
               baselineByUserId.set(snapshot.player.toString(), {
                 rating: snapshot.rating,
                 rd: snapshot.rd,
+                vol: snapshot.vol,
+                tau: snapshot.tau,
               });
             }
           }
@@ -279,6 +281,8 @@ export async function persistScheduleRound(
                     $set: {
                       "elo.rating": rating.rating,
                       "elo.rd": rating.rd,
+                      ...(Number.isFinite(rating.vol) && rating.vol! > 0 ? { "elo.vol": rating.vol } : {}),
+                      ...(Number.isFinite(rating.tau) && rating.tau! > 0 ? { "elo.tau": rating.tau } : {}),
                     },
                   },
                 },
@@ -297,7 +301,7 @@ export async function persistScheduleRound(
 
       const participantIds = freshTournament.participants.map((participant) => participant._id);
       const latestParticipants = await User.find({ _id: { $in: participantIds } })
-        .select("name alias elo.rating elo.rd")
+        .select("name alias elo.rating elo.rd elo.vol elo.tau")
         .session(session)
         .lean<ScheduleParticipantInfo[]>()
         .exec();
@@ -345,7 +349,7 @@ export async function persistScheduleRound(
         ? (freshTournament.timezone as string)
         : resolveTournamentTimeZone(freshTournament.timezone);
       const participantsById = new Map(
-        freshTournament.participants.map((participant) => [participant._id.toString(), participant])
+        latestParticipants.map((participant) => [participant._id.toString(), participant])
       );
 
       type SlotAssignment = { slot: number; courtId: string };
@@ -442,9 +446,13 @@ export async function persistScheduleRound(
           const participant = participantsById.get(playerId.toString());
           const participantRating = participant?.elo?.rating;
           const participantRd = participant?.elo?.rd;
+          const participantVol = participant?.elo?.vol;
+          const participantTau = participant?.elo?.tau;
           const rating = Number.isFinite(participantRating) ? participantRating : 1500;
           const rd = Number.isFinite(participantRd) ? participantRd : 200;
-          return { player: playerId, rating, rd };
+          const vol = Number.isFinite(participantVol) && participantVol! > 0 ? participantVol! : 0.06;
+          const tau = Number.isFinite(participantTau) && participantTau! > 0 ? participantTau! : 0.5;
+          return { player: playerId, rating, rd, vol, tau };
         };
 
         if (pair.kind === "singles") {
