@@ -2,11 +2,9 @@ import mongoose, { Types } from "mongoose";
 import Game from "../../../models/Game";
 import Schedule from "../../../models/Schedule";
 import Tournament from "../../../models/Tournament";
-import User from "../../../models/User";
 import { AppError } from "../../../shared/errors";
 import type { GamePlayMode } from "../../../types/domain/game";
 import type { RecordMatchScoreInput } from "./validation";
-import { recomputeTournamentGlickoRatings } from "./recomputeTournamentGlickoRatings";
 
 export type TournamentScoreActor = "organiser" | "participant";
 
@@ -215,6 +213,7 @@ export async function recordTournamentMatchScoreFlow(
           matchStatus: "pendingScore" as const,
           tournamentCompleted: false,
           updatedRatings: [] as Array<{ userId: string; rating: number; rd: number; vol: number }>,
+          ratingsRecomputed: false,
         };
       }
 
@@ -253,28 +252,7 @@ export async function recordTournamentMatchScoreFlow(
         throw new AppError("Match is missing participants", 400);
       }
 
-      await recomputeTournamentGlickoRatings(tournamentId, session);
-
-      const usersAfter = await User.find({ _id: { $in: uniqueParticipantIds } })
-        .setOptions({ includeDeleted: true })
-        .select("_id elo")
-        .session(session)
-        .lean<Array<{ _id: Types.ObjectId; elo?: { rating?: number | null; rd?: number | null; vol?: number | null } }>>()
-        .exec();
-
       const updatedRatings: Array<{ userId: string; rating: number; rd: number; vol: number }> = [];
-      for (const userRow of usersAfter) {
-        const id = userRow._id.toString();
-        const rating = typeof userRow.elo?.rating === "number" ? userRow.elo.rating : 1500;
-        const rd = typeof userRow.elo?.rd === "number" ? userRow.elo.rd : 200;
-        const vol = typeof userRow.elo?.vol === "number" ? userRow.elo.vol : 0.06;
-        updatedRatings.push({
-          userId: id,
-          rating: Math.round(rating),
-          rd: Math.round(rd),
-          vol: Number(vol.toFixed(6)),
-        });
-      }
 
       let tournamentCompleted = false;
       const tournament = await Tournament.findById(tournamentId)
@@ -322,6 +300,7 @@ export async function recordTournamentMatchScoreFlow(
         matchStatus: "completed" as const,
         tournamentCompleted,
         updatedRatings,
+        ratingsRecomputed: false,
       };
     });
 

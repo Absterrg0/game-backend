@@ -2,7 +2,7 @@ import type { Response } from "express";
 import { logger } from "../../../lib/logger";
 import type { AuthenticatedRequest } from "../../../shared/authContext";
 import { AppError, buildErrorPayload } from "../../../shared/errors";
-import { getTournamentOrganiserScoreEditGraceDays } from "../../../lib/config";
+import { TOURNAMENT_ORGANISER_SCORE_EDIT_GRACE_HOURS } from "../../../constants/config";
 import Tournament from "../../../models/Tournament";
 import {
   authorizeScheduleOrMatchParticipant,
@@ -61,11 +61,11 @@ export async function recordMatchScore(req: AuthenticatedRequest, res: Response)
       completedAt = meta?.completedAt ?? null;
     }
 
-    const graceDays = getTournamentOrganiserScoreEditGraceDays();
+    const graceHours = TOURNAMENT_ORGANISER_SCORE_EDIT_GRACE_HOURS;
     const organiserGraceExpired =
       isOrganiser &&
       completedAt instanceof Date &&
-      Date.now() > completedAt.getTime() + graceDays * 24 * 60 * 60 * 1000;
+      Date.now() > completedAt.getTime() + graceHours * 60 * 60 * 1000;
 
     const result = await recordTournamentMatchScoreFlow(tournamentId, matchIdParam, parsedBody.data, {
       actor: isOrganiser ? "organiser" : "participant",
@@ -74,7 +74,7 @@ export async function recordMatchScore(req: AuthenticatedRequest, res: Response)
 
     const responseMessage =
       result.matchStatus === "completed"
-        ? "Match score recorded and ratings updated"
+        ? "Match score recorded"
         : "Partial score recorded; winner is still pending";
 
     res.status(200).json({

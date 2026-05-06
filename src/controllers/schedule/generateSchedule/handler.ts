@@ -364,10 +364,72 @@ export async function persistScheduleRound(
         freshTournament.participants.map((participant) => [participant._id.toString(), participant])
       );
 
+      type SlotAssignment = { slot: number; courtId: string };
+
+      function getPairParticipantIds(pair: MatchPair): string[] {
+        if (pair.kind === "singles") {
+          return [pair.teamOne[0].toString(), pair.teamTwo[0].toString()];
+        }
+
+        return [
+          pair.teamOne[0].toString(),
+          pair.teamOne[1].toString(),
+          pair.teamTwo[0].toString(),
+          pair.teamTwo[1].toString(),
+        ];
+      }
+
+      /**
+       * Assign matches to simultaneous slots such that no participant appears in
+       * more than one match in the same slot (prevents "A/B vs A/C" happening at once).
+       */
+      const slots: Array<{ usedPlayers: Set<string>; matchCount: number }> = [];
+      const slotAssignments: SlotAssignment[] = new Array(pairs.length);
+
+      for (let pairIndex = 0; pairIndex < pairs.length; pairIndex += 1) {
+        const pair = pairs[pairIndex];
+        const pairParticipantIds = Array.from(new Set(getPairParticipantIds(pair)));
+
+        let placed = false;
+        for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+          const slot = slots[slotIndex];
+          if (slot.matchCount >= matchesPerWave) {
+            continue;
+          }
+
+          const hasConflicts = pairParticipantIds.some((participantId) =>
+            slot.usedPlayers.has(participantId)
+          );
+          if (hasConflicts) {
+            continue;
+          }
+
+          const courtLocalIndex = slot.matchCount;
+          slot.matchCount += 1;
+          pairParticipantIds.forEach((participantId) => slot.usedPlayers.add(participantId));
+
+          slotAssignments[pairIndex] = {
+            slot: slotIndex + 1,
+            courtId: uniqueCourtIds[courtLocalIndex],
+          };
+          placed = true;
+          break;
+        }
+
+        if (!placed) {
+          const newSlotIndex = slots.length;
+          slots.push({ usedPlayers: new Set(pairParticipantIds), matchCount: 1 });
+          slotAssignments[pairIndex] = {
+            slot: newSlotIndex + 1,
+            courtId: uniqueCourtIds[0],
+          };
+        }
+      }
+
       const gameDocs = pairs.map((pair, index) => {
-        const slot = Math.floor(index / matchesPerWave) + 1;
+        const { slot, courtId } = slotAssignments[index]!;
         const common = {
-          court: new mongoose.Types.ObjectId(uniqueCourtIds[index % uniqueCourtIds.length]),
+          court: new mongoose.Types.ObjectId(courtId),
           tournament: freshTournament._id,
           schedule: scheduleDoc._id,
           score: {
@@ -429,7 +491,7 @@ export async function persistScheduleRound(
       const newRoundEntries = createdGames.map((game, index) => ({
         game: game._id,
         mode: body.mode,
-        slot: Math.floor(index / matchesPerWave) + 1,
+        slot: slotAssignments[index]!.slot,
         round: targetRound,
       }));
 

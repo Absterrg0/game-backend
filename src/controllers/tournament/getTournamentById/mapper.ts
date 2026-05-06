@@ -1,6 +1,6 @@
 import type { TournamentPopulated } from "../../../types/api/tournament";
 import { ROLES } from "../../../constants/roles";
-import { getTournamentOrganiserScoreEditGraceDays } from "../../../lib/config";
+import { TOURNAMENT_ORGANISER_SCORE_EDIT_GRACE_HOURS } from "../../../constants/config";
 import type { DetailViewContext } from "../shared/authorizeGetById";
 import { computeSpotsTotal } from "../computeSpotsTotal";
 import type { TournamentLeaveBlockers } from "../shared/fetchTournamentById";
@@ -293,7 +293,7 @@ export function mapTournamentDetail(
     tournament.completedAt instanceof Date && Number.isFinite(tournament.completedAt.getTime())
       ? new Date(
           tournament.completedAt.getTime() +
-            getTournamentOrganiserScoreEditGraceDays() * 24 * 60 * 60 * 1000
+            TOURNAMENT_ORGANISER_SCORE_EDIT_GRACE_HOURS * 60 * 60 * 1000
         ).toISOString()
       : null;
 
