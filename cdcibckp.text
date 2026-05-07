@@ -24,6 +24,7 @@ unit-test:
   image: node:latest
   stage: test
   before_script:
+    - npm install -g yarn@1.22.22
     - yarn install
   script:
     - yarn test
