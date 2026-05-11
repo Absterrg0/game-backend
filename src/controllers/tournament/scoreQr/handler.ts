@@ -75,6 +75,13 @@ async function assertScoreQrConfirmEligibility(
     return;
   }
 
+  if (
+    request.opponentUserId &&
+    confirmerUserId !== request.opponentUserId
+  ) {
+    throw new AppError("You are not allowed to confirm this score.", 403);
+  }
+
   await assertStandaloneConfirmerEligibility({
     requestMatchId: request.matchId,
     requestByUserId: request.requestByUserId,
