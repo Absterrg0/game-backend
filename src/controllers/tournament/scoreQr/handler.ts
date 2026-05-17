@@ -737,7 +737,7 @@ export async function updateScoreQrSessionScoresFlow(input: {
       throw new AppError("QR session changed before scores could be updated", 409);
     }
 
-    await Game.updateOne(
+    const gameUpdateResult = await Game.updateOne(
       { _id: request.match },
       {
         $set: {
@@ -747,6 +747,10 @@ export async function updateScoreQrSessionScoresFlow(input: {
       },
       { session },
     ).exec();
+
+    if (gameUpdateResult.matchedCount === 0) {
+      throw new AppError("Match changed before scores could be updated", 409);
+    }
 
     await session.commitTransaction();
   } catch (err) {

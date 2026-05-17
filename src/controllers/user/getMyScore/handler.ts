@@ -23,7 +23,7 @@ export async function getMyScoreFlow(userId: string, query: MyScoreQuery) {
 
 	const mergedSourceLimit = Math.min(requestedDepth + 50, MAX_STANDALONE_GAMES_FETCH);
 
-	const [gamesPage, standaloneGames, ratingSnapshot] = await Promise.all([
+	const [gamesPage, standalonePage, ratingSnapshot] = await Promise.all([
 		fetchCompletedTournamentGamesForUser({
 			userId,
 			mode: query.mode,
@@ -49,7 +49,7 @@ export async function getMyScoreFlow(userId: string, query: MyScoreQuery) {
 
 	// Map standalone games (excluded from summary stats — they don't affect ratings).
 	const standaloneEntries: MyScoreEntry[] = [];
-	for (const game of standaloneGames) {
+	for (const game of standalonePage.entries) {
 		const entry = mapGameToMyScoreEntry(game, userId, game.status);
 		if (entry) {
 			standaloneEntries.push(entry);
@@ -75,7 +75,7 @@ export async function getMyScoreFlow(userId: string, query: MyScoreQuery) {
 		(a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime(),
 	);
 
-	const totalEntries = mergedEntries.length;
+	const totalEntries = gamesPage.totalEntries + standalonePage.totalEntries;
 	const totalPages = Math.max(1, Math.ceil(totalEntries / query.limit));
 	const page = Math.min(Math.max(1, query.page), totalPages);
 	const skip = (page - 1) * query.limit;

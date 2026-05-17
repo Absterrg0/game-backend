@@ -74,6 +74,11 @@ export interface StandaloneGameDoc extends MyScoreGameDoc {
 	status: 'pendingScore' | 'finished';
 }
 
+export interface FetchStandaloneGamesResult {
+	entries: StandaloneGameDoc[];
+	totalEntries: number;
+}
+
 const RANGE_DAYS = 30;
 // Hard cap on docs scanned for estimatedWins to keep work bounded even for users
 // with very long histories. winsTruncated is set when additional rows likely exist.
@@ -123,6 +128,36 @@ function withMappableGameShapeConstraints(filter: Record<string, unknown>): Reco
 		{ side2: { $exists: true, $ne: null } },
 		{ 'side1.players': { $elemMatch: { $ne: null } } },
 		{ 'side2.players': { $elemMatch: { $ne: null } } },
+	];
+
+	const modeIsSinglesOrDoubles =
+		filter.matchType === 'singles' || filter.matchType === 'doubles';
+
+	if (!modeIsSinglesOrDoubles) {
+		shapeConstraints.push({ matchType: { $in: ['singles', 'doubles'] } });
+	}
+
+	const existingAnd = filter.$and;
+	if (Array.isArray(existingAnd)) {
+		return { ...filter, $and: [...existingAnd, ...shapeConstraints] };
+	}
+
+	return {
+		...filter,
+		$and: shapeConstraints,
+	};
+}
+
+/**
+ * Standalone rows may legitimately have an empty opponent side while waiting for
+ * confirmation, so only require the shape needed for mapGameToMyScoreEntry.
+ */
+function withStandaloneMappableGameShapeConstraints(
+	filter: Record<string, unknown>
+): Record<string, unknown> {
+	const shapeConstraints: Record<string, unknown>[] = [
+		{ side1: { $exists: true, $ne: null } },
+		{ side2: { $exists: true, $ne: null } },
 	];
 
 	const modeIsSinglesOrDoubles =
@@ -259,9 +294,12 @@ export async function fetchUserRatingSnapshot(userId: string): Promise<UserRatin
 
 export async function fetchStandaloneGamesForUser(
 	options: FetchStandaloneGamesOptions,
-): Promise<StandaloneGameDoc[]> {
+): Promise<FetchStandaloneGamesResult> {
 	if (!Types.ObjectId.isValid(options.userId)) {
-		return [];
+		return {
+			entries: [],
+			totalEntries: 0,
+		};
 	}
 
 	const userObjectId = new Types.ObjectId(options.userId);
@@ -286,7 +324,13 @@ export async function fetchStandaloneGamesForUser(
 		Object.assign(filter, userInSide);
 	}
 
-	const raw = await Game.find(filter)
+	const listFilter = withStandaloneMappableGameShapeConstraints(filter);
+	const totalEntries = Math.min(
+		await Game.countDocuments(listFilter).exec(),
+		MAX_STANDALONE_GAMES_FETCH
+	);
+
+	const raw = await Game.find(listFilter)
 		.select('_id side1 side2 tournament score matchType playMode startTime endTime createdAt playedAt status')
 		.populate('side1.players', 'name alias')
 		.populate('side2.players', 'name alias')
@@ -295,8 +339,11 @@ export async function fetchStandaloneGamesForUser(
 		.lean<(MyScoreGameDoc & { status: string })[]>()
 		.exec();
 
-	return raw
-		.filter((doc): doc is StandaloneGameDoc =>
-			doc.status === 'pendingScore' || doc.status === 'finished',
-		);
+	return {
+		entries: raw.filter(
+			(doc): doc is StandaloneGameDoc =>
+				doc.status === 'pendingScore' || doc.status === 'finished',
+		),
+		totalEntries,
+	};
 }
