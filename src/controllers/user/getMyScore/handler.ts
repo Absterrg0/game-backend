@@ -50,7 +50,7 @@ export async function getMyScoreFlow(userId: string, query: MyScoreQuery) {
 			limit: mergedSourceLimit,
 			now,
 		}),
-		countStandaloneWinsForUser(userObjectId, standaloneListFilter),
+		countStandaloneWinsForUser(userObjectId, standaloneListFilter, now),
 		fetchUserRatingSnapshot(userId),
 	]);
 

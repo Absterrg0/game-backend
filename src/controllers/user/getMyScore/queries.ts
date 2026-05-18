@@ -215,6 +215,29 @@ export function buildStandaloneMyScoreListFilter(
 	return withStandaloneMappableGameShapeConstraints(filter);
 }
 
+/** Both roster sides have at least one player (post-lookup field paths). */
+function standaloneMyScoreBothSidesPopulatedMatch(): Record<string, unknown> {
+	return {
+		$and: [
+			{ $expr: { $gt: [{ $size: { $ifNull: ['$side1.players', []] } }, 0] } },
+			{ $expr: { $gt: [{ $size: { $ifNull: ['$side2.players', []] } }, 0] } },
+		],
+	};
+}
+
+/**
+ * Rows visible in My Score: fully rostered games, or one-sided drafts with a live
+ * independent QR. Finished games must satisfy this too (no unconditional bypass).
+ */
+function standaloneMyScoreVisibilityMatch(): Record<string, unknown> {
+	return {
+		$or: [
+			standaloneMyScoreBothSidesPopulatedMatch(),
+			{ 'activeIndependentQr.0': { $exists: true } },
+		],
+	};
+}
+
 /**
  * Standalone rows with no opponent on the roster are only meaningful while an
  * independent score-QR request is still pending and unexpired. Otherwise they
@@ -242,18 +265,7 @@ function standaloneMyScoreQrVisibilityStages(now: Date) {
 			},
 		},
 		{
-			$match: {
-				$or: [
-					{ status: 'finished' },
-					{
-						$and: [
-							{ $expr: { $gt: [{ $size: { $ifNull: ['$side1.players', []] } }, 0] } },
-							{ $expr: { $gt: [{ $size: { $ifNull: ['$side2.players', []] } }, 0] } },
-						],
-					},
-					{ 'activeIndependentQr.0': { $exists: true } },
-				],
-			},
+			$match: standaloneMyScoreVisibilityMatch(),
 		},
 	];
 }
@@ -356,12 +368,14 @@ async function countTournamentWinsForUser(
 export async function countStandaloneWinsForUser(
 	userObjectId: Types.ObjectId,
 	listFilter: Record<string, unknown>,
+	now: Date = new Date(),
 ): Promise<{ estimatedWins: number; winsTruncated: boolean }> {
 	const userIdStr = userObjectId.toString();
 	const finishedFilter = { ...listFilter, status: 'finished' };
 
 	const lightweight = await Game.aggregate<LightweightGameDoc>([
 		{ $match: finishedFilter },
+		...standaloneMyScoreQrVisibilityStages(now),
 		{ $sort: { playedAt: -1, _id: -1 } },
 		{ $limit: MAX_STANDALONE_GAMES_FETCH + 1 },
 		{ $project: { side1: 1, side2: 1, score: 1 } },
