@@ -541,8 +541,6 @@ export async function confirmScoreQrFlow(
     throw new AppError("QR request is no longer valid for confirmation", 409);
   }
 
-  publishScoreQrRequestEvent(request.id, "request-consumed");
-
   try {
     if (request.flow === "tournament" && request.tournamentId) {
       const tournamentContext = await fetchTournamentScheduleContext(
@@ -589,6 +587,8 @@ export async function confirmScoreQrFlow(
         },
       );
 
+      publishScoreQrRequestEvent(request.id, "request-consumed");
+
       return {
         ...saveResult,
         requestId: request.id,
@@ -625,6 +625,8 @@ export async function confirmScoreQrFlow(
     standalone.endTime = winner ? now : undefined;
 
     await standalone.save();
+
+    publishScoreQrRequestEvent(request.id, "request-consumed");
 
     return {
       matchId: standalone._id.toString(),

@@ -17,6 +17,10 @@ import {
 } from "./handler";
 import type { ValidateScoreQrTokenResult } from "./types";
 import {
+  publishScoreQrRequestEvent,
+  subscribeScoreQrRequestEvents,
+} from "./events";
+import {
   activeScoreQrQuerySchema,
   confirmScoreQrBodySchema,
   generateIndependentScoreQrBodySchema,
@@ -24,10 +28,6 @@ import {
   scoreQrTokenParamsSchema,
   updateScoreQrScoresBodySchema,
 } from "./validation";
-import {
-  publishScoreQrRequestEvent,
-  subscribeScoreQrRequestEvents,
-} from "./events";
 
 type RequesterProfile = {
   name: string | null;
