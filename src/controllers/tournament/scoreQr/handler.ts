@@ -49,6 +49,7 @@ import type {
   UpdateScoreQrSessionScoresResult,
   ValidateScoreQrTokenResult,
 } from "./types";
+import { publishScoreQrRequestEvent } from "./events";
 
 type ValidScoreQrRequest = NonNullable<ValidateScoreQrTokenResult["request"]>;
 
@@ -539,6 +540,8 @@ export async function confirmScoreQrFlow(
   if (!consumeResult) {
     throw new AppError("QR request is no longer valid for confirmation", 409);
   }
+
+  publishScoreQrRequestEvent(request.id, "request-consumed");
 
   try {
     if (request.flow === "tournament" && request.tournamentId) {
