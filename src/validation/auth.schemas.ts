@@ -31,3 +31,14 @@ export const completeSignupSchema = z.object({
 
 export type CompleteSignupInput = z.infer<typeof completeSignupSchema>;
 
+/** Schema for POST /api/auth/exchange-handoff. */
+export const exchangeHandoffSchema = z.object({
+	handoff: z
+		.string({ error: 'Handoff code is required' })
+		.min(16, { error: 'Handoff code must be at least 16 characters' })
+		.max(128)
+		.regex(/^[A-Za-z0-9_-]+$/, { error: 'Invalid handoff code format' }),
+});
+
+export type ExchangeHandoffInput = z.infer<typeof exchangeHandoffSchema>;
+

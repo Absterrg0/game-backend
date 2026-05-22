@@ -1,7 +1,7 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { logger } from "../../../lib/logger";
 import { buildErrorPayload } from "../../../shared/errors";
-import { AuthenticatedRequest, withAuthenticated } from "../../../shared/authContext";
+import type { AuthenticatedSession } from "../../../shared/authContext";
 import { getTournamentQuerySchema } from "./validation";
 import { authorizeList } from "./authorize";
 import { getTournamentsFlow } from "./handler";
@@ -9,18 +9,24 @@ import { mapTournamentListItems } from "./mapper";
 
 /**
  * GET /api/tournaments
+ * - Guests: list active published tournaments only.
  * - Players: list active tournaments only (published, joinable).
  * - Organisers+: list tournaments for clubs they manage; supports view=published|drafts.
  * Query: page, limit, when (future|past; unscheduled tournaments are always included), distance, club, clubScope (favorites), q (search), view (published|drafts, organiser only)
  */
-export const getTournaments = async (req:AuthenticatedRequest, res: Response) => {
+export const getTournaments = async (req: Request, res: Response) => {
   try {
-    const session = req.user;
+    const session = req.user as AuthenticatedSession | undefined;
 
     const parsed = getTournamentQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       const message = parsed.error.issues.map((i) => i.message).join("; ");
       res.status(400).json(buildErrorPayload(message));
+      return;
+    }
+
+    if (!session && parsed.data.view === "drafts") {
+      res.status(401).json(buildErrorPayload("Authorization required"));
       return;
     }
 

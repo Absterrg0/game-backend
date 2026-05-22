@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { logger } from '../../lib/logger';
+import { createHandoffCode } from '../../lib/authHandoff';
 import { createAuthToken, setAuthCookie } from '../../lib/jwtAuth';
 
 export const AUTH_CALLBACK_PATH = '/auth/callback';
@@ -27,9 +28,14 @@ export function getErrorRedirect(kind?: string, options?: ErrorRedirectOptions):
 	return `${process.env.REQUEST_ORIGIN}${AUTH_CALLBACK_PATH}?${params.toString()}`;
 }
 
-/** Builds redirect URL to frontend auth callback with success. */
-export function getSuccessRedirect(): string {
-	return `${process.env.REQUEST_ORIGIN}${AUTH_CALLBACK_PATH}?${new URLSearchParams({ success: 'true' }).toString()}`;
+/**
+ * Builds redirect URL to frontend auth callback with success.
+ * Uses a one-time handoff code (not the session JWT) so the client can exchange
+ * it server-side for cookie + Bearer token (needed when PWA cannot keep API cookies).
+ */
+export function getSuccessRedirect(handoffCode: string): string {
+	const params = new URLSearchParams({ success: 'true', handoff: handoffCode });
+	return `${process.env.REQUEST_ORIGIN}${AUTH_CALLBACK_PATH}?${params.toString()}`;
 }
 
 /**
@@ -47,8 +53,9 @@ export function getSignupRedirect(pendingToken: string): string {
 export async function loginAndRedirect(req: Request, res: Response, user: Express.User): Promise<void> {
 	try {
 		const token = await createAuthToken(user);
+		const handoffCode = await createHandoffCode(token);
 		setAuthCookie(res, token);
-		res.redirect(getSuccessRedirect());
+		res.redirect(getSuccessRedirect(handoffCode));
 	} catch (err) {
 		logger.error('Error in loginAndRedirect', { err });
 		res.redirect(getErrorRedirect('session', { errorMessage: 'Failed to create an authenticated session' }));
