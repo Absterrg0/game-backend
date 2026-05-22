@@ -12,6 +12,8 @@ export const googleAuth = (req: Request, res: Response, next: NextFunction) => {
 	passport.authenticate('google', {
 		scope: ['profile', 'email'],
 		session: false,
+		// Always show Google's account picker (same UX expectation as Sign in with Apple).
+		prompt: 'select_account',
 	})(req, res, next);
 };
 

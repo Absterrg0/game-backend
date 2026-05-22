@@ -1,5 +1,5 @@
 import { isOwnerOrSuperAdmin, userCanManageClub } from "../../../lib/permissions";
-import type { Role } from "../../../constants/roles";
+import { ROLES, type Role } from "../../../constants/roles";
 import type { TournamentPopulated } from "../../../types/api/tournament";
 import { buildPermissionContext, type AuthenticatedSession } from "../../../shared/authContext";
 import { error, ok } from "../../../shared/helpers";
@@ -19,19 +19,36 @@ export interface DetailViewContext {
  */
 export async function authorizeGetById(
   tournament: TournamentPopulated,
-  session: AuthenticatedSession
+  session?: AuthenticatedSession,
 ) {
-  const role = session.role;
   const clubIdStr = tournament.club?._id?.toString();
   if (!clubIdStr) {
     return error(400, "Tournament has no club");
   }
 
+  const isDraft = tournament.status === "draft";
+  if (!session) {
+    if (isDraft) {
+      return error(403, "You do not have permission to view this tournament");
+    }
+    return ok(
+      {
+        context: {
+          isManager: false,
+          isCreator: false,
+          clubIdStr,
+          role: ROLES.PLAYER,
+        },
+      },
+      { status: 200, message: "Authorized" },
+    );
+  }
+
+  const role = session.role;
   const ctx = buildPermissionContext(session);
   const isManager = await userCanManageClub(ctx, clubIdStr);
   const isCreator = tournament.createdBy.equals(session._id);
 
-  const isDraft = tournament.status === "draft";
   if (isDraft && !isOwnerOrSuperAdmin(session, tournament.createdBy) && !isManager) {
     return error(403, "You do not have permission to view this tournament");
   }

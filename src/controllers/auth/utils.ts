@@ -27,9 +27,15 @@ export function getErrorRedirect(kind?: string, options?: ErrorRedirectOptions):
 	return `${process.env.REQUEST_ORIGIN}${AUTH_CALLBACK_PATH}?${params.toString()}`;
 }
 
-/** Builds redirect URL to frontend auth callback with success. */
-export function getSuccessRedirect(): string {
-	return `${process.env.REQUEST_ORIGIN}${AUTH_CALLBACK_PATH}?${new URLSearchParams({ success: 'true' }).toString()}`;
+/**
+ * Builds redirect URL to frontend auth callback with success.
+ * Includes a short-lived authToken query param so installed PWAs (e.g. iOS) can
+ * persist the session via Bearer auth — third-party cookies often never reach
+ * the standalone app after OAuth.
+ */
+export function getSuccessRedirect(authToken: string): string {
+	const params = new URLSearchParams({ success: 'true', authToken });
+	return `${process.env.REQUEST_ORIGIN}${AUTH_CALLBACK_PATH}?${params.toString()}`;
 }
 
 /**
@@ -48,7 +54,7 @@ export async function loginAndRedirect(req: Request, res: Response, user: Expres
 	try {
 		const token = await createAuthToken(user);
 		setAuthCookie(res, token);
-		res.redirect(getSuccessRedirect());
+		res.redirect(getSuccessRedirect(token));
 	} catch (err) {
 		logger.error('Error in loginAndRedirect', { err });
 		res.redirect(getErrorRedirect('session', { errorMessage: 'Failed to create an authenticated session' }));

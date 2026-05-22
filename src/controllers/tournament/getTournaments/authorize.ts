@@ -21,9 +21,19 @@ export type ListFilterContext = {
  * Builds the authorization context for listing tournaments.
  * Returns manageable club IDs for organisers (empty for players/super-admin uses global scope).
  */
-export async function authorizeList(
-  session: AuthenticatedSession
-){
+export async function authorizeList(session?: AuthenticatedSession) {
+  if (!session) {
+    const filterContext: ListFilterContext = {
+      isOrganiserOrAbove: false,
+      isSuperAdmin: false,
+      requesterUserId: "",
+      manageableClubIds: [],
+      homeClubCoordinates: null,
+      favoriteClubIds: [],
+    };
+    return ok({ filterContext }, { status: 200, message: "Authorized" });
+  }
+
   const isOrganiserOrAbove = hasRoleOrAbove(session.role, ROLES.ORGANISER);
   const isSuperAdmin = session.role === ROLES.SUPER_ADMIN;
 

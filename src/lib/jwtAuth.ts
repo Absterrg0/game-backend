@@ -74,15 +74,16 @@ export function clearAuthCookie(res: Response): void {
 	});
 }
 
-/** Extracts JWT from cookie or Authorization Bearer header. */
+/** Extracts JWT from Authorization Bearer header or auth cookie. */
 export function extractAuthToken(req: Request): string | null {
-	const fromCookie = req.cookies?.[AUTH_COOKIE_NAME];
-	if (fromCookie && typeof fromCookie === 'string') return fromCookie;
-
 	const authHeader = req.headers['authorization'];
 	if (authHeader && typeof authHeader === 'string') {
 		const [bearer, token] = authHeader.split(' ');
 		if (bearer?.toLowerCase() === 'bearer' && token) return token;
 	}
+
+	const fromCookie = req.cookies?.[AUTH_COOKIE_NAME];
+	if (fromCookie && typeof fromCookie === 'string') return fromCookie;
+
 	return null;
 }
