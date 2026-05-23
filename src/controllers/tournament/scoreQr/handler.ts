@@ -406,12 +406,16 @@ export async function validateScoreQrTokenFlow(
   const tournamentId = request.tournament ? request.tournament.toString() : null;
   let tournamentName: string | null = null;
   if (tournamentId) {
-    const tournamentDoc = await Tournament.findById(tournamentId)
-      .select("name")
-      .lean<{ name?: string | null } | null>()
-      .exec();
-    const trimmed = tournamentDoc?.name?.trim() ?? "";
-    tournamentName = trimmed.length > 0 ? trimmed : null;
+    try {
+      const tournamentDoc = await Tournament.findById(tournamentId)
+        .select("name")
+        .lean<{ name?: string | null } | null>()
+        .exec();
+      const trimmed = tournamentDoc?.name?.trim() ?? "";
+      tournamentName = trimmed.length > 0 ? trimmed : null;
+    } catch {
+      // Display-only metadata: do not fail token validation on name lookup errors.
+    }
   }
 
   return {
