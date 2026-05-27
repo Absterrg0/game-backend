@@ -133,13 +133,14 @@ describe('verifyAndDecodeScoreQrToken() — rejection cases', () => {
     const sig = crypto.createHmac('sha256', VALID_SECRET).update(data).digest('base64url');
     const token = `${data}.${sig}`;
 
+    let caught: unknown;
     try {
       verifyAndDecodeScoreQrToken(token);
-      fail('Expected an error to be thrown');
     } catch (err) {
-      expect(err).toBeInstanceOf(AppError);
-      expect((err as AppError).statusCode).toBe(410);
+      caught = err;
     }
+    expect(caught).toBeInstanceOf(AppError);
+    expect((caught as AppError).statusCode).toBe(410);
   });
 
   it('throws AppError when JWT_SECRET is not set', () => {

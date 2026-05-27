@@ -29,7 +29,7 @@ function makeTournament(overrides: TournamentPartial = {}): TournamentPopulated 
     _id: id,
     name: 'Test Tournament',
     logoUrl: null,
-    playMode: 'singles',
+    playMode: '1set',
     tournamentMode: 'singleDay',
     entryFee: 0,
     minMember: 2,
@@ -76,7 +76,7 @@ describe('mapTournamentDetail()', () => {
     expect(result.id).toBe(String(tournament._id));
     expect(result.name).toBe('Test Tournament');
     expect(result.status).toBe('active');
-    expect(result.playMode).toBe('singles');
+    expect(result.playMode).toBe('1set');
     expect(result.tournamentMode).toBe('singleDay');
     expect(result.entryFee).toBe(0);
     expect(result.totalRounds).toBe(3);

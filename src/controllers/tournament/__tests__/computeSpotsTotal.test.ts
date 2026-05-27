@@ -23,7 +23,7 @@ describe('computeSpotsTotal', () => {
   });
 
   it('returns 0 when maxMember is 0', () => {
-    // 0 is a valid finite non-negative integer — no cap
+    // returns 0 as-is
     expect(computeSpotsTotal(0)).toBe(0);
   });
 
@@ -32,7 +32,7 @@ describe('computeSpotsTotal', () => {
     expect(computeSpotsTotal(1)).toBe(1);
   });
 
-  it('truncates decimals (floors toward zero)', () => {
+  it('truncates decimals toward zero', () => {
     expect(computeSpotsTotal(10.9)).toBe(10);
     expect(computeSpotsTotal(5.1)).toBe(5);
   });

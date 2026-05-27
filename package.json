@@ -10,7 +10,9 @@
     "build": "tsc && node scripts/write-commit-sha.mjs",
     "typecheck": "tsc --noEmit",
     "test": "jest --config jest.unit.config.ts --coverage && jest --config jest.integration.config.ts --coverage",
-    "test:watch": "jest --watchAll",
+    "test:watch": "jest --config jest.unit.config.ts --watch",
+    "test:watch:unit": "jest --config jest.unit.config.ts --watch",
+    "test:watch:integration": "jest --config jest.integration.config.ts --watch",
     "test:coverage": "jest --config jest.unit.config.ts --coverage && jest --config jest.integration.config.ts --coverage",
     "test:unit": "jest --config jest.unit.config.ts --coverage",
     "test:integration": "jest --config jest.integration.config.ts --coverage"

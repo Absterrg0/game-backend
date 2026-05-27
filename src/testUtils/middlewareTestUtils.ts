@@ -15,8 +15,12 @@ export type TestResponse = Response & {
 	body: unknown;
 };
 
-export function makeUser(role: Role): Express.User {
+export function makeUser(
+	role: Role,
+	overrides: Partial<Express.User> = {},
+): Express.User {
 	return {
+		_id: 'test-user-id',
 		role,
 		adminOf: [],
 		organizerOf: [],
@@ -28,6 +32,7 @@ export function makeUser(role: Role): Express.User {
 		elo: { rating: 1500, tau: 0.5, rd: 200, vol: 0.06 },
 		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 		updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+		...overrides,
 	} as unknown as Express.User;
 }
 

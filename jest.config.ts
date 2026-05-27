@@ -72,14 +72,7 @@ export const baseConfig: Config = {
 	testTimeout: 10000,
 	testPathIgnorePatterns: ['/node_modules/', '/dist/'],
 	transform: {
-		'^.+\\.tsx?$': [
-			'ts-jest',
-			{
-				diagnostics: {
-					ignoreCodes: [151002],
-				},
-			},
-		],
+		'^.+\\.tsx?$': ['ts-jest', {}],
 	},
 };
 

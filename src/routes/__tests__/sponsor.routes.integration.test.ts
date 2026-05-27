@@ -47,6 +47,7 @@ function query<T>(value: T) {
 function sponsorDoc(data: {
 	id: string;
 	name: string;
+	description?: string | null;
 	status?: 'active' | 'paused';
 	logoUrl?: string | null;
 	link?: string | null;
@@ -54,6 +55,7 @@ function sponsorDoc(data: {
 	return {
 		_id: { toString: () => data.id },
 		name: data.name,
+		description: data.description ?? null,
 		logoUrl: data.logoUrl ?? null,
 		link: data.link ?? null,
 		status: data.status ?? 'active',
@@ -180,6 +182,7 @@ describe('sponsor routes integration', () => {
 			sponsorDoc({
 				id: sponsorId.toString(),
 				name: 'Created Partner',
+				description: 'Sponsor text',
 				logoUrl: null,
 				link: 'https://created.example',
 			}) as unknown as Awaited<ReturnType<typeof Sponsor.create>>
@@ -200,7 +203,7 @@ describe('sponsor routes integration', () => {
 			body: {
 				id: sponsorId.toString(),
 				name: 'Created Partner',
-				description: null,
+				description: 'Sponsor text',
 				logoUrl: null,
 				link: 'https://created.example',
 				status: 'active',
