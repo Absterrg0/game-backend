@@ -26,6 +26,7 @@ export function resolveMatchDurationMinutes(game: LiveMatchGameDoc): number {
 /**
  * When true, the player should no longer see this match as the primary live view
  * (score recorded, or min(half match duration, next match start + 10 min) elapsed).
+ * Time-based roll-forward requires a following scheduled match.
  */
 export function shouldAdvanceLiveMatchView(
   game: LiveMatchGameDoc,
@@ -34,6 +35,10 @@ export function shouldAdvanceLiveMatchView(
 ): boolean {
   if (gameHasRecordedScore(game)) {
     return true;
+  }
+
+  if (nextScheduled == null) {
+    return false;
   }
 
   if (!(game.startTime instanceof Date)) {
@@ -49,7 +54,7 @@ export function shouldAdvanceLiveMatchView(
   const halfMatchDeadlineMs = startMs + durationMs / 2;
 
   let nextStartDeadlineMs = Number.POSITIVE_INFINITY;
-  if (nextScheduled?.startTime instanceof Date) {
+  if (nextScheduled.startTime instanceof Date) {
     const nextStartMs = nextScheduled.startTime.getTime();
     if (Number.isFinite(nextStartMs)) {
       nextStartDeadlineMs =
