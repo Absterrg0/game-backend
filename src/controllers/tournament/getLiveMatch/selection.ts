@@ -25,8 +25,8 @@ export function resolveMatchDurationMinutes(game: LiveMatchGameDoc): number {
 
 /**
  * When true, the player should no longer see this match as the primary live view
- * (score recorded, or min(half match duration, next match start + 10 min) elapsed).
- * Time-based roll-forward requires a following scheduled match.
+ * (score recorded, awaiting-score backlog, or min(half match duration, next match start + 10 min) elapsed).
+ * Time-based roll-forward for active matches requires a following scheduled match.
  */
 export function shouldAdvanceLiveMatchView(
   game: LiveMatchGameDoc,
@@ -34,6 +34,11 @@ export function shouldAdvanceLiveMatchView(
   now: Date,
 ): boolean {
   if (gameHasRecordedScore(game)) {
+    return true;
+  }
+
+  // Awaiting-score rows belong in enter-score flows, not the live broadcast modal.
+  if (game.status === "pendingScore") {
     return true;
   }
 
@@ -78,11 +83,11 @@ function compareByStartTimeAsc(a: LiveMatchGameDoc, b: LiveMatchGameDoc): number
 }
 
 function isOnCourtStatus(game: LiveMatchGameDoc): boolean {
-  return game.status === "active" || game.status === "pendingScore";
+  return game.status === "active";
 }
 
 /**
- * Primary match for the live modal: on-court (active / awaiting score) unless advanced,
+ * Primary match for the live modal: currently active on court unless advanced,
  * then the next scheduled match for the player (including while still in draft).
  */
 export function selectLiveGame(
