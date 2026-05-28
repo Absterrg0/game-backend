@@ -32,11 +32,11 @@ describe('mapTournamentListItems()', () => {
 
 		expect(result).toEqual([
 			{
-				id: tournamentId,
+				id: tournamentId.toString(),
 				name: 'Evening Open',
 				logoUrl: null,
 				club: {
-					id: clubId,
+					id: clubId.toString(),
 					name: 'Central Club',
 					logoUrl: null,
 				},
@@ -68,7 +68,7 @@ describe('mapTournamentListItems()', () => {
 			])
 		).toEqual([
 			{
-				id: tournamentId,
+				id: tournamentId.toString(),
 				name: 'Draft Without Relations',
 				logoUrl: '/logos/tournament.png',
 				club: null,

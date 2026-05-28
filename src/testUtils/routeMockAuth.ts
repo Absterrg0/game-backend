@@ -1,16 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
+import { createTestUser } from './createTestUser';
 
 function testUser(role: string): Express.User {
-	return {
-		_id: {
-			toString: () => '64b000000000000000000001',
-		},
-		role,
-		adminOf: [],
-		organizerOf: [],
-		favoriteClubs: [],
-		homeClub: null,
-	} as unknown as Express.User;
+	return createTestUser({ role: role as Express.User['role'] });
 }
 
 export function attachTestUser(req: Request, res: Response, next: NextFunction): void {

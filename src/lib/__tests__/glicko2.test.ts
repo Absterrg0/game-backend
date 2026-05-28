@@ -156,15 +156,12 @@ describe('rateGlicko2HeadToHead()', () => {
     expect(playerOne.rating).toBeCloseTo(baseP1.rating, 4);
   });
 
-  it('higher-rated player loses less from an expected loss', () => {
+  it('both players move when the higher-rated player loses', () => {
     const strong = makePlayer(1800, 100, 0.06);
     const weak = makePlayer(1200, 100, 0.06);
-    // Strong player loses (score=0 for strong)
     const { playerOne: strongAfter, playerTwo: weakAfter } = rateGlicko2HeadToHead(strong, weak, 0);
-    // Strong loses more in absolute terms due to unexpected outcome
     const strongLoss = 1800 - strongAfter.rating;
     const weakGain = weakAfter.rating - 1200;
-    // Both should move
     expect(strongLoss).toBeGreaterThan(0);
     expect(weakGain).toBeGreaterThan(0);
   });

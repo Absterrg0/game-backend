@@ -1,4 +1,3 @@
-import { Types } from 'mongoose';
 import { TournamentTimezoneResolutionError } from '../resolveTournamentTimezone';
 
 // ─────────────────────────────────────────────────────────────────────────────

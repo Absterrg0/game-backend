@@ -40,12 +40,12 @@ function formatDateOnlyUtc(
 
 export function mapTournamentListItems(tournaments: TournamentListDoc[]) {
   return tournaments.map((t) => ({
-    id: t._id,
+    id: t._id.toString(),
     name: t.name,
     logoUrl: t.logoUrl ?? null,
     club: t.club
       ? {
-          id: t.club._id,
+          id: t.club._id.toString(),
           name: t.club.name,
           logoUrl: t.club.logoUrl ?? null,
         }

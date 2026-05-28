@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Role } from '../constants/roles';
+import { createTestUser } from './createTestUser';
 
 export type TestRequestOptions = {
 	user?: Express.User;
@@ -19,21 +20,7 @@ export function makeUser(
 	role: Role,
 	overrides: Partial<Express.User> = {},
 ): Express.User {
-	return {
-		_id: 'test-user-id',
-		role,
-		adminOf: [],
-		organizerOf: [],
-		favoriteClubs: [],
-		homeClub: null,
-		email: 'player@example.com',
-		status: 'active',
-		gender: null,
-		elo: { rating: 1500, tau: 0.5, rd: 200, vol: 0.06 },
-		createdAt: new Date('2024-01-01T00:00:00.000Z'),
-		updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-		...overrides,
-	} as unknown as Express.User;
+	return createTestUser({ role, ...overrides });
 }
 
 export function makeReq(options: TestRequestOptions = {}): Request {
