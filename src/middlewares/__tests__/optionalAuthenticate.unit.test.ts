@@ -16,10 +16,19 @@ function mockRes() {
 }
 
 const next = jest.fn() as NextFunction;
+const originalJwtSecret = process.env.JWT_SECRET;
 
 beforeEach(() => {
 	jest.clearAllMocks();
 	process.env.JWT_SECRET = 'unit-test-jwt-secret';
+});
+
+afterEach(() => {
+	if (originalJwtSecret === undefined) {
+		delete process.env.JWT_SECRET;
+	} else {
+		process.env.JWT_SECRET = originalJwtSecret;
+	}
 });
 
 describe('optionalAuthenticate', () => {

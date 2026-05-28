@@ -67,33 +67,11 @@ describe('addUserAdminOfClub', () => {
 	});
 
 	it('adds admin and syncs role when club and user exist', async () => {
-		(Club.exists as jest.Mock).mockReturnValue({
-			session: () => ({
-				exec: () => Promise.resolve({ _id: CLUB_ID }),
-			}),
-		});
-		(User.exists as jest.Mock).mockReturnValue({
-			session: () => ({
-				exec: () => Promise.resolve({ _id: USER_ID }),
-			}),
-		});
-		(User.updateOne as jest.Mock).mockReturnValue({
-			session: () => ({
-				exec: () => Promise.resolve({ modifiedCount: 1 }),
-			}),
-		});
-		(User.findById as jest.Mock).mockReturnValue({
-			select: () => ({
-				session: () => ({
-					exec: () =>
-						Promise.resolve({
-							_id: USER_ID,
-							role: ROLES.PLAYER,
-							adminOf: [new Types.ObjectId(CLUB_ID)],
-						}),
-				}),
-			}),
-		});
+		const userDoc = {
+			role: ROLES.PLAYER,
+			adminOf: [new Types.ObjectId(CLUB_ID)],
+			save: jest.fn().mockResolvedValue(undefined),
+		};
 		(Club.exists as jest.Mock)
 			.mockReturnValueOnce({
 				session: () => ({
@@ -105,12 +83,16 @@ describe('addUserAdminOfClub', () => {
 					exec: () => Promise.resolve(null),
 				}),
 			});
-
-		const userDoc = {
-			role: ROLES.PLAYER,
-			adminOf: [new Types.ObjectId(CLUB_ID)],
-			save: jest.fn().mockResolvedValue(undefined),
-		};
+		(User.exists as jest.Mock).mockReturnValueOnce({
+			session: () => ({
+				exec: () => Promise.resolve({ _id: USER_ID }),
+			}),
+		});
+		(User.updateOne as jest.Mock).mockReturnValue({
+			session: () => ({
+				exec: () => Promise.resolve({ modifiedCount: 1 }),
+			}),
+		});
 		(User.findById as jest.Mock).mockReturnValue({
 			select: () => ({
 				session: () => ({

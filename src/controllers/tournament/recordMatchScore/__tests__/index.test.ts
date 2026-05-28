@@ -64,6 +64,11 @@ describe('recordMatchScore HTTP handler', () => {
 			res,
 		);
 		expect(res.status).toHaveBeenCalledWith(400);
+		expect(mockContext).not.toHaveBeenCalled();
+		expect(mockParticipantAuth).not.toHaveBeenCalled();
+		expect(mockScheduleAccess).not.toHaveBeenCalled();
+		expect(Tournament.findById).not.toHaveBeenCalled();
+		expect(mockFlow).not.toHaveBeenCalled();
 	});
 
 	it('returns 200 with completed match message', async () => {

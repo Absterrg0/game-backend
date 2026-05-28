@@ -11,7 +11,12 @@ import { exchangeHandoffSchema } from '../../validation/auth.schemas';
  */
 export async function exchangeAuthHandoff(req: Request, res: Response): Promise<void> {
 	try {
-		const { handoff } = exchangeHandoffSchema.parse(req.body);
+		const parsed = exchangeHandoffSchema.safeParse(req.body);
+		if (!parsed.success) {
+			res.status(400).json(buildErrorPayload('Invalid handoff payload'));
+			return;
+		}
+		const { handoff } = parsed.data;
 		const token = await consumeHandoffCode(handoff);
 		if (!token) {
 			res.status(401).json(buildErrorPayload('Invalid or expired handoff code'));

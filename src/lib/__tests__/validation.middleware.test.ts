@@ -5,7 +5,11 @@ import { validateBody } from '../validation';
 describe('validateBody', () => {
 	const schema = z.object({ name: z.string().min(1) });
 	const middleware = validateBody(schema);
-	const next = jest.fn() as NextFunction;
+	let next: NextFunction;
+
+	beforeEach(() => {
+		next = jest.fn() as NextFunction;
+	});
 
 	function mockRes() {
 		return {

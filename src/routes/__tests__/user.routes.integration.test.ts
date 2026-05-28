@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { hashSessionToken } from '../../lib/jwtAuth';
 import User from '../../models/User';
 import Session from '../../models/Session';
 import userRouter from '../user.routes';
@@ -173,6 +174,11 @@ describe('user routes integration', () => {
 		it('soft-deletes the user and revokes all sessions', async () => {
 			const user = await createUser();
 			const { authorization, session } = await createSession(user);
+			const session2 = await Session.create({
+				token: hashSessionToken(`second-session-${user._id.toString()}`),
+				user: user._id,
+				expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+			});
 
 			const res = await requestJson(app, '/users/delete-account', {
 				method: 'DELETE',
@@ -183,6 +189,7 @@ describe('user routes integration', () => {
 
 			// Sessions must be purged
 			await expect(Session.exists({ _id: session._id })).resolves.toBeNull();
+			await expect(Session.exists({ _id: session2._id })).resolves.toBeNull();
 
 			// User must be soft-deleted (deletedAt set). Bypass the pre-find hook with setOptions.
 			const deleted = await User.findById(user._id)

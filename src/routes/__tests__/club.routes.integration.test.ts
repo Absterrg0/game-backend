@@ -355,8 +355,6 @@ describe('club routes integration', () => {
 			newAdmin.adminOf = [club._id];
 			club.organiserIds = [];
 			await newAdmin.save();
-			// Add them to adminOf the club via the User model
-			await User.findByIdAndUpdate(newAdmin._id, { $addToSet: { adminOf: club._id } });
 
 			const { authorization } = await createSession(currentAdmin);
 

@@ -11,6 +11,9 @@ describe('recordMatchScoreParamsSchema', () => {
 		expect(recordMatchScoreParamsSchema.safeParse({ id: 'bad', matchId: MATCH_ID }).success).toBe(
 			false,
 		);
+		expect(
+			recordMatchScoreParamsSchema.safeParse({ id: TOURNAMENT_ID, matchId: 'bad' }).success,
+		).toBe(false);
 	});
 });
 

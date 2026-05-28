@@ -52,6 +52,7 @@ describe('exchangeAuthHandoff', () => {
 	it('returns 400 for invalid handoff body', async () => {
 		const res = mockRes();
 		await exchangeAuthHandoff({ body: { handoff: 'short' } } as Request, res);
-		expect(res.status).toHaveBeenCalledWith(500);
+		expect(res.status).toHaveBeenCalledWith(400);
+		expect(mockConsume).not.toHaveBeenCalled();
 	});
 });

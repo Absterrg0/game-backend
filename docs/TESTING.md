@@ -20,7 +20,7 @@ Every config measures the **whole application**, not selected modules:
 |-------|---------|----------------------|-------------------|
 | Combined (CI) | `test` | **60%** statements/lines/functions, **50%** branches | ~82% |
 | Unit alone | `test:unit` | **60%** statements/lines, **50%** branches | ~62% |
-| Integration alone | `test:integration` | **50%** / **45%** branches | ~68% |
+| Integration alone | `test:integration` | **50%** statements/lines/functions, **45%** branches | ~68% |
 
 ## Test types
 
