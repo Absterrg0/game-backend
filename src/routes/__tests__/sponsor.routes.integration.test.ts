@@ -1,102 +1,56 @@
-import mongoose from 'mongoose';
-import { ROLES } from '../../constants/roles';
-import Club from '../../models/Club';
+import { Types } from 'mongoose';
 import Sponsor from '../../models/Sponsor';
+import Tournament from '../../models/Tournament';
 import sponsorRouter from '../sponsor.routes';
-import { buildJsonApp, request } from '../../testUtils/routeIntegrationTestUtils';
+import {
+	createSession,
+	createSponsor,
+	createTournament,
+	createUser,
+	seedClubAdmin,
+	setupMemoryMongo,
+} from '../../testUtils/db';
+import { buildJsonApp, requestJson } from '../../testUtils/integrationTestUtils';
 
-jest.mock('../../middlewares/auth', () => ({
-	__esModule: true,
-	default: require('../../testUtils/routeMockAuth').attachTestUser,
-}));
-
-jest.mock('../../models/Club', () => ({
-	__esModule: true,
-	default: {
-		exists: jest.fn(),
-		findById: jest.fn(),
-	},
-}));
-
-jest.mock('../../models/Sponsor', () => ({
-	__esModule: true,
-	default: {
-		create: jest.fn(),
-		find: jest.fn(),
-		findOne: jest.fn(),
-	},
-}));
-
-const mockClubExists = jest.mocked(Club.exists);
-const mockClubFindById = jest.mocked(Club.findById);
-const mockSponsorCreate = jest.mocked(Sponsor.create);
-const mockSponsorFind = jest.mocked(Sponsor.find);
-const mockSponsorFindOne = jest.mocked(Sponsor.findOne);
-
-function query<T>(value: T) {
-	const chain = {
-		select: jest.fn(),
-		lean: jest.fn(),
-		exec: jest.fn<Promise<T>, []>().mockResolvedValue(value),
-	};
-	chain.select.mockReturnValue(chain);
-	chain.lean.mockReturnValue(chain);
-	return chain;
-}
-
-function sponsorDoc(data: {
-	id: string;
-	name: string;
-	description?: string | null;
-	status?: 'active' | 'paused';
-	logoUrl?: string | null;
-	link?: string | null;
-}) {
-	return {
-		_id: { toString: () => data.id },
-		name: data.name,
-		description: data.description ?? null,
-		logoUrl: data.logoUrl ?? null,
-		link: data.link ?? null,
-		status: data.status ?? 'active',
-		save: jest.fn().mockResolvedValue(undefined),
-	};
-}
+setupMemoryMongo();
 
 describe('sponsor routes integration', () => {
 	const app = buildJsonApp('/sponsors', sponsorRouter);
-	const clubId = new mongoose.Types.ObjectId();
-	const sponsorId = new mongoose.Types.ObjectId();
 
-	beforeEach(() => {
-		jest.clearAllMocks();
-		mockClubExists.mockResolvedValue({ _id: clubId });
-		mockClubFindById.mockReturnValue(query({ _id: clubId, plan: 'premium' }) as unknown as ReturnType<typeof Club.findById>);
-		mockSponsorFind.mockReturnValue(query([]) as unknown as ReturnType<typeof Sponsor.find>);
-	});
+	it('keeps the public sponsor list open and returns only active global sponsors', async () => {
+		const first = await createSponsor({
+			name: 'Global Partner',
+			description: null,
+			logoUrl: '/a.png',
+			link: 'https://a.example',
+			scope: 'global',
+			club: null,
+		});
+		const second = await createSponsor({
+			name: 'Second Partner',
+			scope: 'global',
+			club: null,
+		});
+		await createSponsor({
+			name: 'Paused Partner',
+			scope: 'global',
+			club: null,
+			status: 'paused',
+		});
 
-	it('keeps the public sponsor list open and deduplicates by name/link', async () => {
-		mockSponsorFind.mockReturnValue(
-			query([
-				{ _id: 'sponsor-1', name: 'Global Partner', logoUrl: '/a.png', link: 'https://a.example' },
-				{ _id: 'sponsor-2', name: 'Global Partner', logoUrl: '/dup.png', link: 'https://a.example' },
-				{ _id: 'sponsor-3', name: 'Second Partner', logoUrl: null, link: null },
-			]) as unknown as ReturnType<typeof Sponsor.find>
-		);
-
-		await expect(request(app, '/sponsors')).resolves.toEqual({
+		await expect(requestJson(app, '/sponsors')).resolves.toEqual({
 			status: 200,
 			body: {
 				sponsors: [
 					{
-						id: 'sponsor-1',
+						id: first._id.toString(),
 						name: 'Global Partner',
 						description: null,
 						logoUrl: '/a.png',
 						link: 'https://a.example',
 					},
 					{
-						id: 'sponsor-3',
+						id: second._id.toString(),
 						name: 'Second Partner',
 						description: null,
 						logoUrl: null,
@@ -105,40 +59,37 @@ describe('sponsor routes integration', () => {
 				],
 			},
 		});
-		expect(mockSponsorFind).toHaveBeenCalledWith({ status: 'active', scope: 'global' });
 	});
 
 	it('requires auth for club sponsor management', async () => {
-		await expect(request(app, `/sponsors/clubs/${clubId.toString()}`)).resolves.toEqual({
+		const { club } = await seedClubAdmin();
+
+		await expect(requestJson(app, `/sponsors/clubs/${club._id.toString()}`)).resolves.toEqual({
 			status: 401,
 			body: { message: 'Authorization required' },
 		});
 	});
 
 	it('returns club sponsors with subscription capabilities', async () => {
-		mockSponsorFind.mockReturnValue(
-			query([
-				{
-					_id: { toString: () => sponsorId.toString() },
-					name: 'Club Partner',
-					description: 'Visible in club',
-					logoUrl: '/club.png',
-					link: null,
-					status: 'active',
-				},
-			]) as unknown as ReturnType<typeof Sponsor.find>
-		);
+		const { user, club } = await seedClubAdmin({ plan: 'premium' });
+		const { authorization } = await createSession(user);
+		const sponsor = await createSponsor({
+			club: club._id,
+			name: 'Club Partner',
+			description: 'Visible in club',
+			logoUrl: '/club.png',
+		});
 
 		await expect(
-			request(app, `/sponsors/clubs/${clubId.toString()}`, {
-				headers: { 'x-test-role': ROLES.ORGANISER },
+			requestJson(app, `/sponsors/clubs/${club._id.toString()}`, {
+				headers: { authorization },
 			})
 		).resolves.toEqual({
 			status: 200,
 			body: {
 				sponsors: [
 					{
-						id: sponsorId.toString(),
+						id: sponsor._id.toString(),
 						name: 'Club Partner',
 						description: 'Visible in club',
 						logoUrl: '/club.png',
@@ -152,20 +103,19 @@ describe('sponsor routes integration', () => {
 				},
 			},
 		});
-		expect(mockClubExists).toHaveBeenCalledWith({
-			_id: clubId.toString(),
-			organiserIds: expect.any(String),
-		});
 	});
 
-	it('blocks sponsor creation for users who cannot manage the club', async () => {
-		mockClubExists.mockResolvedValue(null);
+	it('blocks sponsor creation for users who cannot manage the club without changing the DB', async () => {
+		const { club } = await seedClubAdmin({ plan: 'premium' });
+		const outsider = await createUser();
+		const { authorization } = await createSession(outsider);
+		const before = await Sponsor.countDocuments();
 
 		await expect(
-			request(app, `/sponsors/clubs/${clubId.toString()}`, {
+			requestJson(app, `/sponsors/clubs/${club._id.toString()}`, {
 				method: 'POST',
-				headers: { 'x-test-role': ROLES.ORGANISER },
-				body: JSON.stringify({ name: 'Blocked Partner' }),
+				headers: { authorization },
+				body: { name: 'Blocked Partner' },
 			})
 		).resolves.toEqual({
 			status: 403,
@@ -174,63 +124,51 @@ describe('sponsor routes integration', () => {
 				error: true,
 			},
 		});
-		expect(mockSponsorCreate).not.toHaveBeenCalled();
+		await expect(Sponsor.countDocuments()).resolves.toBe(before);
 	});
 
 	it('creates sponsors for premium clubs through the real controller flow', async () => {
-		mockSponsorCreate.mockResolvedValue(
-			sponsorDoc({
-				id: sponsorId.toString(),
-				name: 'Created Partner',
-				description: 'Sponsor text',
-				logoUrl: null,
-				link: 'https://created.example',
-			}) as unknown as Awaited<ReturnType<typeof Sponsor.create>>
-		);
+		const { user, club } = await seedClubAdmin({ plan: 'premium' });
+		const { authorization } = await createSession(user);
 
-		await expect(
-			request(app, `/sponsors/clubs/${clubId.toString()}`, {
-				method: 'POST',
-				headers: { 'x-test-role': ROLES.CLUB_ADMIN },
-				body: JSON.stringify({
-					name: ' Created Partner ',
-					description: '  Sponsor text  ',
-					link: 'https://created.example',
-				}),
-			})
-		).resolves.toEqual({
-			status: 201,
+		const response = await requestJson(app, `/sponsors/clubs/${club._id.toString()}`, {
+			method: 'POST',
+			headers: { authorization },
 			body: {
-				id: sponsorId.toString(),
-				name: 'Created Partner',
-				description: 'Sponsor text',
-				logoUrl: null,
+				name: ' Created Partner ',
+				description: '  Sponsor text  ',
 				link: 'https://created.example',
-				status: 'active',
 			},
 		});
-		expect(mockSponsorCreate).toHaveBeenCalledWith({
+
+		expect(response.status).toBe(201);
+		expect(response.body).toMatchObject({
 			name: 'Created Partner',
 			description: 'Sponsor text',
 			logoUrl: null,
 			link: 'https://created.example',
-			scope: 'club',
-			club: clubId.toString(),
 			status: 'active',
 		});
+
+		const created = await Sponsor.findOne({ club: club._id, name: 'Created Partner' }).lean().orFail();
+		expect(created.scope).toBe('club');
+		expect(created.status).toBe('active');
 	});
 
-	it('prevents free clubs from activating sponsors on update', async () => {
-		mockClubFindById.mockReturnValue(query({ _id: clubId, plan: 'free' }) as unknown as ReturnType<typeof Club.findById>);
-		mockSponsorFindOne.mockReturnValue(
-			query(sponsorDoc({ id: sponsorId.toString(), name: 'Paused Partner', status: 'paused' })) as unknown as ReturnType<typeof Sponsor.findOne>
-		);
+	it('prevents free clubs from activating sponsors on update without changing the sponsor', async () => {
+		const { user, club } = await seedClubAdmin({ plan: 'free' });
+		const { authorization } = await createSession(user);
+		const sponsor = await createSponsor({
+			club: club._id,
+			name: 'Paused Partner',
+			status: 'paused',
+		});
 
 		await expect(
-			request(app, `/sponsors/clubs/${clubId.toString()}/${sponsorId.toString()}`, {
+			requestJson(app, `/sponsors/clubs/${club._id.toString()}/${sponsor._id.toString()}`, {
 				method: 'PATCH',
-				headers: { 'x-test-role': ROLES.CLUB_ADMIN },
-				body: JSON.stringify({ status: 'active' }),
+				headers: { authorization },
+				body: { status: 'active' },
 			})
 		).resolves.toEqual({
 			status: 403,
@@ -239,36 +177,71 @@ describe('sponsor routes integration', () => {
 				error: true,
 			},
 		});
+
+		const unchanged = await Sponsor.findById(sponsor._id).lean().orFail();
+		expect(unchanged.status).toBe('paused');
 	});
 
 	it('updates sponsor fields through the real controller flow', async () => {
-		const existingSponsor = sponsorDoc({
-			id: sponsorId.toString(),
+		const { user, club } = await seedClubAdmin({ plan: 'premium' });
+		const { authorization } = await createSession(user);
+		const sponsor = await createSponsor({
+			club: club._id,
 			name: 'Old Partner',
 			status: 'active',
 		});
-		mockSponsorFindOne.mockReturnValue(query(existingSponsor) as unknown as ReturnType<typeof Sponsor.findOne>);
 
 		await expect(
-			request(app, `/sponsors/clubs/${clubId.toString()}/${sponsorId.toString()}`, {
+			requestJson(app, `/sponsors/clubs/${club._id.toString()}/${sponsor._id.toString()}`, {
 				method: 'PATCH',
-				headers: { 'x-test-role': ROLES.CLUB_ADMIN },
-				body: JSON.stringify({
+				headers: { authorization },
+				body: {
 					name: ' Updated Partner ',
 					logoUrl: '',
 					status: 'paused',
-				}),
+				},
 			})
 		).resolves.toEqual({
 			status: 200,
 			body: {
-				id: sponsorId.toString(),
+				id: sponsor._id.toString(),
 				name: 'Updated Partner',
 				logoUrl: null,
 				link: null,
 				status: 'paused',
 			},
 		});
-		expect(existingSponsor.save).toHaveBeenCalledTimes(1);
+
+		const updated = await Sponsor.findById(sponsor._id).lean().orFail();
+		expect(updated.name).toBe('Updated Partner');
+		expect(updated.logoUrl).toBeNull();
+		expect(updated.status).toBe('paused');
+	});
+
+	it('deletes a club sponsor and clears tournament references', async () => {
+		const { user, club } = await seedClubAdmin({ plan: 'premium' });
+		const { authorization } = await createSession(user);
+		const sponsor = await createSponsor({ club: club._id, name: 'Delete Me' });
+		const tournament = await createTournament({
+			club: club._id,
+			createdBy: user._id,
+			name: `Tournament ${new Types.ObjectId().toString()}`,
+		});
+		tournament.sponsor = sponsor._id;
+		await tournament.save();
+
+		await expect(
+			requestJson(app, `/sponsors/clubs/${club._id.toString()}/${sponsor._id.toString()}`, {
+				method: 'DELETE',
+				headers: { authorization },
+			})
+		).resolves.toEqual({
+			status: 204,
+			body: null,
+		});
+
+		await expect(Sponsor.exists({ _id: sponsor._id })).resolves.toBeNull();
+		const refreshedTournament = await Tournament.findById(tournament._id).lean().exec();
+		expect(refreshedTournament?.sponsor).toBeNull();
 	});
 });

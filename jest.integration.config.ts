@@ -1,16 +1,15 @@
 import type { Config } from 'jest';
-import { baseConfig, integrationCoverageSources } from './jest.config.ts';
+import { appCoverageSources, integrationCoverageThreshold } from './jest.coverage.ts';
+import { baseConfig } from './jest.config.ts';
 
 const config: Config = {
 	...baseConfig,
 	coverageDirectory: 'coverage/integration',
-	collectCoverageFrom: integrationCoverageSources,
+	collectCoverageFrom: appCoverageSources,
 	testMatch: ['**/*.integration.test.ts'],
-	coverageThreshold: {
-		global: {
-			statements: 50,
-		},
-	},
+	testTimeout: 30000,
+	maxWorkers: 1,
+	coverageThreshold: integrationCoverageThreshold,
 };
 
 export default config;

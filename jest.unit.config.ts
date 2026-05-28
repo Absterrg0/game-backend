@@ -1,16 +1,14 @@
 import type { Config } from 'jest';
-import { baseConfig, unitCoverageSources } from './jest.config.ts';
+import { appCoverageSources, unitCoverageThreshold } from './jest.coverage.ts';
+import { baseConfig } from './jest.config.ts';
 
 const config: Config = {
 	...baseConfig,
+	displayName: 'unit',
 	coverageDirectory: 'coverage/unit',
-	collectCoverageFrom: unitCoverageSources,
+	collectCoverageFrom: appCoverageSources,
 	testPathIgnorePatterns: [...(baseConfig.testPathIgnorePatterns ?? []), '\\.integration\\.test\\.ts$'],
-	coverageThreshold: {
-		global: {
-			statements: 60,
-		},
-	},
+	coverageThreshold: unitCoverageThreshold,
 };
 
 export default config;

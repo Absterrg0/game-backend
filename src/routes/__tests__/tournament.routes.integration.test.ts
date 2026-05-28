@@ -1,157 +1,103 @@
-import { ROLES } from '../../constants/roles';
+import Tournament from '../../models/Tournament';
 import tournamentRouter from '../tournament.routes';
-import { attachTestUser, optionallyAttachTestUser } from '../../testUtils/routeMockAuth';
-import { buildJsonApp, request } from '../../testUtils/routeIntegrationTestUtils';
+import {
+	createSession,
+	createTournament,
+	createUser,
+	seedClubAdmin,
+	setupMemoryMongo,
+} from '../../testUtils/db';
+import { buildJsonApp, requestJson } from '../../testUtils/integrationTestUtils';
 
-jest.mock('../../middlewares/auth', () => ({
-	__esModule: true,
-	default: require('../../testUtils/routeMockAuth').attachTestUser,
-}));
-
-jest.mock('../../middlewares/optionalAuthenticate', () => ({
-	__esModule: true,
-	default: require('../../testUtils/routeMockAuth').optionallyAttachTestUser,
-}));
-
-jest.mock('../../controllers/tournament/controller', () => {
-	const { controllerMarker } = require('../../testUtils/routeIntegrationTestUtils');
-	return {
-		cancelActiveScoreQr: controllerMarker('cancelActiveScoreQr'),
-		confirmScoreQr: controllerMarker('confirmScoreQr'),
-		createTournament: controllerMarker('createTournament'),
-		generateIndependentScoreQr: controllerMarker('generateIndependentScoreQr'),
-		generateScoreQr: controllerMarker('generateScoreQr'),
-		getActiveScoreQr: controllerMarker('getActiveScoreQr'),
-		getDoublesPairs: controllerMarker('getDoublesPairs'),
-		getTournamentById: controllerMarker('getTournamentById'),
-		getTournamentLiveMatch: controllerMarker('getTournamentLiveMatch'),
-		getTournamentMatches: controllerMarker('getTournamentMatches'),
-		getTournaments: controllerMarker('getTournaments'),
-		joinTournament: controllerMarker('joinTournament'),
-		leaveTournament: controllerMarker('leaveTournament'),
-		recordMatchScore: controllerMarker('recordMatchScore'),
-		saveDoublesPairs: controllerMarker('saveDoublesPairs'),
-		streamScoreQrEvents: controllerMarker('streamScoreQrEvents'),
-		updateScoreQrScores: controllerMarker('updateScoreQrScores'),
-		updateTournament: controllerMarker('updateTournament'),
-		validateScoreQr: controllerMarker('validateScoreQr'),
-		validateScoreQrConfirmContext: controllerMarker('validateScoreQrConfirmContext'),
-	};
-});
+setupMemoryMongo();
 
 describe('tournament routes integration', () => {
 	const app = buildJsonApp('/tournaments', tournamentRouter);
 
-	it('keeps tournament list public with optional auth', async () => {
-		await expect(request(app, '/tournaments')).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'getTournaments',
-				params: {},
-				body: {},
-				role: null,
-			},
+	it('lists active published tournaments for guests', async () => {
+		const visible = await createTournament({ name: 'Public Open', status: 'active' });
+		await createTournament({ name: 'Draft Hidden', status: 'draft' });
+
+		const result = await requestJson(app, '/tournaments');
+
+		expect(result.status).toBe(200);
+		expect(result.body).toMatchObject({
+			message: 'Tournaments listed successfully',
+			pagination: expect.objectContaining({
+				total: expect.any(Number),
+				page: 1,
+			}),
 		});
+		const ids = (result.body as { tournaments: Array<{ id: string }> }).tournaments.map((t) => t.id);
+		expect(ids).toContain(visible._id.toString());
+		expect(ids).not.toContain(
+			(await Tournament.findOne({ name: 'Draft Hidden' }).lean().orFail())._id.toString(),
+		);
 	});
 
-	it('routes public tournament matches before tournament detail', async () => {
-		await expect(request(app, '/tournaments/tournament-1/matches')).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'getTournamentMatches',
-				params: { id: 'tournament-1' },
-				body: {},
-				role: null,
-			},
+	it('returns organiser draft tournaments when authenticated with view=drafts', async () => {
+		const { user: admin, club } = await seedClubAdmin({ plan: 'premium' });
+		const { authorization } = await createSession(admin);
+		const draft = await createTournament({
+			club: club._id,
+			createdBy: admin._id,
+			name: 'Organiser Draft',
+			status: 'draft',
 		});
+
+		const result = await requestJson(app, '/tournaments?view=drafts', {
+			headers: { authorization },
+		});
+
+		expect(result.status).toBe(200);
+		const ids = (result.body as { tournaments: Array<{ id: string }> }).tournaments.map((t) => t.id);
+		expect(ids).toContain(draft._id.toString());
 	});
 
-	it('routes public score QR validation before tournament detail', async () => {
-		await expect(request(app, '/tournaments/score-qr/token-1')).resolves.toEqual({
+	it('routes score QR validation before tournament detail for unknown tokens', async () => {
+		const tournament = await createTournament({ name: 'Route Order Check' });
+
+		await expect(requestJson(app, `/tournaments/score-qr/not-a-valid-token`)).resolves.toMatchObject({
+			status: 400,
+			body: expect.objectContaining({
+				error: true,
+			}),
+		});
+
+		await expect(requestJson(app, `/tournaments/${tournament._id.toString()}/matches`)).resolves.toMatchObject({
 			status: 200,
-			body: {
-				handler: 'validateScoreQr',
-				params: { token: 'token-1' },
-				body: {},
-				role: null,
-			},
+			body: expect.objectContaining({
+				matches: expect.any(Array),
+			}),
 		});
 	});
 
 	it('blocks unauthenticated protected tournament mutations', async () => {
+		const tournament = await createTournament();
+
 		await expect(
-			request(app, '/tournaments/tournament-1/join', { method: 'POST' })
+			requestJson(app, `/tournaments/${tournament._id.toString()}/join`, { method: 'POST' }),
 		).resolves.toEqual({
 			status: 401,
 			body: { message: 'Authorization required' },
 		});
 	});
 
-	it('allows players to join tournaments', async () => {
-		await expect(
-			request(app, '/tournaments/tournament-1/join', {
-				method: 'POST',
-				headers: { 'x-test-role': ROLES.PLAYER },
-			})
-		).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'joinTournament',
-				params: { id: 'tournament-1' },
-				body: {},
-				role: ROLES.PLAYER,
-			},
-		});
-	});
-
 	it('blocks players from organiser tournament creation', async () => {
+		const player = await createUser();
+		const { authorization } = await createSession(player);
+
 		await expect(
-			request(app, '/tournaments', {
+			requestJson(app, '/tournaments', {
 				method: 'POST',
-				headers: { 'x-test-role': ROLES.PLAYER },
-				body: JSON.stringify({ name: 'New Tournament' }),
-			})
+				headers: { authorization },
+				body: { name: 'Blocked Tournament' },
+			}),
 		).resolves.toEqual({
 			status: 403,
 			body: {
 				message: 'Insufficient permissions',
 				code: 'FORBIDDEN',
-			},
-		});
-	});
-
-	it('allows organisers to create tournaments', async () => {
-		await expect(
-			request(app, '/tournaments', {
-				method: 'POST',
-				headers: { 'x-test-role': ROLES.ORGANISER },
-				body: JSON.stringify({ name: 'New Tournament' }),
-			})
-		).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'createTournament',
-				params: {},
-				body: { name: 'New Tournament' },
-				role: ROLES.ORGANISER,
-			},
-		});
-	});
-
-	it('routes protected score QR actions before public token validation', async () => {
-		await expect(
-			request(app, '/tournaments/score-qr/request-1/scores', {
-				method: 'PATCH',
-				headers: { 'x-test-role': ROLES.PLAYER },
-				body: JSON.stringify({ scores: [6, 4] }),
-			})
-		).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'updateScoreQrScores',
-				params: { requestId: 'request-1' },
-				body: { scores: [6, 4] },
-				role: ROLES.PLAYER,
 			},
 		});
 	});

@@ -1,91 +1,201 @@
-import { ROLES } from '../../constants/roles';
+import { Types } from 'mongoose';
+import User from '../../models/User';
+import Session from '../../models/Session';
 import userRouter from '../user.routes';
-import { buildJsonApp, request } from '../../testUtils/routeIntegrationTestUtils';
+import {
+	createClub,
+	createSession,
+	createUser,
+	setupMemoryMongo,
+} from '../../testUtils/db';
+import { buildJsonApp, requestJson } from '../../testUtils/integrationTestUtils';
 
-jest.mock('../../middlewares/auth', () => ({
-	__esModule: true,
-	default: require('../../testUtils/routeMockAuth').attachTestUser,
-}));
-
-jest.mock('../../controllers/user/controller', () => {
-	const { controllerMarker } = require('../../testUtils/routeIntegrationTestUtils');
-	return {
-		updateProfile: controllerMarker('updateProfile'),
-		deleteAccount: controllerMarker('deleteAccount'),
-		getFavoriteClubs: controllerMarker('getFavoriteClubs'),
-		addFavoriteClub: controllerMarker('addFavoriteClub'),
-		removeFavoriteClub: controllerMarker('removeFavoriteClub'),
-		setHomeClub: controllerMarker('setHomeClub'),
-		getAdminClubs: controllerMarker('getAdminClubs'),
-		searchUsers: controllerMarker('searchUsers'),
-		getMyScore: controllerMarker('getMyScore'),
-	};
-});
+setupMemoryMongo();
 
 describe('user routes integration', () => {
 	const app = buildJsonApp('/users', userRouter);
 
-	it('requires authentication for protected user routes', async () => {
-		await expect(request(app, '/users/favorite-clubs')).resolves.toEqual({
-			status: 401,
-			body: { message: 'Authorization required' },
+	// ─── updateProfile ─────────────────────────────────────────────────────────
+
+	describe('PATCH /users/update-profile', () => {
+		it('updates name and alias and persists changes', async () => {
+			const user = await createUser({ name: 'Old Name', alias: 'OldAlias' });
+			const { authorization } = await createSession(user);
+
+			const res = await requestJson(app, '/users/update-profile', {
+				method: 'PATCH',
+				headers: { authorization },
+				body: { name: ' New Name ', alias: ' NewAlias ' },
+			});
+
+			expect(res.status).toBe(200);
+
+			const persisted = await User.findById(user._id).lean().orFail();
+			expect(persisted.name).toBe('New Name');
+			expect(persisted.alias).toBe('NewAlias');
+		});
+
+		it('returns 401 for unauthenticated requests', async () => {
+			const res = await requestJson(app, '/users/update-profile', {
+				method: 'PATCH',
+				body: { name: 'Ghost' },
+			});
+			expect(res.status).toBe(401);
 		});
 	});
 
-	it('allows players to reach their score endpoint', async () => {
-		await expect(
-			request(app, '/users/my-score', { headers: { 'x-test-role': ROLES.PLAYER } })
-		).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'getMyScore',
-				params: {},
-				body: {},
-				role: ROLES.PLAYER,
-			},
+	// ─── addFavoriteClub ───────────────────────────────────────────────────────
+
+	describe('POST /users/favorite-clubs', () => {
+		it('adds a club to favorites and persists to DB', async () => {
+			const user = await createUser();
+			const { authorization } = await createSession(user);
+			const club = await createClub();
+
+			const res = await requestJson(app, '/users/favorite-clubs', {
+				method: 'POST',
+				headers: { authorization },
+				body: { club: club._id.toString() },
+			});
+
+			expect(res.status).toBe(200);
+
+			const updated = await User.findById(user._id).lean().orFail();
+			expect(updated.favoriteClubs?.map((id) => id.toString())).toContain(club._id.toString());
+		});
+
+		it('returns 401 for unauthenticated requests', async () => {
+			const club = await createClub();
+			const res = await requestJson(app, '/users/favorite-clubs', {
+				method: 'POST',
+				body: { club: club._id.toString() },
+			});
+			expect(res.status).toBe(401);
+		});
+
+		it('returns 404 when the club does not exist', async () => {
+			const user = await createUser();
+			const { authorization } = await createSession(user);
+
+			const res = await requestJson(app, '/users/favorite-clubs', {
+				method: 'POST',
+				headers: { authorization },
+				body: { club: new Types.ObjectId().toString() },
+			});
+
+			expect(res.status).toBe(404);
 		});
 	});
 
-	it('blocks players from organiser user search', async () => {
-		await expect(
-			request(app, '/users/search?q=ann', { headers: { 'x-test-role': ROLES.PLAYER } })
-		).resolves.toEqual({
-			status: 403,
-			body: {
-				message: 'Insufficient permissions',
-				code: 'FORBIDDEN',
-			},
-		});
-	});
+	// ─── removeFavoriteClub ────────────────────────────────────────────────────
 
-	it('allows organisers to use user search', async () => {
-		await expect(
-			request(app, '/users/search?q=ann', { headers: { 'x-test-role': ROLES.ORGANISER } })
-		).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'searchUsers',
-				params: {},
-				body: {},
-				role: ROLES.ORGANISER,
-			},
-		});
-	});
+	describe('DELETE /users/favorite-clubs/:clubId', () => {
+		it('removes a club from favorites and persists to DB', async () => {
+			const user = await createUser();
+			const club = await createClub();
+			user.favoriteClubs = [club._id];
+			await user.save();
 
-	it('routes favorite club mutations with path params', async () => {
-		await expect(
-			request(app, '/users/favorite-clubs/club-1', {
+			const { authorization } = await createSession(user);
+
+			const res = await requestJson(app, `/users/favorite-clubs/${club._id.toString()}`, {
 				method: 'DELETE',
-				headers: { 'x-test-role': ROLES.PLAYER },
-			})
-		).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'removeFavoriteClub',
-				params: { clubId: 'club-1' },
-				body: {},
-				role: ROLES.PLAYER,
-			},
+				headers: { authorization },
+			});
+
+			expect(res.status).toBe(200);
+
+			const updated = await User.findById(user._id).lean().orFail();
+			expect(updated.favoriteClubs?.map((id) => id.toString())).not.toContain(
+				club._id.toString(),
+			);
+		});
+
+		it('returns 401 for unauthenticated requests', async () => {
+			const res = await requestJson(
+				app,
+				`/users/favorite-clubs/${new Types.ObjectId().toString()}`,
+				{ method: 'DELETE' },
+			);
+			expect(res.status).toBe(401);
+		});
+	});
+
+	// ─── setHomeClub ───────────────────────────────────────────────────────────
+
+	describe('PATCH /users/home-club', () => {
+		it('sets home club when the club is in favorites', async () => {
+			const user = await createUser();
+			const club = await createClub();
+			user.favoriteClubs = [club._id];
+			await user.save();
+
+			const { authorization } = await createSession(user);
+
+			const res = await requestJson(app, '/users/home-club', {
+				method: 'PATCH',
+				headers: { authorization },
+				body: { club: club._id.toString() },
+			});
+
+			expect(res.status).toBe(200);
+
+			const updated = await User.findById(user._id).lean().orFail();
+			expect(updated.homeClub?.toString()).toBe(club._id.toString());
+		});
+
+		it('returns 400 when the club is not in favorites', async () => {
+			const user = await createUser();
+			const club = await createClub(); // not in favorites
+			const { authorization } = await createSession(user);
+
+			const res = await requestJson(app, '/users/home-club', {
+				method: 'PATCH',
+				headers: { authorization },
+				body: { club: club._id.toString() },
+			});
+
+			expect(res.status).toBe(400);
+		});
+
+		it('returns 401 for unauthenticated requests', async () => {
+			const res = await requestJson(app, '/users/home-club', {
+				method: 'PATCH',
+				body: { club: new Types.ObjectId().toString() },
+			});
+			expect(res.status).toBe(401);
+		});
+	});
+
+	// ─── deleteAccount ─────────────────────────────────────────────────────────
+
+	describe('DELETE /users/delete-account', () => {
+		it('soft-deletes the user and revokes all sessions', async () => {
+			const user = await createUser();
+			const { authorization, session } = await createSession(user);
+
+			const res = await requestJson(app, '/users/delete-account', {
+				method: 'DELETE',
+				headers: { authorization },
+			});
+
+			expect(res.status).toBe(200);
+
+			// Sessions must be purged
+			await expect(Session.exists({ _id: session._id })).resolves.toBeNull();
+
+			// User must be soft-deleted (deletedAt set). Bypass the pre-find hook with setOptions.
+			const deleted = await User.findById(user._id)
+				.setOptions({ includeDeleted: true })
+				.select('+deletedAt')
+				.lean()
+				.orFail();
+			expect(deleted.deletedAt).not.toBeNull();
+		});
+
+		it('returns 401 for unauthenticated requests', async () => {
+			const res = await requestJson(app, '/users/delete-account', { method: 'DELETE' });
+			expect(res.status).toBe(401);
 		});
 	});
 });

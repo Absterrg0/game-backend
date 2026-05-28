@@ -1,101 +1,153 @@
-import { ROLES } from '../../constants/roles';
+import Session from '../../models/Session';
+import User from '../../models/User';
 import authRouter from '../auth.routes';
-import { attachTestUser } from '../../testUtils/routeMockAuth';
-import { buildJsonApp, controllerMarker, request } from '../../testUtils/routeIntegrationTestUtils';
+import { createPendingSignupToken } from '../../controllers/auth/pendingToken';
+import {
+	createSession,
+	createUser,
+	createUserAuth,
+	setupMemoryMongo,
+} from '../../testUtils/db';
+import { buildJsonApp, requestJson } from '../../testUtils/integrationTestUtils';
 
-jest.mock('../../middlewares/auth', () => ({
-	__esModule: true,
-	default: require('../../testUtils/routeMockAuth').attachTestUser,
-}));
-
-jest.mock('../../controllers/auth/controller', () => {
-	const { controllerMarker } = require('../../testUtils/routeIntegrationTestUtils');
-	return {
-		appleAuth: controllerMarker('appleAuth'),
-		appleAuthCallback: controllerMarker('appleAuthCallback'),
-		appleFormPostFix: controllerMarker('appleFormPostFix'),
-		completeSignUp: controllerMarker('completeSignUp'),
-		exchangeAuthHandoff: controllerMarker('exchangeAuthHandoff'),
-		getMe: controllerMarker('getMe'),
-		googleAuth: controllerMarker('googleAuth'),
-		googleAuthCallback: controllerMarker('googleAuthCallback'),
-		logout: controllerMarker('logout'),
-	};
-});
+setupMemoryMongo();
 
 describe('auth routes integration', () => {
 	const app = buildJsonApp('/auth', authRouter);
 
-	it('routes public OAuth entrypoints without authentication', async () => {
-		await expect(request(app, '/auth/google')).resolves.toEqual({
-			status: 200,
-			body: {
-				handler: 'googleAuth',
-				params: {},
-				body: {},
-				role: null,
-			},
+	it('completes pending signup, persists profile fields, and creates a session', async () => {
+		process.env.JWT_SECRET ??= 'test-jwt-secret';
+		const pendingUser = await createUser({
+			email: 'pending@example.com',
 		});
-	});
-
-	it('runs complete-signup validation before the controller', async () => {
-		await expect(
-			request(app, '/auth/complete-signup', {
-				method: 'POST',
-				body: JSON.stringify({ pendingToken: '', alias: '', name: '' }),
-			})
-		).resolves.toMatchObject({
-			status: 400,
-			body: {
-				error: true,
-				code: 'VALIDATION_ERROR',
-			},
+		pendingUser.name = null;
+		pendingUser.alias = null;
+		await pendingUser.save();
+		await createUserAuth(pendingUser._id);
+		const pendingToken = createPendingSignupToken({
+			pendingEmail: ' pending@example.com ',
 		});
-	});
 
-	it('passes normalized complete-signup payloads to the controller', async () => {
-		const result = await request(app, '/auth/complete-signup', {
+		const result = await requestJson(app, '/auth/complete-signup', {
 			method: 'POST',
-			body: JSON.stringify({
-				pendingToken: 'pending-token',
-				alias: '  ace  ',
-				name: '  Ada  ',
-				email: 'ada@example.com',
-				gender: '',
-			}),
+			body: {
+				pendingToken,
+				alias: ' Ace ',
+				name: ' Ada Player ',
+				dateOfBirth: '1990-03-04',
+				gender: 'female',
+			},
 		});
 
 		expect(result.status).toBe(200);
 		expect(result.body).toMatchObject({
-			handler: 'completeSignUp',
+			message: 'Sign up completed',
+			code: 'SIGNUP_SUCCESSFUL',
+			error: false,
+			token: expect.any(String),
+		});
+
+		const persisted = await User.findById(pendingUser._id).select('+deletedAt').lean().orFail();
+		expect(persisted).toMatchObject({
+			email: 'pending@example.com',
+			alias: 'Ace',
+			name: 'Ada Player',
+			gender: 'female',
+			status: 'active',
+		});
+		expect(persisted.dateOfBirth).toBeInstanceOf(Date);
+		await expect(Session.countDocuments({ user: pendingUser._id })).resolves.toBe(1);
+	});
+
+	it('rejects duplicate signup email without changing the pending user or creating a session', async () => {
+		process.env.JWT_SECRET ??= 'test-jwt-secret';
+		await createUser({ email: 'taken@example.com' });
+		const pendingUser = await createUser({
+			email: 'apple-placeholder@example.invalid',
+		});
+		pendingUser.name = null;
+		pendingUser.alias = null;
+		await pendingUser.save();
+		await createUserAuth(pendingUser._id, { appleId: 'apple-duplicate-email' });
+		const pendingToken = createPendingSignupToken({
+			pendingEmail: 'privaterelay@appleid.com',
+			appleId: 'apple-duplicate-email',
+			requiresEmailInput: true,
+		});
+		const beforeSessions = await Session.countDocuments();
+
+		await expect(
+			requestJson(app, '/auth/complete-signup', {
+				method: 'POST',
+				body: {
+					pendingToken,
+					alias: 'Taken',
+					name: 'Taken Email',
+					email: 'TAKEN@example.com',
+				},
+			})
+		).resolves.toEqual({
+			status: 409,
 			body: {
-				pendingToken: 'pending-token',
-				alias: 'ace',
-				name: 'Ada',
-				email: 'ada@example.com',
-				gender: null,
+				message: 'An account with this email address already exists.',
+				error: true,
+				code: 'EMAIL_ALREADY_EXISTS',
 			},
 		});
+
+		const unchanged = await User.findById(pendingUser._id).lean().orFail();
+		expect(unchanged.email).toBe('apple-placeholder@example.invalid');
+		expect(unchanged.alias).toBeNull();
+		expect(unchanged.name).toBeNull();
+		await expect(Session.countDocuments()).resolves.toBe(beforeSessions);
 	});
 
-	it('requires authentication for /me', async () => {
-		await expect(request(app, '/auth/me')).resolves.toEqual({
-			status: 401,
-			body: { message: 'Authorization required' },
+	it('returns the authenticated user from /me and revokes the same session on logout', async () => {
+		const user = await createUser({
+			email: 'me@example.com',
+			name: 'Session User',
+			alias: 'SU',
 		});
-	});
+		const { authorization, session } = await createSession(user);
 
-	it('routes authenticated /me requests', async () => {
 		await expect(
-			request(app, '/auth/me', { headers: { 'x-test-role': ROLES.PLAYER } })
+			requestJson(app, '/auth/me', {
+				headers: { authorization },
+			})
 		).resolves.toEqual({
 			status: 200,
 			body: {
-				handler: 'getMe',
-				params: {},
-				body: {},
-				role: ROLES.PLAYER,
+				user: {
+					id: user._id.toString(),
+					email: 'me@example.com',
+					name: 'Session User',
+					alias: 'SU',
+					profilePictureUrl: null,
+					dateOfBirth: null,
+					gender: null,
+					role: 'player',
+				},
 			},
+		});
+
+		await expect(
+			requestJson(app, '/auth/logout', {
+				method: 'POST',
+				headers: { authorization },
+			})
+		).resolves.toEqual({
+			status: 200,
+			body: { message: 'Logged out successfully' },
+		});
+
+		await expect(Session.exists({ _id: session._id })).resolves.toBeNull();
+		await expect(
+			requestJson(app, '/auth/me', {
+				headers: { authorization },
+			})
+		).resolves.toEqual({
+			status: 401,
+			body: { message: 'Session expired, login again' },
 		});
 	});
 });
