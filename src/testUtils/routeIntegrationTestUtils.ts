@@ -2,9 +2,9 @@ import express from 'express';
 import type { Express, Request, RequestHandler, Response } from 'express';
 import type { Server } from 'http';
 
-export type HttpResult = {
+export type HttpResult<T = unknown> = {
 	status: number;
-	body: unknown;
+	body: T;
 };
 
 export function controllerMarker(name: string): RequestHandler {
@@ -25,7 +25,11 @@ export function buildJsonApp(path: string, router: RequestHandler): Express {
 	return app;
 }
 
-export async function request(app: Express, path: string, init: RequestInit = {}): Promise<HttpResult> {
+export async function request<T = unknown>(
+	app: Express,
+	path: string,
+	init: RequestInit = {},
+): Promise<HttpResult<T>> {
 	const headers = new Headers(init.headers);
 	if (init.body != null && !headers.has('content-type')) {
 		headers.set('content-type', 'application/json');

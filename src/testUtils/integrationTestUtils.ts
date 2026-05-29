@@ -11,13 +11,17 @@ type JsonRequestInit = Omit<RequestInit, 'body'> & {
 
 export { buildJsonApp };
 
-export async function requestJson(app: Express, path: string, init: JsonRequestInit = {}) {
+export async function requestJson<T = unknown>(
+	app: Express,
+	path: string,
+	init: JsonRequestInit = {},
+): Promise<HttpResult<T>> {
 	const { body, headers, ...rest } = init;
-	return request(app, path, {
+	return request<T>(app, path, {
 		...rest,
 		headers,
 		body: body === undefined || typeof body === 'string' ? body : JSON.stringify(body),
-	}) as Promise<HttpResult>;
+	});
 }
 
 export function buildRouterApp(path: string, router: RequestHandler) {

@@ -14,6 +14,16 @@ import { buildJsonApp, requestJson } from '../../testUtils/integrationTestUtils'
 
 setupMemoryMongo();
 
+type PublicSponsorsResponse = {
+	sponsors: Array<{
+		id: string;
+		name: string;
+		description: string | null;
+		logoUrl: string | null;
+		link: string | null;
+	}>;
+};
+
 describe('sponsor routes integration', () => {
 	const app = buildJsonApp('/sponsors', sponsorRouter);
 
@@ -38,7 +48,7 @@ describe('sponsor routes integration', () => {
 			status: 'paused',
 		});
 
-		const res = await requestJson(app, '/sponsors');
+		const res = await requestJson<PublicSponsorsResponse>(app, '/sponsors');
 		expect(res.status).toBe(200);
 		expect(res.body.sponsors).toHaveLength(2);
 		expect(res.body.sponsors).toEqual(
