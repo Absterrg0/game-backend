@@ -53,14 +53,7 @@ describe('resolveDefaultScheduleStartTime()', () => {
   });
 
   it('for round > 1, returns a time based on the latest game end of previous rounds', () => {
-    // Round 1 game: started at 09:00 UTC, duration 60 min → ends at 10:00 UTC
-    const games: ScheduleGameTiming[] = [
-      {
-        round: 1,
-        startTime: new Date('2025-06-01T09:00:00Z'),
-        endTime: new Date('2025-06-01T10:00:00Z'),
-      },
-    ];
+    const games: ScheduleGameTiming[] = [makeGame(1, 0, 60 * 60000)];
 
     const result = resolveDefaultScheduleStartTime({
       targetRound: 2,
@@ -77,16 +70,8 @@ describe('resolveDefaultScheduleStartTime()', () => {
 
   it('ignores games from the target round itself when calculating previous rounds', () => {
     const games: ScheduleGameTiming[] = [
-      {
-        round: 2,
-        startTime: new Date('2025-06-01T11:00:00Z'),
-        endTime: new Date('2025-06-01T12:00:00Z'),
-      },
-      {
-        round: 1,
-        startTime: new Date('2025-06-01T09:00:00Z'),
-        endTime: new Date('2025-06-01T10:00:00Z'),
-      },
+      makeGame(2, 2 * 60 * 60000, 60 * 60000),
+      makeGame(1, 0, 60 * 60000),
     ];
 
     const result = resolveDefaultScheduleStartTime({
@@ -104,17 +89,8 @@ describe('resolveDefaultScheduleStartTime()', () => {
 
   it('skips games with detachedFromRound set', () => {
     const games: ScheduleGameTiming[] = [
-      {
-        round: 1,
-        startTime: new Date('2025-06-01T07:00:00Z'),
-        endTime: new Date('2025-06-01T08:00:00Z'),
-        detachedFromRound: 1,
-      },
-      {
-        round: 1,
-        startTime: new Date('2025-06-01T09:00:00Z'),
-        endTime: new Date('2025-06-01T10:00:00Z'),
-      },
+      { ...makeGame(1, -2 * 60 * 60000, 60 * 60000), detachedFromRound: 1 },
+      makeGame(1, 0, 60 * 60000),
     ];
 
     const result = resolveDefaultScheduleStartTime({
@@ -131,13 +107,7 @@ describe('resolveDefaultScheduleStartTime()', () => {
   });
 
   it('uses now when latest game end is in the past relative to now', () => {
-    const games: ScheduleGameTiming[] = [
-      {
-        round: 1,
-        startTime: new Date('2025-06-01T09:00:00Z'),
-        endTime: new Date('2025-06-01T10:00:00Z'),
-      },
-    ];
+    const games: ScheduleGameTiming[] = [makeGame(1, 0, 60 * 60000)];
 
     // now is 14:00 — later than the game end
     const result = resolveDefaultScheduleStartTime({
@@ -155,16 +125,8 @@ describe('resolveDefaultScheduleStartTime()', () => {
 
   it('picks the latest end time when multiple round-1 games exist', () => {
     const games: ScheduleGameTiming[] = [
-      {
-        round: 1,
-        startTime: new Date('2025-06-01T09:00:00Z'),
-        endTime: new Date('2025-06-01T10:00:00Z'),
-      },
-      {
-        round: 1,
-        startTime: new Date('2025-06-01T09:30:00Z'),
-        endTime: new Date('2025-06-01T11:00:00Z'),
-      },
+      makeGame(1, 0, 60 * 60000),
+      makeGame(1, 30 * 60000, 90 * 60000),
     ];
 
     const result = resolveDefaultScheduleStartTime({

@@ -143,7 +143,7 @@ describe('GET tournament by id integration', () => {
 			side2Players: [opponent._id],
 			status: 'pendingScore',
 		});
-		const schedule = await createSchedule(tournament._id, pendingGame._id);
+		const { schedule } = await createSchedule(tournament._id, pendingGame._id);
 		pendingGame.schedule = schedule._id;
 		await pendingGame.save();
 		tournament.schedule = schedule._id;

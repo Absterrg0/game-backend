@@ -2,7 +2,6 @@ import { Types } from 'mongoose';
 import {
   ensureMinimumParticipants,
   buildRoundPairs,
-  type MatchPair,
 } from '../pairingFromDemand';
 import type { ScheduleParticipantInfo } from '../../shared/types';
 
@@ -136,22 +135,11 @@ describe('buildRoundPairs() – singles mode', () => {
     expect(pairs).toHaveLength(2);
   });
 
-  it('uses different round seeds to produce varied pairings across rounds', () => {
+  it('produces valid pair counts for multiple rounds with matchesPerPlayer=2', () => {
     const participants = makeParticipants(4);
     const { pairs: round1Pairs } = buildRoundPairs(participants, 'singles', 2, 1);
     const { pairs: round2Pairs } = buildRoundPairs(participants, 'singles', 2, 2);
 
-    // Collect pair-keys for each round
-    const pairKeys = (pairs: MatchPair[]) =>
-      pairs.map((p) => {
-        if (p.kind !== 'singles') return '';
-        const ids = [p.teamOne[0].toString(), p.teamTwo[0].toString()].sort();
-        return ids.join(':');
-      }).sort().join('|');
-
-    // Round 1 and Round 2 may differ in at least one pairing due to seed rotation
-    // (this is not guaranteed to be different every time, but for 4 players with 2 matches/player it often differs)
-    // We test they both produce valid outputs regardless
     expect(round1Pairs).toHaveLength(4);
     expect(round2Pairs).toHaveLength(4);
   });

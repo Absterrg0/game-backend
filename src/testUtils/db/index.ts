@@ -22,6 +22,7 @@ function nextLabel(prefix: string) {
 
 export function setupMemoryMongo() {
 	beforeAll(async () => {
+		process.env.JWT_SECRET ??= 'test-jwt-secret';
 		replSet = await MongoMemoryReplSet.create({
 			replSet: { count: 1 },
 			instanceOpts: [{ storageEngine: 'wiredTiger' }],
@@ -81,7 +82,9 @@ export async function createUserAuth(userId: Types.ObjectId, overrides: Partial<
 }
 
 export async function createSession(user?: UserDocument) {
-	process.env.JWT_SECRET ??= 'test-jwt-secret';
+	if (!process.env.JWT_SECRET) {
+		throw new Error('JWT_SECRET is not configured');
+	}
 	const sessionUser = user ?? (await createUser());
 	if (!(await UserAuth.exists({ user: sessionUser._id }))) {
 		await createUserAuth(sessionUser._id);
@@ -265,7 +268,7 @@ export async function createSchedule(tournamentId: Types.ObjectId, gameId: Types
 	currentRound: number;
 	status: 'draft' | 'active' | 'finished';
 }> = {}) {
-	return Schedule.findOneAndUpdate(
+	const result = await Schedule.findOneAndUpdate(
 		{ tournament: tournamentId },
 		{
 			$set: {
@@ -275,8 +278,13 @@ export async function createSchedule(tournamentId: Types.ObjectId, gameId: Types
 				rounds: [{ game: gameId, slot: 1, round: 1, mode: 'singles' }],
 			},
 		},
-		{ upsert: true, returnDocument: 'after', runValidators: true }
-	).orFail();
+		{ upsert: true, includeResultMetadata: true, returnDocument: 'after', runValidators: true },
+	);
+	if (!result.value) {
+		throw new Error('Failed to create or update schedule');
+	}
+	const created = Boolean(result.lastErrorObject?.upserted);
+	return { schedule: result.value, created };
 }
 
 export async function seedActiveTournamentWithMatch(overrides: Partial<{
@@ -302,7 +310,7 @@ export async function seedActiveTournamentWithMatch(overrides: Partial<{
 		playMode: overrides.playMode,
 		status: overrides.status ?? 'active',
 	});
-	const schedule = await createSchedule(tournament._id, game._id);
+	const { schedule } = await createSchedule(tournament._id, game._id);
 	game.schedule = schedule._id;
 	await game.save();
 	tournament.schedule = schedule._id;

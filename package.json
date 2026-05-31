@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "build": "tsc && node scripts/write-commit-sha.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.jest.json",
     "test": "jest --config jest.all.config.ts --coverage",
     "test:watch": "jest --config jest.unit.config.ts --watch",
     "test:watch:unit": "jest --config jest.unit.config.ts --watch",

@@ -185,7 +185,7 @@ function intersectIds(
         filter.participants = { $elemMatch: { $eq: ctx.requesterUserId } };
       } else if (query.participation === "notJoined") {
         filter.participants = { $not: { $elemMatch: { $eq: ctx.requesterUserId } } };
-      } else if (query.participation === "organisedByMe") {
+      } else if (query.participation === "organisedByMe" && query.view !== "drafts") {
         filter.createdBy = ctx.requesterUserId;
       }
     }

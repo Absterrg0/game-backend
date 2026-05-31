@@ -4,7 +4,11 @@ const CLUB_ID = '507f1f77bcf86cd799439011';
 
 describe('updateProfileSchema', () => {
 	it('allows partial profile updates', () => {
-		expect(updateProfileSchema.safeParse({ alias: 'new-alias' }).success).toBe(true);
+		const parsed = updateProfileSchema.safeParse({ alias: 'new-alias' });
+		expect(parsed.success).toBe(true);
+		if (parsed.success) {
+			expect(parsed.data.alias).toBe('new-alias');
+		}
 	});
 
 	it('maps empty profile picture to null', () => {
@@ -48,5 +52,6 @@ describe('favorite and home club schemas', () => {
 
 	it('validates setHomeClub club id', () => {
 		expect(setHomeClubSchema.safeParse({ club: CLUB_ID }).success).toBe(true);
+		expect(setHomeClubSchema.safeParse({ club: 'bad-id' }).success).toBe(false);
 	});
 });

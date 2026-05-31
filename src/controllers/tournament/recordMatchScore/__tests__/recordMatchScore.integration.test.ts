@@ -26,7 +26,7 @@ describe('recordTournamentMatchScoreFlow() integration', () => {
 			side2Players: [playerTwo._id],
 			status: 'active',
 		});
-		const schedule = await createSchedule(tournament._id, game._id, { currentRound: 1 });
+		const { schedule } = await createSchedule(tournament._id, game._id, { currentRound: 1 });
 		await Tournament.updateOne({ _id: tournament._id }, { $set: { schedule: schedule._id } });
 		await Game.updateOne({ _id: game._id }, { $set: { schedule: schedule._id } });
 
@@ -64,7 +64,7 @@ describe('recordTournamentMatchScoreFlow() integration', () => {
 			side1Players: [playerOne._id],
 			side2Players: [playerTwo._id],
 		});
-		const schedule = await createSchedule(tournament._id, game._id, { currentRound: 1 });
+		const { schedule } = await createSchedule(tournament._id, game._id, { currentRound: 1 });
 		await Tournament.updateOne({ _id: tournament._id }, { $set: { schedule: schedule._id } });
 		await Game.updateOne({ _id: game._id }, { $set: { schedule: schedule._id } });
 

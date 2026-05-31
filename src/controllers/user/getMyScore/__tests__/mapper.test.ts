@@ -61,9 +61,9 @@ describe('determineDidWinFromSetScores()', () => {
     expect(determineDidWinFromSetScores([6], [3, 6])).toBeNull();
   });
 
-  it('returns null when both have equal total numeric scores across sets', () => {
-    // Each player wins one set, set wins are equal → null
-    expect(determineDidWinFromSetScores([6, 1, 6], [1, 6, 3])).toBe(true); // 2 set wins vs 1
+  it('returns true when player wins 2–1 across sets', () => {
+    // Player wins sets 1 and 3 → 2–1 set win
+    expect(determineDidWinFromSetScores([6, 1, 6], [1, 6, 3])).toBe(true);
   });
 });
 

@@ -110,7 +110,7 @@ describe('cancelScheduleRound HTTP handler', () => {
 		expect(res.status).toHaveBeenCalledWith(403);
 	});
 
-	it('cancels round, detaches games, and recomputes ratings when rounds remain', async () => {
+	it('cancels round, detaches games, and does not recompute ratings when no prior rounds', async () => {
 		const scheduleDoc = makeScheduleDoc(1);
 		const tournamentDoc = {
 			_id: new Types.ObjectId(TOURNAMENT_ID),

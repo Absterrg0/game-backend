@@ -123,6 +123,16 @@ describe('buildTournamentFilter() — public view', () => {
     expect(pFilter.$not.$elemMatch.$eq).toBe('user-123');
   });
 
+  it('applies participation "organisedByMe" filter', () => {
+    const result = buildTournamentFilter(
+      makeQuery({ participation: 'organisedByMe' }),
+      makeCtx({ requesterUserId: 'user-abc' }),
+    );
+    expect(result.ok).toBe(true);
+    const filter = getFilter(result);
+    expect(filter.createdBy).toBe('user-abc');
+  });
+
   it('does NOT apply participation filter when requesterUserId is empty', () => {
     const result = buildTournamentFilter(
       makeQuery({ participation: 'joined' }),
