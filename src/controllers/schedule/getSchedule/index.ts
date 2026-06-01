@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../../../shared/authContext";
 import { buildErrorPayload } from "../../../shared/errors";
 import { guardIdParam } from "../../../shared/guards";
 import { mapScheduleViewResponse } from "./mapper";
+import { applySingleDayScheduleTiming } from "../shared/applySingleDayScheduleTiming";
 import { authorizeScheduleAccess } from "../shared/authorize";
 import { DEFAULT_MATCH_DURATION_MINUTES } from "../shared/constants";
 import { resolveDefaultScheduleStartTime } from "../shared/resolveDefaultScheduleStartTime";
@@ -42,14 +43,7 @@ export async function getSchedule(req: AuthenticatedRequest, res: Response) {
     const schedule = await fetchScheduleForTournament(tournament.schedule);
     const totalRounds = tournament.totalRounds;
 
-    const responseContext =
-      tournament.tournamentMode === "singleDay"
-        ? {
-            ...tournament,
-            duration: schedule?.matchDurationMinutes ?? tournament.duration,
-            breakDuration: schedule?.breakTimeMinutes ?? tournament.breakDuration,
-          }
-        : tournament;
+    const responseContext = applySingleDayScheduleTiming(tournament, schedule);
 
     const roundParam = req.query.round;
     const parsedRound =

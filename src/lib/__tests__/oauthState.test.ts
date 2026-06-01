@@ -52,7 +52,7 @@ describe('createOAuthStateStore', () => {
 			...req,
 			cookies: { __oauth_state_google: cookieHash },
 			res,
-		} as Request;
+		} as unknown as Request;
 		const verifyCb = jest.fn();
 
 		googleStore.verify(verifyReq, stateToken, undefined, verifyCb);

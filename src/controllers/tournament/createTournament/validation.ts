@@ -36,13 +36,12 @@ const baseTournament = z.object({
     logoUrl: z
       .string()
       .trim()
-      .optional()
       .nullable()
       .transform((v) => {
-        if (v === undefined) return undefined;
         if (v === null || v === "") return null;
         return v;
-      }),
+      })
+      .optional(),
 
     playMode: playModeEnum,
   
@@ -156,4 +155,9 @@ const baseTournament = z.object({
       };
     });
 
-  export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
+  export type CreateTournamentInput = Omit<
+    z.infer<typeof createTournamentSchema>,
+    "sponsor"
+  > & {
+    sponsor?: string;
+  };

@@ -53,7 +53,7 @@ describe('fetchGamesForScheduleRounds', () => {
 		});
 
 		const result = await fetchGamesForScheduleRounds(TOURNAMENT_ID, SCHEDULE_ID, [
-			{ game: GAME_ID, round: 1, slot: 1, mode: 'singles' },
+			{ game: GAME_ID, round: 1, slot: 1 },
 		]);
 
 		expect(result).toEqual(games);

@@ -3,7 +3,7 @@ import { removeClubStaffTransaction } from './queries';
 
 export async function removeClubStaffFlow(clubId: string, staffId: string, actorUserId: string) {
 	const tx = await removeClubStaffTransaction(clubId, staffId, actorUserId);
-	if (!tx.ok) {
+	if (tx.ok === false) {
 		return tx;
 	}
 

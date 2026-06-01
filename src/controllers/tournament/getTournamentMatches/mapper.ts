@@ -75,7 +75,10 @@ function dateToIso(value: unknown): string | null {
   return null;
 }
 
-function mapPlayer(player: GameMatchPlayerSlot, snapshot: { rating: number; rd: number } | null) {
+function mapPlayer(
+  player: GameMatchPlayerSlot,
+  snapshot: { rating: number; rd: number } | null
+): MatchPlayerResponse | null {
   if (player == null) {
     return null;
   }

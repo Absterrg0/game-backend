@@ -77,12 +77,61 @@ export const tournamentScheduleContextSchema = z.object({
   schedule: z.union([mongoObjectIdSchema, z.null()]),
 });
 
-export type TournamentScheduleContext = z.infer<typeof tournamentScheduleContextSchema>;
+type ExactType<T, U> =
+  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2
+    ? (<V>() => V extends U ? 1 : 2) extends <V>() => V extends T ? 1 : 2
+      ? true
+      : false
+    : false;
 
-export type ScheduleCourtInfo = z.infer<typeof scheduleCourtInfoSchema>;
-export type ScheduleClubInfo = z.infer<typeof scheduleClubInfoSchema>;
-export type ScheduleParticipantInfo = z.infer<typeof scheduleParticipantInfoSchema>;
-export type ScheduleParticipantElo = z.infer<typeof scheduleParticipantEloSchema>;
+type AssertExact<T extends true> = T;
+
+export interface ScheduleCourtInfo {
+  _id: Types.ObjectId;
+  name: string;
+}
+
+export interface ScheduleClubInfo {
+  _id: Types.ObjectId;
+  courts: ScheduleCourtInfo[];
+}
+
+export interface ScheduleParticipantElo {
+  rating: number | null;
+  rd: number | null;
+}
+
+export interface ScheduleParticipantInfo {
+  _id: Types.ObjectId;
+  name: string | null;
+  alias: string | null;
+  profilePictureUrl: string | null;
+  elo: ScheduleParticipantElo;
+}
+
+export interface TournamentScheduleContext {
+  _id: Types.ObjectId;
+  name: string;
+  minMember: number;
+  firstRoundScheduledAt: Date | null;
+  tournamentMode: z.infer<typeof tournamentModeSchema>;
+  date: Date | null;
+  startTime: string | null;
+  endTime: string | null;
+  timezone: string | null;
+  duration: number | null;
+  breakDuration: number | null;
+  totalRounds: number;
+  playMode: z.infer<typeof tournamentPlayModeSchema>;
+  createdBy: Types.ObjectId;
+  club: ScheduleClubInfo | null;
+  participants: ScheduleParticipantInfo[];
+  schedule: Types.ObjectId | null;
+}
+
+type _AssertContext = AssertExact<
+  ExactType<TournamentScheduleContext, z.infer<typeof tournamentScheduleContextSchema>>
+>;
 
 /** Lean schedule document for GET schedule / match lists. */
 export const tournamentScheduleDocumentSchema = z.object({
@@ -120,9 +169,25 @@ export const tournamentScheduleDocumentSchema = z.object({
   ),
 });
 
-export type TournamentScheduleDocument = z.infer<typeof tournamentScheduleDocumentSchema>;
+export interface TournamentScheduleDocument {
+  _id: Types.ObjectId;
+  status: "draft" | "active" | "finished";
+  currentRound: number;
+  matchesPerPlayer: number;
+  matchDurationMinutes: number | null;
+  breakTimeMinutes: number | null;
+  rounds: Array<{
+    game: Types.ObjectId;
+    slot: number;
+    round: number;
+  }>;
+}
 
-export function parseTournamentScheduleContext(data: unknown) {
+type _AssertDocument = AssertExact<
+  ExactType<TournamentScheduleDocument, z.infer<typeof tournamentScheduleDocumentSchema>>
+>;
+
+export function parseTournamentScheduleContext(data: unknown): TournamentScheduleContext {
   const result = tournamentScheduleContextSchema.safeParse(data);
   if (!result.success) {
     logger.error("Tournament schedule context failed validation", {
@@ -133,7 +198,7 @@ export function parseTournamentScheduleContext(data: unknown) {
   return result.data;
 }
 
-export function parseTournamentScheduleDocument(data: unknown) {
+export function parseTournamentScheduleDocument(data: unknown): TournamentScheduleDocument {
   const result = tournamentScheduleDocumentSchema.safeParse(data);
   if (!result.success) {
     logger.error("Schedule document failed validation", {

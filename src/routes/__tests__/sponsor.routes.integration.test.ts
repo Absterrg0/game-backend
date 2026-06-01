@@ -50,6 +50,8 @@ describe('sponsor routes integration', () => {
 
 		const res = await requestJson<PublicSponsorsResponse>(app, '/sponsors');
 		expect(res.status).toBe(200);
+		expect(res.body).not.toBeNull();
+		if (res.body === null) throw new Error('Expected sponsors response body');
 		expect(res.body.sponsors).toHaveLength(2);
 		expect(res.body.sponsors).toEqual(
 			expect.arrayContaining([

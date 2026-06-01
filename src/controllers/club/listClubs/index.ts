@@ -17,7 +17,7 @@ export async function listClubs(req: Request, res: Response) {
 
 		const userId = session?._id?.toString() ?? null;
 		const result = await listClubsFlow(parsed.data, userId);
-		if (!result.ok) {
+		if (result.ok === false) {
 			res.status(result.status).json(buildErrorPayload(result.message));
 			return;
 		}

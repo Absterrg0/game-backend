@@ -13,8 +13,9 @@
     "resolveJsonModule": true,
     "moduleResolution": "node16",
     "isolatedModules": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "types": ["node", "jest", "passport"]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "src/types"],
-  "exclude": ["**/__tests__/**"]
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }

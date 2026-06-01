@@ -36,7 +36,7 @@ export const getTournaments = async (req: Request, res: Response) => {
     }
 
     const result = await getTournamentsFlow(parsed.data, authResult.data.filterContext);
-    if (!result.ok) {
+    if (result.ok === false) {
       res.status(result.status).json(buildErrorPayload(result.message));
       return;
     }

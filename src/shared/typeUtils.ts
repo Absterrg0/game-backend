@@ -11,9 +11,17 @@ export function isDbIdLike(value: unknown): value is DbIdLike {
 
 /** Resolves a Mongo ref field that may be populated (`{ _id }`) or a raw id. */
 export function resolveDbIdRef(
-  value: DbIdLike | { _id: DbIdLike } | null | undefined
+  value: DbIdLike | { _id: DbIdLike | null | undefined } | null | undefined
 ): DbIdLike | null | undefined {
-  if (value == null) {
+  if (value === null) {
+    return null;
+  }
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (isDbIdLike(value)) {
     return value;
   }
 
@@ -22,7 +30,7 @@ export function resolveDbIdRef(
     return isDbIdLike(id) ? id : null;
   }
 
-  return isDbIdLike(value) ? value : null;
+  return null;
 }
 
 export function finiteNumberOr(

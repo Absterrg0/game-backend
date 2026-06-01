@@ -14,6 +14,8 @@ export async function createClubWithSession(
 		address: string;
 		website: string | null;
 		bookingSystemUrl: string | null;
+		tennisLessonRequestEmail: string | null;
+		membershipRequestEmail: string | null;
 		coordinates: { type: 'Point'; coordinates: [number, number] };
 		defaultAdminId: string;
 		plan: 'free';

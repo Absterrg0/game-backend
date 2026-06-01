@@ -48,25 +48,8 @@ export interface ScheduleParticipantInfoRaw {
   elo?: { rating?: number | null; rd?: number | null; vol?: number | null; tau?: number | null } | null;
 }
 
-export interface TournamentScheduleContext {
-  _id: Types.ObjectId;
-  name: string;
-  minMember: number;
-  firstRoundScheduledAt: Date | null;
-  tournamentMode: TournamentMode;
-  date: Date | null;
-  startTime: string | null;
-  endTime: string | null;
-  timezone: string | null;
-  duration: number | null;
-  breakDuration: number | null;
-  totalRounds: number;
-  playMode: TournamentPlayMode;
-  createdBy: Types.ObjectId;
-  club: ScheduleClubInfo | null;
-  participants: ScheduleParticipantInfo[];
-  schedule: Types.ObjectId | null;
-}
+/** Canonical schedule tournament snapshot (validated via Zod in scheduleContext.schema). */
+export type { TournamentScheduleContext } from "./scheduleContext.schema";
 
 export interface TournamentScheduleContextRaw {
   _id?: DbIdLike | null;

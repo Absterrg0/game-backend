@@ -39,6 +39,12 @@ export async function updateClubFlow(clubId: string, data: UpdateClubInput, sess
 	if (data.bookingSystemUrl !== undefined) {
 		club.bookingSystemUrl = data.bookingSystemUrl?.trim() || null;
 	}
+	if (data.tennisLessonRequestEmail !== undefined) {
+		club.tennisLessonRequestEmail = data.tennisLessonRequestEmail?.trim() || null;
+	}
+	if (data.membershipRequestEmail !== undefined) {
+		club.membershipRequestEmail = data.membershipRequestEmail?.trim() || null;
+	}
 	if (data.coordinates) {
 		const [lon, lat] = data.coordinates;
 		club.coordinates = { type: 'Point', coordinates: [lon, lat] };
@@ -92,6 +98,8 @@ export async function updateClubFlow(clubId: string, data: UpdateClubInput, sess
 			address: club.address,
 			website: club.website,
 			bookingSystemUrl: club.bookingSystemUrl,
+			tennisLessonRequestEmail: club.tennisLessonRequestEmail ?? null,
+			membershipRequestEmail: club.membershipRequestEmail ?? null,
 			courtCount
 		}
 	});

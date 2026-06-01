@@ -42,7 +42,7 @@ export async function getTournamentsFlow(
     ctx
   );
 
-  if (!filterResult.ok) return filterResult;
+  if (filterResult.ok === false) return filterResult;
 
   const { filter } = filterResult.data;
 

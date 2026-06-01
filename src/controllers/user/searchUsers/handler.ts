@@ -3,14 +3,15 @@ import { ok } from '../../../shared/helpers';
 import { authorizeSearchUsers } from './authorize';
 import { mapSearchUsersResponse } from './mapper';
 import { findUsersBySearchQuery } from './queries';
+import type { SearchUsersQuery } from './validation';
 
-export async function searchUsersFlow(role: string, query: {q: string}) {
+export async function searchUsersFlow(role: string, query: SearchUsersQuery) {
 	const authResult = authorizeSearchUsers(role);
 	if (authResult.status !== 200) {
 		return authResult;
 	}
 
-	const trimmedQuery = query.q?.trim() ?? '';
+	const trimmedQuery = query.q.trim();
 
 	if (trimmedQuery.length < 1) {
 		return ok({ users: [] }, { status: 200, message: 'Users fetched successfully' });

@@ -17,6 +17,12 @@ const courtSchema = z.object({
 	placement: courtPlacementEnum.default('outdoor')
 });
 
+/** Empty string is treated as null (clear), matching optional URL/text fields elsewhere. */
+const optionalEmailSchema = z.preprocess(
+	(value) => (value === '' ? null : value),
+	z.union([z.null(), z.string().trim().email('Invalid email address')]).optional()
+);
+
 const coordinatesSchema = z
 	.tuple([z.number(), z.number()])
 	.refine(
@@ -41,6 +47,8 @@ export const createClubSchema = z
 		logoUrl: z.string().trim().optional().nullable(),
 		website: z.string().trim().optional().nullable(),
 		bookingSystemUrl: z.string().trim().optional().nullable(),
+		tennisLessonRequestEmail: optionalEmailSchema,
+		membershipRequestEmail: optionalEmailSchema,
 		address: z.string().trim().min(1, 'Address is required'),
 		coordinates: coordinatesSchema,
 		courts: z.array(courtSchema).optional().default([])
@@ -56,6 +64,8 @@ export const updateClubSchema = z
 		logoUrl: z.string().trim().optional().nullable(),
 		website: z.string().trim().optional().nullable(),
 		bookingSystemUrl: z.string().trim().optional().nullable(),
+		tennisLessonRequestEmail: optionalEmailSchema,
+		membershipRequestEmail: optionalEmailSchema,
 		address: z.string().trim().min(1).optional(),
 		coordinates: coordinatesSchema.optional(),
 		courts: z

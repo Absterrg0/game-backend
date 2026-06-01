@@ -10,18 +10,16 @@ export const updateProfileSchema = z.object({
 			z.literal(''),
 			z.null(),
 		])
-		.optional()
-		.transform((val) => (val === '' ? null : val)),
+		.transform((val) => (val === '' ? null : val))
+		.optional(),
 	dateOfBirth: z
 		.union([
 			z.string().refine((s) => !Number.isNaN(new Date(s).getTime()) && s.length >= 10, { message: 'Invalid date format' }),
 			z.date(),
 			z.null()
 		])
-		.optional()
 		.nullable()
 		.transform((val) => {
-			if (val === undefined) return undefined;
 			if (val === null) return null;
 			if (typeof val === 'string') {
 				const d = new Date(val);
@@ -29,15 +27,15 @@ export const updateProfileSchema = z.object({
 				return d;
 			}
 			return val;
-		}),
+		})
+		.optional(),
 	gender: z
 		.union([z.enum(['male', 'female', 'other']), z.literal(''), z.null()])
-		.optional()
 		.transform((val) => {
-			if (val === undefined) return undefined;
 			if (val === '' || val === null) return null;
 			return val;
-		}),
+		})
+		.optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

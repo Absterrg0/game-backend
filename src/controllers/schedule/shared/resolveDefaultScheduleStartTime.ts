@@ -53,7 +53,6 @@ export function resolveDefaultScheduleStartTime(params: {
   matchDurationMinutes: number;
   games: readonly ScheduleGameTiming[];
   timeZone: string;
-  now?: Date;
 }): string {
   const tournamentStart =
     normalizeTime24(params.tournamentStartTime) ?? DEFAULT_SCHEDULE_START_TIME;
@@ -62,7 +61,6 @@ export function resolveDefaultScheduleStartTime(params: {
     return tournamentStart;
   }
 
-  const now = params.now ?? new Date();
   let latestEndMs: number | null = null;
 
   for (const game of params.games) {
@@ -80,6 +78,9 @@ export function resolveDefaultScheduleStartTime(params: {
     latestEndMs = latestEndMs == null ? endMs : Math.max(latestEndMs, endMs);
   }
 
-  const anchorMs = Math.max(latestEndMs ?? now.getTime(), now.getTime());
-  return formatTime24InTimeZone(new Date(anchorMs), params.timeZone);
+  if (latestEndMs == null) {
+    return tournamentStart;
+  }
+
+  return formatTime24InTimeZone(new Date(latestEndMs), params.timeZone);
 }

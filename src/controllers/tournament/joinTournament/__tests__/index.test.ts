@@ -36,7 +36,7 @@ describe('joinTournament HTTP handler', () => {
 		mockGet.mockResolvedValue(null);
 		const res = mockRes();
 		await joinTournament(
-			{ params: { id: TOURNAMENT_ID }, user: { _id: USER_ID } } as AuthenticatedRequest,
+			{ params: { id: TOURNAMENT_ID }, user: { _id: USER_ID } } as unknown as AuthenticatedRequest,
 			res,
 		);
 		expect(res.status).toHaveBeenCalledWith(404);
@@ -56,7 +56,7 @@ describe('joinTournament HTTP handler', () => {
 		} as never);
 		const res = mockRes();
 		await joinTournament(
-			{ params: { id: TOURNAMENT_ID }, user: { _id: USER_ID } } as AuthenticatedRequest,
+			{ params: { id: TOURNAMENT_ID }, user: { _id: USER_ID } } as unknown as AuthenticatedRequest,
 			res,
 		);
 		expect(res.status).toHaveBeenCalledWith(200);

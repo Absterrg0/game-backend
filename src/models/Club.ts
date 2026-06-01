@@ -13,6 +13,8 @@ export interface IClub {
 	};
 	website?: string | null;
 	bookingSystemUrl?: string | null;
+	tennisLessonRequestEmail?: string | null;
+	membershipRequestEmail?: string | null;
 	status: 'active' | 'archive';
 	/** Users who can organise at this club (club-level organisers). */
 	organiserIds: mongoose.Types.ObjectId[];
@@ -82,6 +84,14 @@ const clubSchema = new Schema<IClub>(
 			default: null
 		},
 		bookingSystemUrl: {
+			type: String,
+			default: null
+		},
+		tennisLessonRequestEmail: {
+			type: String,
+			default: null
+		},
+		membershipRequestEmail: {
 			type: String,
 			default: null
 		},

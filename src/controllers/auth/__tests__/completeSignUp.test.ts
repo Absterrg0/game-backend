@@ -83,7 +83,7 @@ describe('completeSignUp', () => {
 	});
 
 	it('returns 404 when pending token resolves but user is missing', async () => {
-		mockVerifyToken.mockReturnValue({ pendingEmail: 'new@example.com' });
+		mockVerifyToken.mockReturnValue({ pendingEmail: 'new@example.com', pendingSignup: true });
 		(User.findOne as jest.Mock).mockReturnValue(userFindOneChain(null));
 
 		const res = makeRes();
@@ -109,7 +109,7 @@ describe('completeSignUp', () => {
 			name: 'Player One',
 			deletedAt: null,
 		};
-		mockVerifyToken.mockReturnValue({ pendingEmail: 'done@example.com' });
+		mockVerifyToken.mockReturnValue({ pendingEmail: 'done@example.com', pendingSignup: true });
 		(User.findOne as jest.Mock).mockReturnValue(userFindOneChain(completeUser));
 
 		const res = makeRes();
@@ -166,7 +166,7 @@ describe('completeSignUp', () => {
 			deletedAt: null,
 		};
 
-		mockVerifyToken.mockReturnValue({ pendingEmail: 'new@example.com' });
+		mockVerifyToken.mockReturnValue({ pendingEmail: 'new@example.com', pendingSignup: true });
 		(User.findOne as jest.Mock).mockReturnValue(userFindOneChain(incompleteUser));
 		(User.findByIdAndUpdate as jest.Mock).mockReturnValue({
 			setOptions: () => ({

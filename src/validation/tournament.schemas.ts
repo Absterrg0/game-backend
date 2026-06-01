@@ -37,13 +37,12 @@ const draftFields = {
 	logoUrl: z
 		.string()
 		.trim()
-		.optional()
 		.nullable()
 		.transform((v) => {
-			if (v === undefined) return undefined;
 			if (v === null || v === '') return null;
 			return v;
-		}),
+		})
+		.optional(),
 	date: z.coerce.date().optional().nullable(),
 	startTime: z.union([z.string().trim().regex(timeRegex, 'Invalid start time (expected HH:mm)'), z.null()]).optional(),
 	endTime: z.union([z.string().trim().regex(timeRegex, 'Invalid end time (expected HH:mm)'), z.null()]).optional(),
