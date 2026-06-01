@@ -7,7 +7,7 @@
     "prestart": "yarn build",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && node scripts/write-commit-sha.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/write-commit-sha.mjs",
     "typecheck": "tsc --noEmit",
     "test": "jest --config jest.all.config.ts --coverage",
     "test:watch": "jest --config jest.unit.config.ts --watch",

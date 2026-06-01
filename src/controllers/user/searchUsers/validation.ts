@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 function normalizeSearchQuery(value: unknown): string {
 	if (Array.isArray(value)) {
-		return (value[0] ?? '').trim();
+		return typeof value[0] === 'string' ? value[0].trim() : '';
 	}
 
 	if (typeof value === 'string') {

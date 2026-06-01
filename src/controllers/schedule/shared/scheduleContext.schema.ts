@@ -77,6 +77,15 @@ export const tournamentScheduleContextSchema = z.object({
   schedule: z.union([mongoObjectIdSchema, z.null()]),
 });
 
+type ExactType<T, U> =
+  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2
+    ? (<V>() => V extends U ? 1 : 2) extends <V>() => V extends T ? 1 : 2
+      ? true
+      : false
+    : false;
+
+type AssertExact<T extends true> = T;
+
 export interface ScheduleCourtInfo {
   _id: Types.ObjectId;
   name: string;
@@ -119,6 +128,10 @@ export interface TournamentScheduleContext {
   participants: ScheduleParticipantInfo[];
   schedule: Types.ObjectId | null;
 }
+
+type _AssertContext = AssertExact<
+  ExactType<TournamentScheduleContext, z.infer<typeof tournamentScheduleContextSchema>>
+>;
 
 /** Lean schedule document for GET schedule / match lists. */
 export const tournamentScheduleDocumentSchema = z.object({
@@ -170,7 +183,11 @@ export interface TournamentScheduleDocument {
   }>;
 }
 
-export function parseTournamentScheduleContext(data: unknown) {
+type _AssertDocument = AssertExact<
+  ExactType<TournamentScheduleDocument, z.infer<typeof tournamentScheduleDocumentSchema>>
+>;
+
+export function parseTournamentScheduleContext(data: unknown): TournamentScheduleContext {
   const result = tournamentScheduleContextSchema.safeParse(data);
   if (!result.success) {
     logger.error("Tournament schedule context failed validation", {
@@ -178,10 +195,10 @@ export function parseTournamentScheduleContext(data: unknown) {
     });
     throw new Error("Invalid tournament schedule context");
   }
-  return result.data as TournamentScheduleContext;
+  return result.data;
 }
 
-export function parseTournamentScheduleDocument(data: unknown) {
+export function parseTournamentScheduleDocument(data: unknown): TournamentScheduleDocument {
   const result = tournamentScheduleDocumentSchema.safeParse(data);
   if (!result.success) {
     logger.error("Schedule document failed validation", {
@@ -189,5 +206,5 @@ export function parseTournamentScheduleDocument(data: unknown) {
     });
     throw new Error("Invalid schedule document");
   }
-  return result.data as TournamentScheduleDocument;
+  return result.data;
 }
