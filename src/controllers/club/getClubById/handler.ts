@@ -31,6 +31,8 @@ export async function getClubByIdFlow(clubId: string, session: Session) {
 				address: club.address,
 				website: club.website ?? null,
 				bookingSystemUrl: club.bookingSystemUrl ?? null,
+				tennisLessonRequestEmail: club.tennisLessonRequestEmail ?? null,
+				membershipRequestEmail: club.membershipRequestEmail ?? null,
 				coordinates: coords ? [coords[0], coords[1]] : null,
 				plan: club.plan ?? 'free',
 				expiresAt: club.expiresAt ?? null

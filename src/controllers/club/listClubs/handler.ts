@@ -34,7 +34,9 @@ export async function listClubsFlow(query: ListClubsQuery, userId: string | null
 				name: club.name,
 				address: club.address,
 				logoUrl: club.logoUrl ?? null,
-				website: club.website ?? null
+				website: club.website ?? null,
+				tennisLessonRequestEmail: club.tennisLessonRequestEmail ?? null,
+				membershipRequestEmail: club.membershipRequestEmail ?? null
 			})),
 			pagination: {
 				page,

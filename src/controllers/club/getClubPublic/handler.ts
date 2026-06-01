@@ -66,6 +66,8 @@ export async function getClubPublicFlow(clubId: string) {
 			address: club.address,
 			website: club.website ?? null,
 			bookingSystemUrl: club.bookingSystemUrl ?? null,
+			tennisLessonRequestEmail: club.tennisLessonRequestEmail ?? null,
+			membershipRequestEmail: club.membershipRequestEmail ?? null,
 			courtCount: courts.length,
 			courts: groupedCourts,
 			sponsors:

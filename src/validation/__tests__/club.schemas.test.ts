@@ -20,6 +20,22 @@ describe('createClubSchema', () => {
 		expect(createClubSchema.safeParse(valid).success).toBe(true);
 	});
 
+	it('accepts optional contact emails and rejects invalid email values', () => {
+		expect(
+			createClubSchema.safeParse({
+				...valid,
+				tennisLessonRequestEmail: 'lessons@example.com',
+				membershipRequestEmail: 'members@example.com',
+			}).success,
+		).toBe(true);
+		expect(
+			createClubSchema.safeParse({
+				...valid,
+				tennisLessonRequestEmail: 'not-an-email',
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects duplicate court names (case-insensitive)', () => {
 		const result = createClubSchema.safeParse({
 			...valid,
@@ -47,6 +63,15 @@ describe('updateClubSchema', () => {
 
 	it('accepts partial updates', () => {
 		expect(updateClubSchema.safeParse({ name: 'Renamed' }).success).toBe(true);
+	});
+
+	it('accepts clearing optional contact emails on update', () => {
+		expect(
+			updateClubSchema.safeParse({
+				tennisLessonRequestEmail: null,
+				membershipRequestEmail: null,
+			}).success,
+		).toBe(true);
 	});
 });
 

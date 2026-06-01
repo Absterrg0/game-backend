@@ -34,6 +34,8 @@ export type ClubListItem = {
 	address: string;
 	logoUrl?: string | null;
 	website?: string | null;
+	tennisLessonRequestEmail?: string | null;
+	membershipRequestEmail?: string | null;
 };
 
 type FacetResult = {
@@ -72,7 +74,9 @@ export async function listActiveClubsPage(
 							name: 1,
 							address: 1,
 							logoUrl: 1,
-							website: 1
+							website: 1,
+							tennisLessonRequestEmail: 1,
+							membershipRequestEmail: 1
 						}
 					}
 				]
