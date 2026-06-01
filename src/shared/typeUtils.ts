@@ -11,7 +11,7 @@ export function isDbIdLike(value: unknown): value is DbIdLike {
 
 /** Resolves a Mongo ref field that may be populated (`{ _id }`) or a raw id. */
 export function resolveDbIdRef(
-  value: DbIdLike | { _id: DbIdLike } | null | undefined
+  value: DbIdLike | { _id: DbIdLike | null | undefined } | null | undefined
 ): DbIdLike | null | undefined {
   if (value == null) {
     return value;

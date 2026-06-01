@@ -13,15 +13,15 @@ const baseQuery = {
 	page: 1,
 	limit: 10,
 	status: 'active' as const,
-	clubScope: 'all' as const,
 };
 
 const baseCtx = {
-	role: 'player' as const,
-	userId: '507f1f77bcf86cd799439011',
-	adminOf: [],
-	organizerOf: [],
+	isOrganiserOrAbove: false,
+	isSuperAdmin: false,
+	requesterUserId: '507f1f77bcf86cd799439011',
+	manageableClubIds: [],
 	homeClubCoordinates: null,
+	favoriteClubIds: [],
 };
 
 function mockTournamentFind(results: unknown[] = []) {
@@ -48,7 +48,7 @@ beforeEach(() => {
 describe('getTournamentsFlow', () => {
 	it('returns 400 when distance filter requested without home club coordinates', async () => {
 		const result = await getTournamentsFlow(
-			{ ...baseQuery, distance: 'near' },
+			{ ...baseQuery, distance: 'under50' },
 			baseCtx,
 		);
 		expect(result.ok).toBe(false);
@@ -61,7 +61,7 @@ describe('getTournamentsFlow', () => {
 	it('applies distance club filter when coordinates exist', async () => {
 		mockFindClubIds.mockResolvedValue(['507f1f77bcf86cd799439012']);
 		const result = await getTournamentsFlow(
-			{ ...baseQuery, distance: 'near' },
+			{ ...baseQuery, distance: 'under50' },
 			{ ...baseCtx, homeClubCoordinates: [77.5, 12.9] },
 		);
 		expect(result.ok).toBe(true);

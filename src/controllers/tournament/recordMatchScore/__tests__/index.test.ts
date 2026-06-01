@@ -60,7 +60,7 @@ describe('recordMatchScore HTTP handler', () => {
 				params: { id: 'bad', matchId: MATCH_ID },
 				body: { playerOneScores: [6], playerTwoScores: [4] },
 				user: { _id: USER_ID },
-			} as AuthenticatedRequest,
+			} as unknown as AuthenticatedRequest,
 			res,
 		);
 		expect(res.status).toHaveBeenCalledWith(400);
@@ -86,7 +86,7 @@ describe('recordMatchScore HTTP handler', () => {
 				params: { id: TOURNAMENT_ID, matchId: MATCH_ID },
 				body: { playerOneScores: [6], playerTwoScores: [4] },
 				user: { _id: USER_ID },
-			} as AuthenticatedRequest,
+			} as unknown as AuthenticatedRequest,
 			res,
 		);
 		expect(res.status).toHaveBeenCalledWith(200);

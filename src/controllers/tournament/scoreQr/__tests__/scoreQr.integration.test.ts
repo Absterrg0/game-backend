@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import Game from '../../../../models/Game';
 import ScoreValidationRequest from '../../../../models/ScoreValidationRequest';
 import authenticate from '../../../../middlewares/auth';
@@ -23,16 +23,18 @@ import {
 
 setupMemoryMongo();
 
+const asRequestHandler = (handler: unknown) => handler as RequestHandler;
+
 function buildApp() {
 	const router = Router();
-	router.post('/:id/matches/:matchId/score/qr', authenticate, requirePlayerOrAbove, generateScoreQr);
-	router.get('/score-qr/active', authenticate, requirePlayerOrAbove, getActiveScoreQr);
+	router.post('/:id/matches/:matchId/score/qr', authenticate, requirePlayerOrAbove, asRequestHandler(generateScoreQr));
+	router.get('/score-qr/active', authenticate, requirePlayerOrAbove, asRequestHandler(getActiveScoreQr));
 	router.delete('/score-qr/active', authenticate, requirePlayerOrAbove, cancelActiveScoreQr);
-	router.post('/score-qr/confirm-context', authenticate, requirePlayerOrAbove, validateScoreQrConfirmContext);
-	router.patch('/score-qr/:requestId/scores', authenticate, requirePlayerOrAbove, updateScoreQrScores);
-	router.get('/score-qr/:token/events', authenticate, requirePlayerOrAbove, streamScoreQrEvents);
+	router.post('/score-qr/confirm-context', authenticate, requirePlayerOrAbove, asRequestHandler(validateScoreQrConfirmContext));
+	router.patch('/score-qr/:requestId/scores', authenticate, requirePlayerOrAbove, asRequestHandler(updateScoreQrScores));
+	router.get('/score-qr/:token/events', authenticate, requirePlayerOrAbove, asRequestHandler(streamScoreQrEvents));
 	router.get('/score-qr/:token', validateScoreQr);
-	router.post('/score-qr/confirm', authenticate, requirePlayerOrAbove, confirmScoreQr);
+	router.post('/score-qr/confirm', authenticate, requirePlayerOrAbove, asRequestHandler(confirmScoreQr));
 	return buildJsonApp('/tournaments', router);
 }
 

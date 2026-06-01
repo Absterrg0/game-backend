@@ -293,7 +293,7 @@ describe('cancelActiveScoreQr HTTP handler', () => {
 	it('returns success after cancelling flow', async () => {
 		mockCancelFlow.mockResolvedValue(undefined);
 		const res = mockRes();
-		await cancelActiveScoreQr({ user: { _id: USER_ID } } as never, res);
+		await cancelActiveScoreQr({ user: { _id: USER_ID } } as never, res, jest.fn());
 		expect(mockCancelFlow).toHaveBeenCalledWith(USER_ID.toString());
 		expect(res.status).toHaveBeenCalledWith(200);
 		expect(res.json).toHaveBeenCalledWith({ success: true });
@@ -302,7 +302,7 @@ describe('cancelActiveScoreQr HTTP handler', () => {
 	it('maps AppError status', async () => {
 		mockCancelFlow.mockRejectedValue(new AppError('Forbidden', 403));
 		const res = mockRes();
-		await cancelActiveScoreQr({ user: { _id: USER_ID } } as never, res);
+		await cancelActiveScoreQr({ user: { _id: USER_ID } } as never, res, jest.fn());
 		expect(res.status).toHaveBeenCalledWith(403);
 	});
 });

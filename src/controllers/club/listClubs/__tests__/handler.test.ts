@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { listClubsFlow } from '../handler';
 import * as queries from '../queries';
 import * as resolveModule from '../resolveAllowedClubIds';
@@ -19,7 +20,7 @@ beforeEach(() => {
 	mockResolve.mockResolvedValue({ ok: true, allowedClubIds: undefined });
 	mockListPage.mockResolvedValue({
 		totalCount: 1,
-		clubs: [{ _id: { toString: () => '507f1f77bcf86cd799439011' }, name: 'Club', address: 'Addr', logoUrl: null, website: null }],
+		clubs: [{ _id: new Types.ObjectId('507f1f77bcf86cd799439011'), name: 'Club', address: 'Addr', logoUrl: null, website: null }],
 	});
 });
 
@@ -45,7 +46,7 @@ describe('listClubsFlow', () => {
 	it('propagates resolve errors for authenticated scoped lists', async () => {
 		mockResolve.mockResolvedValue({ ok: false, status: 403, message: 'Forbidden' });
 		const result = await listClubsFlow(
-			{ ...defaultQuery, clubScope: 'managed' },
+			{ ...defaultQuery, clubScope: 'home' },
 			'507f1f77bcf86cd799439011',
 		);
 		expect(result.ok).toBe(false);

@@ -129,7 +129,7 @@ describe('updateTournament HTTP handler', () => {
 
 	it('returns 400 when timezone resolution fails', async () => {
 		(resolveTournamentTimezoneFromClub as jest.Mock).mockRejectedValue(
-			new TournamentTimezoneResolutionError('Club timezone missing'),
+			new TournamentTimezoneResolutionError('MISSING_COORDINATES', 'Club timezone missing'),
 		);
 		const res = makeRes();
 		await updateTournament(makeReq({ date: '2026-07-01' }), res);

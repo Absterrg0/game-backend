@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import Tournament from '../../../../models/Tournament';
 import { ROLES } from '../../../../constants/roles';
 import authenticate from '../../../../middlewares/auth';
@@ -18,7 +18,7 @@ setupMemoryMongo();
 
 function buildApp() {
 	const router = Router();
-	router.patch('/:id', authenticate, requireOrganiserOrAbove, updateTournament);
+	router.patch('/:id', authenticate, requireOrganiserOrAbove, updateTournament as unknown as RequestHandler);
 	return buildJsonApp('/tournaments', router);
 }
 

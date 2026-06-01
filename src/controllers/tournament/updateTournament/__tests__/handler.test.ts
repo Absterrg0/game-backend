@@ -18,7 +18,7 @@ jest.mock('../../../../models/Tournament');
 const mockStartSession = mongoose.startSession as jest.MockedFunction<typeof mongoose.startSession>;
 
 const TOURNAMENT_ID = '507f1f77bcf86cd799439011';
-const CLUB_ID = new Types.ObjectId('507f1f77bcf86cd799439012');
+const CLUB_ID = '507f1f77bcf86cd799439012';
 
 function txSession(handler: (cb: () => Promise<unknown>) => Promise<unknown>) {
 	return {
@@ -69,7 +69,7 @@ describe('updateTournamentFlow', () => {
 		const updated = {
 			_id: new Types.ObjectId(TOURNAMENT_ID),
 			name: 'Summer Cup',
-			club: CLUB_ID,
+			club: new Types.ObjectId(CLUB_ID),
 			status: 'draft',
 			date: new Date('2026-07-01'),
 			updatedAt: new Date('2026-05-28'),

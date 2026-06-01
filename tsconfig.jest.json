@@ -1,13 +1,11 @@
 {
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "target": "es2021",
-    "module": "Node16",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node16",
+    "rootDir": ".",
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node", "jest"]
   },
-  "include": ["jest*.ts"]
+  "include": ["jest*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
