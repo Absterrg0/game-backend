@@ -13,7 +13,15 @@ export function isDbIdLike(value: unknown): value is DbIdLike {
 export function resolveDbIdRef(
   value: DbIdLike | { _id: DbIdLike | null | undefined } | null | undefined
 ): DbIdLike | null | undefined {
-  if (value == null) {
+  if (value === null) {
+    return null;
+  }
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (isDbIdLike(value)) {
     return value;
   }
 
@@ -22,7 +30,7 @@ export function resolveDbIdRef(
     return isDbIdLike(id) ? id : null;
   }
 
-  return isDbIdLike(value) ? value : null;
+  return null;
 }
 
 export function finiteNumberOr(

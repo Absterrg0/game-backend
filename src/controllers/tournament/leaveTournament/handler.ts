@@ -105,7 +105,10 @@ export async function leaveTournamentFlow(
         const leavesFromSide1 = (match.side1?.players ?? []).some((id) =>
           isSameParticipantId(id, authSession._id)
         );
-        const score = leavesFromSide1
+        const score: {
+          playerOneScores: Array<"wo" | null>;
+          playerTwoScores: Array<"wo" | null>;
+        } = leavesFromSide1
           ? { playerOneScores: ["wo" as const], playerTwoScores: [null] }
           : { playerOneScores: [null], playerTwoScores: ["wo" as const] };
         const updateResult = await Game.updateOne(

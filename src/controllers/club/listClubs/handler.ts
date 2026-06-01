@@ -18,7 +18,7 @@ export async function listClubsFlow(query: ListClubsQuery, userId: string | null
 		const resolved = userId
 			? await resolveAllowedClubIdsForList(userId, { clubScope, distance })
 			: { ok: true as const, allowedClubIds: undefined };
-		if (!resolved.ok) {
+		if (resolved.ok === false) {
 			return error(resolved.status, resolved.message);
 		}
 

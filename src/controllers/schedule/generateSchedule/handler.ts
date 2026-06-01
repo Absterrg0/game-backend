@@ -445,8 +445,8 @@ export async function persistScheduleRound(
           tournament: freshTournament._id,
           schedule: scheduleDoc._id,
           score: {
-            playerOneScores: [],
-            playerTwoScores: [],
+            playerOneScores: [] as Array<number | "wo">,
+            playerTwoScores: [] as Array<number | "wo">,
           },
           startTime,
           playedAt: computeGamePlayedAt({ startTime }),

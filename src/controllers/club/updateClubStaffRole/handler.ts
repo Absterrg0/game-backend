@@ -10,7 +10,7 @@ export async function updateClubStaffRoleFlow(
 	access: UpdateClubStaffRoleAccess
 ) {
 	const atomic = await updateClubStaffRoleAtomic(clubId, staffId, payload, access);
-	if (!atomic.ok) {
+	if (atomic.ok === false) {
 		return atomic;
 	}
 

@@ -179,10 +179,10 @@ export function verifyAndDecodeScoreQrToken(token: string): ScoreQrTokenPayload 
     exp,
     jti,
     sid,
-    flow,
-    tid,
+    flow: flow as ScoreQrFlowKind,
+    tid: tid as string | null,
     mid,
     rby,
-    opp,
+    opp: opp as string | null,
   };
 }

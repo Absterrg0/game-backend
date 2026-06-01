@@ -279,7 +279,7 @@ export async function recordTournamentMatchScoreFlow(
           tournamentId,
           matchStatus: "pendingScore" as const,
           tournamentCompleted: false,
-          updatedRatings: [],
+          updatedRatings: [] as UpdatedPlayerRating[],
           ratingsRecomputed: false,
         };
       }

@@ -1,3 +1,6 @@
+/// <reference types="passport" />
+/// <reference path="./passport.d.ts" />
+
 import type { UserDocument } from '../models/User';
 
 declare global {

@@ -1,11 +1,21 @@
 {
-  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "types": ["node", "jest"]
+    "target": "es2021",
+    "module": "Node16",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node16",
+    "isolatedModules": true,
+    "sourceMap": true,
+    "types": ["node", "jest", "passport"]
   },
-  "include": ["jest*.ts", "src/**/*.ts", "src/types"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }

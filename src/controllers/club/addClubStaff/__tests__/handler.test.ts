@@ -21,7 +21,7 @@ import type { Request } from 'express';
 
 jest.mock('../queries');
 jest.mock('../../shared/queries', () => ({
-	...jest.requireActual('../../shared/queries'),
+	...jest.requireActual<typeof import('../../shared/queries')>('../../shared/queries'),
 	isClubStaffMutationNotFoundError: jest.fn(),
 }));
 jest.mock('../../../../shared/clubStaffPermissions');
@@ -90,7 +90,7 @@ function makeUpdateResult(matched: number, modified: number) {
 function makeSession(handler: (cb: () => Promise<unknown>) => Promise<unknown>) {
 	return {
 		withTransaction: handler,
-		endSession: jest.fn().mockResolvedValue(undefined),
+		endSession: jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
 	} as unknown as mongoose.ClientSession;
 }
 

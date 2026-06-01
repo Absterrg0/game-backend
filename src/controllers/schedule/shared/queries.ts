@@ -115,7 +115,7 @@ function buildNormalizedScheduleContext(raw: TournamentScheduleContextRaw) {
 
 export async function fetchTournamentScheduleContext(
   tournamentId: string
-) {
+): Promise<TournamentScheduleContext | null> {
   const raw = await Tournament.findById(tournamentId)
     .select(
       "_id name minMember firstRoundScheduledAt tournamentMode date startTime endTime timezone duration breakDuration totalRounds playMode createdBy club participants schedule"

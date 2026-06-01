@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types, type PipelineStage } from 'mongoose';
 import Game from '../../../models/Game';
 import ScoreValidationRequest from '../../../models/ScoreValidationRequest';
 import User from '../../../models/User';
@@ -244,7 +244,7 @@ function standaloneMyScoreVisibilityMatch(): Record<string, unknown> {
  * independent score-QR request is still pending and unexpired. Otherwise they
  * are abandoned drafts and must not appear in My Score.
  */
-function standaloneMyScoreQrVisibilityStages(now: Date) {
+function standaloneMyScoreQrVisibilityStages(now: Date): PipelineStage[] {
 	const requestCollection = ScoreValidationRequest.collection.name;
 	return [
 		{

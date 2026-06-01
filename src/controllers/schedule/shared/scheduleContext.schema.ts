@@ -77,12 +77,48 @@ export const tournamentScheduleContextSchema = z.object({
   schedule: z.union([mongoObjectIdSchema, z.null()]),
 });
 
-export type TournamentScheduleContext = z.infer<typeof tournamentScheduleContextSchema>;
+export interface ScheduleCourtInfo {
+  _id: Types.ObjectId;
+  name: string;
+}
 
-export type ScheduleCourtInfo = z.infer<typeof scheduleCourtInfoSchema>;
-export type ScheduleClubInfo = z.infer<typeof scheduleClubInfoSchema>;
-export type ScheduleParticipantInfo = z.infer<typeof scheduleParticipantInfoSchema>;
-export type ScheduleParticipantElo = z.infer<typeof scheduleParticipantEloSchema>;
+export interface ScheduleClubInfo {
+  _id: Types.ObjectId;
+  courts: ScheduleCourtInfo[];
+}
+
+export interface ScheduleParticipantElo {
+  rating: number | null;
+  rd: number | null;
+}
+
+export interface ScheduleParticipantInfo {
+  _id: Types.ObjectId;
+  name: string | null;
+  alias: string | null;
+  profilePictureUrl: string | null;
+  elo: ScheduleParticipantElo;
+}
+
+export interface TournamentScheduleContext {
+  _id: Types.ObjectId;
+  name: string;
+  minMember: number;
+  firstRoundScheduledAt: Date | null;
+  tournamentMode: z.infer<typeof tournamentModeSchema>;
+  date: Date | null;
+  startTime: string | null;
+  endTime: string | null;
+  timezone: string | null;
+  duration: number | null;
+  breakDuration: number | null;
+  totalRounds: number;
+  playMode: z.infer<typeof tournamentPlayModeSchema>;
+  createdBy: Types.ObjectId;
+  club: ScheduleClubInfo | null;
+  participants: ScheduleParticipantInfo[];
+  schedule: Types.ObjectId | null;
+}
 
 /** Lean schedule document for GET schedule / match lists. */
 export const tournamentScheduleDocumentSchema = z.object({
@@ -120,7 +156,19 @@ export const tournamentScheduleDocumentSchema = z.object({
   ),
 });
 
-export type TournamentScheduleDocument = z.infer<typeof tournamentScheduleDocumentSchema>;
+export interface TournamentScheduleDocument {
+  _id: Types.ObjectId;
+  status: "draft" | "active" | "finished";
+  currentRound: number;
+  matchesPerPlayer: number;
+  matchDurationMinutes: number | null;
+  breakTimeMinutes: number | null;
+  rounds: Array<{
+    game: Types.ObjectId;
+    slot: number;
+    round: number;
+  }>;
+}
 
 export function parseTournamentScheduleContext(data: unknown) {
   const result = tournamentScheduleContextSchema.safeParse(data);
@@ -130,7 +178,7 @@ export function parseTournamentScheduleContext(data: unknown) {
     });
     throw new Error("Invalid tournament schedule context");
   }
-  return result.data;
+  return result.data as TournamentScheduleContext;
 }
 
 export function parseTournamentScheduleDocument(data: unknown) {
@@ -141,5 +189,5 @@ export function parseTournamentScheduleDocument(data: unknown) {
     });
     throw new Error("Invalid schedule document");
   }
-  return result.data;
+  return result.data as TournamentScheduleDocument;
 }
