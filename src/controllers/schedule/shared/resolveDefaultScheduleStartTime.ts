@@ -53,7 +53,6 @@ export function resolveDefaultScheduleStartTime(params: {
   matchDurationMinutes: number;
   games: readonly ScheduleGameTiming[];
   timeZone: string;
-  now?: Date;
 }): string {
   const tournamentStart =
     normalizeTime24(params.tournamentStartTime) ?? DEFAULT_SCHEDULE_START_TIME;

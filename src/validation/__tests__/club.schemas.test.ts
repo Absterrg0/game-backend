@@ -28,6 +28,16 @@ describe('createClubSchema', () => {
 				membershipRequestEmail: 'members@example.com',
 			}).success,
 		).toBe(true);
+		const cleared = createClubSchema.safeParse({
+			...valid,
+			tennisLessonRequestEmail: '',
+			membershipRequestEmail: '',
+		});
+		expect(cleared.success).toBe(true);
+		if (cleared.success) {
+			expect(cleared.data.tennisLessonRequestEmail).toBeNull();
+			expect(cleared.data.membershipRequestEmail).toBeNull();
+		}
 		expect(
 			createClubSchema.safeParse({
 				...valid,

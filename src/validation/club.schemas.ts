@@ -17,7 +17,11 @@ const courtSchema = z.object({
 	placement: courtPlacementEnum.default('outdoor')
 });
 
-const optionalEmailSchema = z.string().trim().email('Invalid email address').optional().nullable();
+/** Empty string is treated as null (clear), matching optional URL/text fields elsewhere. */
+const optionalEmailSchema = z.preprocess(
+	(value) => (value === '' ? null : value),
+	z.union([z.null(), z.string().trim().email('Invalid email address')]).optional()
+);
 
 const coordinatesSchema = z
 	.tuple([z.number(), z.number()])
