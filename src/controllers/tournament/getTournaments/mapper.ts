@@ -94,13 +94,11 @@ function isTournamentLiveByScheduleWindow(t: TournamentListDoc, now: Date = new 
 
     // If end time is earlier than start time, roll end to the next local calendar day.
     if (endMs < startMs) {
-      const nextDayAnchorUtc = new Date(startMs + 36 * 60 * 60 * 1000);
-      const nextDayParts = getZonedDateParts(nextDayAnchorUtc, timezone);
       endMs = zonedDateTimeToUtcDate(
         {
-          year: nextDayParts.year,
-          month: nextDayParts.month,
-          day: nextDayParts.day,
+          year: dateParts.year,
+          month: dateParts.month,
+          day: dateParts.day + 1,
           hour: endParts.hour,
           minute: endParts.minute,
           second: 0,
