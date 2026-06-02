@@ -45,9 +45,13 @@ export interface TournamentListDoc {
 	logoUrl?: string | null;
 	club: PopulatedClub | null;
 	date?: Date;
+  startTime?: string | null;
+  endTime?: string | null;
 	timezone?: string | null;
 	status: TournamentStatus;
 	sponsor?: PopulatedSponsor | null;
+  maxMember: number;
+  participants?: mongoose.Types.ObjectId[];
 }
 
 export interface TournamentForUpdateAuth {
