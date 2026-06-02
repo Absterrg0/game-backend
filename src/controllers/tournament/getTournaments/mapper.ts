@@ -92,9 +92,21 @@ function isTournamentLiveByScheduleWindow(t: TournamentListDoc, now: Date = new 
     let endMs = endUtc.getTime();
     const nowMs = now.getTime();
 
-    // Allow windows that pass midnight (end before start in wall time).
-    if (endMs <= startMs) {
-      endMs += 24 * 60 * 60 * 1000;
+    // If end time is earlier than start time, roll end to the next local calendar day.
+    if (endMs < startMs) {
+      const nextDayAnchorUtc = new Date(startMs + 36 * 60 * 60 * 1000);
+      const nextDayParts = getZonedDateParts(nextDayAnchorUtc, timezone);
+      endMs = zonedDateTimeToUtcDate(
+        {
+          year: nextDayParts.year,
+          month: nextDayParts.month,
+          day: nextDayParts.day,
+          hour: endParts.hour,
+          minute: endParts.minute,
+          second: 0,
+        },
+        timezone
+      ).getTime();
     }
 
     return nowMs >= startMs && nowMs <= endMs;
@@ -106,28 +118,34 @@ function isTournamentLiveByScheduleWindow(t: TournamentListDoc, now: Date = new 
 export function mapTournamentListItems(
   tournaments: TournamentListDoc[],
 ): TournamentListItem[] {
-  return tournaments.map((t) => ({
-    id: t._id.toString(),
-    name: t.name,
-    logoUrl: t.logoUrl ?? null,
-    club: t.club
-      ? {
-          id: t.club._id.toString(),
-          name: t.club.name,
-          logoUrl: t.club.logoUrl ?? null,
-        }
-      : null,
-    date: t.date ? formatDateOnlyUtc(t.date, t.timezone) : null,
-    status: t.status,
-    isFull: (t.participants?.length ?? 0) >= t.maxMember,
-    isLive: isTournamentLiveByScheduleWindow(t),
-    sponsor: t.sponsor
-      ? {
-          id: t.sponsor._id.toString(),
-          name: t.sponsor.name,
-          logoUrl: t.sponsor.logoUrl,
-          link: t.sponsor.link,
-        }
-      : null,
-  }));
+  return tournaments.map((t) => {
+    if (!Array.isArray(t.participants)) {
+      throw new Error(`Tournament ${t._id.toString()} missing participants array`);
+    }
+
+    return {
+      id: t._id.toString(),
+      name: t.name,
+      logoUrl: t.logoUrl ?? null,
+      club: t.club
+        ? {
+            id: t.club._id.toString(),
+            name: t.club.name,
+            logoUrl: t.club.logoUrl ?? null,
+          }
+        : null,
+      date: t.date ? formatDateOnlyUtc(t.date, t.timezone) : null,
+      status: t.status,
+      isFull: t.participants.length >= t.maxMember,
+      isLive: isTournamentLiveByScheduleWindow(t),
+      sponsor: t.sponsor
+        ? {
+            id: t.sponsor._id.toString(),
+            name: t.sponsor.name,
+            logoUrl: t.sponsor.logoUrl,
+            link: t.sponsor.link,
+          }
+        : null,
+    };
+  });
 }
