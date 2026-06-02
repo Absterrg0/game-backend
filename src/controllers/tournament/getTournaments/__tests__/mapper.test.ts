@@ -34,7 +34,7 @@ describe("tournament list schedule flags", () => {
 
   it("is past immediately after the scheduled end time on the same day", () => {
     const tournament = makeListDoc({ endTime: "18:00" });
-    const now = new Date("2026-06-02T18:00:01.000Z");
+    const now = new Date("2026-06-02T16:00:01.000Z");
 
     expect(isTournamentLiveByScheduleWindow(tournament, now)).toBe(false);
     expect(isTournamentPastByScheduleWindow(tournament, now)).toBe(true);
