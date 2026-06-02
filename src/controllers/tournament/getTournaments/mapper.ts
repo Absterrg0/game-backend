@@ -11,6 +11,8 @@ export interface TournamentListItem {
   club: { id: string; name: string; logoUrl: string | null } | null;
   date: string | null;
   status: string;
+  isFull: boolean;
+  isLive: boolean;
   sponsor: {
     id: string;
     name: string;
@@ -54,6 +56,8 @@ export function mapTournamentListItems(
       : null,
     date: t.date ? formatDateOnlyUtc(t.date, t.timezone) : null,
     status: t.status,
+    isFull: (t.participants?.length ?? 0) >= t.maxMember,
+    isLive: Boolean(t.firstRoundScheduledAt) && !Boolean(t.completedAt),
     sponsor: t.sponsor
       ? {
           id: t.sponsor._id.toString(),

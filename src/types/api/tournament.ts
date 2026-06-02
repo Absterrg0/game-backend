@@ -48,6 +48,10 @@ export interface TournamentListDoc {
 	timezone?: string | null;
 	status: TournamentStatus;
 	sponsor?: PopulatedSponsor | null;
+  maxMember: number;
+  participants?: mongoose.Types.ObjectId[];
+  firstRoundScheduledAt?: Date | null;
+  completedAt?: Date | null;
 }
 
 export interface TournamentForUpdateAuth {
