@@ -15,6 +15,7 @@ export interface TournamentListItem {
   status: string;
   isFull: boolean;
   isLive: boolean;
+  isPast: boolean;
   sponsor: {
     id: string;
     name: string;
@@ -55,12 +56,18 @@ function parseTimeParts(value: string | null | undefined): { hour: number; minut
   return { hour, minute };
 }
 
-function isTournamentLiveByScheduleWindow(t: TournamentListDoc, now: Date = new Date()): boolean {
-  if (t.status !== "active" || !t.date) return false;
+function localDateKey(parts: { year: number; month: number; day: number }): number {
+  return parts.year * 10_000 + parts.month * 100 + parts.day;
+}
+
+type ScheduleWindow = { startMs: number; endMs: number };
+
+function getTournamentScheduleWindow(t: TournamentListDoc): ScheduleWindow | null {
+  if (!t.date) return null;
 
   const startParts = parseTimeParts(t.startTime);
   const endParts = parseTimeParts(t.endTime);
-  if (!startParts || !endParts) return false;
+  if (!startParts || !endParts) return null;
 
   try {
     const timezone = resolveTournamentTimeZone(t.timezone, DEFAULT_TOURNAMENT_TIMEZONE);
@@ -90,7 +97,6 @@ function isTournamentLiveByScheduleWindow(t: TournamentListDoc, now: Date = new 
 
     const startMs = startUtc.getTime();
     let endMs = endUtc.getTime();
-    const nowMs = now.getTime();
 
     // If end time is earlier than start time, roll end to the next local calendar day.
     if (endMs < startMs) {
@@ -107,10 +113,53 @@ function isTournamentLiveByScheduleWindow(t: TournamentListDoc, now: Date = new 
       ).getTime();
     }
 
-    return nowMs >= startMs && nowMs <= endMs;
+    return { startMs, endMs };
+  } catch {
+    return null;
+  }
+}
+
+function isCalendarDateBeforeTodayInTimezone(
+  t: TournamentListDoc,
+  now: Date = new Date()
+): boolean {
+  if (!t.date) return false;
+
+  try {
+    const timezone = resolveTournamentTimeZone(t.timezone, DEFAULT_TOURNAMENT_TIMEZONE);
+    const nowParts = getZonedDateParts(now, timezone);
+    const dateParts = getZonedDateParts(t.date, timezone);
+    return localDateKey(dateParts) < localDateKey(nowParts);
   } catch {
     return false;
   }
+}
+
+export function isTournamentLiveByScheduleWindow(
+  t: TournamentListDoc,
+  now: Date = new Date()
+): boolean {
+  if (t.status !== "active") return false;
+
+  const window = getTournamentScheduleWindow(t);
+  if (!window) return false;
+
+  const nowMs = now.getTime();
+  return nowMs >= window.startMs && nowMs <= window.endMs;
+}
+
+export function isTournamentPastByScheduleWindow(
+  t: TournamentListDoc,
+  now: Date = new Date()
+): boolean {
+  if (t.status !== "active" || !t.date) return false;
+
+  const window = getTournamentScheduleWindow(t);
+  if (window) {
+    return now.getTime() > window.endMs;
+  }
+
+  return isCalendarDateBeforeTodayInTimezone(t, now);
 }
 
 export function mapTournamentListItems(
@@ -136,6 +185,7 @@ export function mapTournamentListItems(
       status: t.status,
       isFull: t.participants.length >= t.maxMember,
       isLive: isTournamentLiveByScheduleWindow(t),
+      isPast: isTournamentPastByScheduleWindow(t),
       sponsor: t.sponsor
         ? {
             id: t.sponsor._id.toString(),
