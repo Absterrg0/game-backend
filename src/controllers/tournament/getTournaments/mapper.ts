@@ -2,6 +2,8 @@ import type { TournamentListDoc } from "../../../types/api/tournament";
 import {
   DEFAULT_TOURNAMENT_TIMEZONE,
   getZonedDateParts,
+  resolveTournamentTimeZone,
+  zonedDateTimeToUtcDate,
 } from "../../../shared/timezone";
 
 export interface TournamentListItem {
@@ -40,6 +42,67 @@ function formatDateOnlyUtc(
   return `${year}-${month}-${day}`;
 }
 
+function parseTimeParts(value: string | null | undefined): { hour: number; minute: number } | null {
+  if (!value) return null;
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  const hour = Number.parseInt(match[1], 10);
+  const minute = Number.parseInt(match[2], 10);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  return { hour, minute };
+}
+
+function isTournamentLiveByScheduleWindow(t: TournamentListDoc, now: Date = new Date()): boolean {
+  if (t.status !== "active" || !t.date) return false;
+
+  const startParts = parseTimeParts(t.startTime);
+  const endParts = parseTimeParts(t.endTime);
+  if (!startParts || !endParts) return false;
+
+  try {
+    const timezone = resolveTournamentTimeZone(t.timezone, DEFAULT_TOURNAMENT_TIMEZONE);
+    const dateParts = getZonedDateParts(t.date, timezone);
+    const startUtc = zonedDateTimeToUtcDate(
+      {
+        year: dateParts.year,
+        month: dateParts.month,
+        day: dateParts.day,
+        hour: startParts.hour,
+        minute: startParts.minute,
+        second: 0,
+      },
+      timezone
+    );
+    const endUtc = zonedDateTimeToUtcDate(
+      {
+        year: dateParts.year,
+        month: dateParts.month,
+        day: dateParts.day,
+        hour: endParts.hour,
+        minute: endParts.minute,
+        second: 0,
+      },
+      timezone
+    );
+
+    const startMs = startUtc.getTime();
+    let endMs = endUtc.getTime();
+    const nowMs = now.getTime();
+
+    // Allow windows that pass midnight (end before start in wall time).
+    if (endMs <= startMs) {
+      endMs += 24 * 60 * 60 * 1000;
+    }
+
+    return nowMs >= startMs && nowMs <= endMs;
+  } catch {
+    return false;
+  }
+}
+
 export function mapTournamentListItems(
   tournaments: TournamentListDoc[],
 ): TournamentListItem[] {
@@ -57,7 +120,7 @@ export function mapTournamentListItems(
     date: t.date ? formatDateOnlyUtc(t.date, t.timezone) : null,
     status: t.status,
     isFull: (t.participants?.length ?? 0) >= t.maxMember,
-    isLive: Boolean(t.firstRoundScheduledAt) && !Boolean(t.completedAt),
+    isLive: isTournamentLiveByScheduleWindow(t),
     sponsor: t.sponsor
       ? {
           id: t.sponsor._id.toString(),
