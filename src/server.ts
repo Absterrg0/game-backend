@@ -88,4 +88,6 @@ async function start() {
 	}
 }
 
-start();
+start().catch(() => {
+	process.exit(1);
+});
