@@ -19,14 +19,19 @@ variables:
     - corepack enable && corepack prepare yarn@1.22.22 --activate
     - yarn install --frozen-lockfile
 
+.ci-test-rules: &ci-test-rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
 typecheck:
-  <<: *node-base
+  <<: [*node-base, *ci-test-rules]
   stage: typecheck
   script:
     - yarn typecheck
 
 unit-test:
-  <<: *node-base
+  <<: [*node-base, *ci-test-rules]
   stage: test
   script:
     - yarn test
@@ -36,6 +41,8 @@ build-job:
   services:
     - docker:24.0.5-dind
   image: docker:git
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
   before_script:
     - cp ${PRODUCTION_ENV_FILE} .env
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
