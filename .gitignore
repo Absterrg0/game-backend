@@ -11,3 +11,6 @@ logs/
 .yarn
 coverage/
 .vercel
+
+# CI/CD draft backups
+cdcibckp.text

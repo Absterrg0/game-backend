@@ -1,13 +1,6 @@
-  # coverage: /All files[^|]*\|[^|]*\s+([\d\.]+)/
-  # artifacts:
-  #   paths:
-  #     - coverage/
-  #   when: always
-  #   reports:
-  #     junit:
-  #       - junit.xml
-# .gitlab-ci.yml
+# https://cloud.google.com/blog/products/devops-sre/software-delivery-pipelines-with-gitlab-cicd-and-cloud-deploy/
 stages:
+  - typecheck
   - test
   - build
   - push
@@ -17,28 +10,37 @@ variables:
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
   PROJECT: mimetic-retina-450410-q0 #civil-charmer-313017
   LOCATION: europe-west1
-  SERVICE: tournament-api-app
+  SERVICE: tournament-api-app-dev
   AR_IMAGE: $LOCATION-docker.pkg.dev/$PROJECT/tournament-api/$SERVICE
 
-unit-test:
-  image: node:latest
-  stage: test
+.node-base: &node-base
+  image: node:22
   before_script:
-    - npm install -g yarn@1.22.22
-    - yarn install
+    - corepack enable && corepack prepare yarn@1.22.22 --activate
+    - yarn install --frozen-lockfile
+
+typecheck:
+  <<: *node-base
+  stage: typecheck
+  script:
+    - yarn typecheck
+
+unit-test:
+  <<: *node-base
+  stage: test
   script:
     - yarn test
-    
+
 build-job:
   stage: build
   services:
     - docker:24.0.5-dind
   image: docker:git
   before_script:
-    - cp ${PRODUCTION_ENV_FILE} .env
+    - cp ${DEVELOPMENT_ENV_FILE} .env
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - docker build -t $CI_REGISTRY_IMAGE:$IMAGE_TAG --build-arg="name=Cloud Run" --build-arg="COMMIT_SHA=$CI_COMMIT_SHORT_SHA" .
+    - docker build -t $CI_REGISTRY_IMAGE:$IMAGE_TAG --build-arg="COMMIT_SHA=$CI_COMMIT_SHORT_SHA" .
     - docker push $CI_REGISTRY_IMAGE:$IMAGE_TAG
 
 include:

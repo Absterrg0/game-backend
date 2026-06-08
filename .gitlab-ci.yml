@@ -1,0 +1,7 @@
+include:
+  - local: .gitlab-ci-prod.yml
+    rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  - local: .gitlab-ci-dev.yml
+    rules:
+    - if: $CI_COMMIT_BRANCH == "development"
