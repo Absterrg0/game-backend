@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import Club from '../../../models/Club';
 import Court from '../../../models/Court';
 import Sponsor from '../../../models/Sponsor';

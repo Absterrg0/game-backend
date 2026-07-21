@@ -23,25 +23,26 @@ export const getTournaments = async (req: Request, res: Response) => {
       res.status(400).json(buildErrorPayload(message));
       return;
     }
-
+    
     if (!session && parsed.data.view === "drafts") {
       res.status(401).json(buildErrorPayload("Authorization required"));
       return;
     }
-
+    
     const authResult = await authorizeList(session);
     if (!authResult.ok) {
       res.status(authResult.status).json(buildErrorPayload(authResult.message));
       return;
     }
-
+   
     const result = await getTournamentsFlow(parsed.data, authResult.data.filterContext);
     if (result.ok === false) {
       res.status(result.status).json(buildErrorPayload(result.message));
       return;
     }
+    
     const items = mapTournamentListItems(result.data.tournaments);
-
+    logger.info("Reached items", items);
     res.status(200).json({
       message: "Tournaments listed successfully",
       tournaments: items,

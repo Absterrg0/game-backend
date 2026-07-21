@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import QRCode from "qrcode";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import Game from "../../../models/Game";
 import ScoreValidationRequest from "../../../models/ScoreValidationRequest";
 import Tournament from "../../../models/Tournament";
@@ -43,7 +43,6 @@ import type {
   ConfirmScoreQrInput,
   ConfirmScoreQrResult,
   GenerateScoreQrInput,
-  GenerateScoreQrResult,
   ActiveScoreQrSessionResult,
   ScoreQrFlowKind,
   UpdateScoreQrSessionScoresResult,
@@ -201,16 +200,13 @@ export async function generateScoreQrFlow(
 
   const isTournamentFlow = hasTournamentId && hasMatchId;
 
-  let flow: ScoreQrFlowKind = "independent";
-  let tournamentId: string | null = null;
+  let flow: ScoreQrFlowKind;
+  let tournamentId: string | null;
   let matchId: string;
   let playMode: GamePlayMode;
   let matchType: MatchType;
   let opponentUserId: string | null;
-  let canonicalScoreInput: RecordMatchScoreInput = {
-    playerOneScores: [...input.input.playerOneScores],
-    playerTwoScores: [...input.input.playerTwoScores],
-  };
+  let canonicalScoreInput: RecordMatchScoreInput;
 
   if (isTournamentFlow) {
     const tid = tidTrimmed;

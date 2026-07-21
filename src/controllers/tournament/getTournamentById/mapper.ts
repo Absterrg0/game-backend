@@ -145,6 +145,7 @@ export function mapTournamentDetail(
   sessionUserId: string,
   leaveBlockers?: TournamentLeaveBlockers
 ): TournamentDetailResponse {
+  void leaveBlockers;
   if (!tournament) {
     throw new Error("Invalid tournament data: missing tournament");
   }

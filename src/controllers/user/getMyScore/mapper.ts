@@ -164,7 +164,8 @@ function toScoreBreakdown(scoreValues: unknown[] | undefined): ScoreBreakdown {
 	};
 }
 
-function resolveMatchMode(_playMode: string | null | undefined): MyScoreMatchMode | null {
+function resolveMatchMode(playMode: string | null | undefined): MyScoreMatchMode | null {
+	void playMode;
 	return null;
 }
 

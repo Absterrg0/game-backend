@@ -82,7 +82,7 @@ export async function updateClubFlow(clubId: string, data: UpdateClubInput, sess
 
 		await txSession.commitTransaction();
 		txSession.endSession();
-	} catch (err) {
+	} catch {
 		await txSession.abortTransaction();
 		txSession.endSession();
 		return error(500, 'Internal server error');

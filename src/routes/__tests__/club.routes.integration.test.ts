@@ -4,12 +4,10 @@ import Court from '../../models/Court';
 import User from '../../models/User';
 import clubRouter from '../club.routes';
 import {
-	createClub,
 	createCourt,
 	createSession,
 	createUser,
 	seedClubAdmin,
-	seedOrganiserForClub,
 	setupMemoryMongo,
 } from '../../testUtils/db';
 import { buildJsonApp, requestJson } from '../../testUtils/integrationTestUtils';

@@ -28,8 +28,8 @@ RUN corepack enable && corepack prepare yarn@1.22.22 --activate && \
     yarn install --production --frozen-lockfile
 
 COPY --from=builder /usr/src/app/dist ./dist
+# Non-secret config only; sensitive values are injected by Cloud Run from GCP Secret Manager.
 COPY --from=builder /usr/src/app/.env ./.env
-COPY --from=builder /usr/src/app/.env ./dist/.env
 
 RUN chown -R node:node /usr/src/app
 USER node

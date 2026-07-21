@@ -27,20 +27,20 @@ function makeData(overrides: Partial<DataStub> = {}): DataStub {
 
 describe('validateActiveTournamentEnrolledUpdate() — bypass conditions', () => {
   it('returns ok when tournament status is not "active"', () => {
-    const t = makeTournament({ status: 'draft' } as any);
+    const t = makeTournament({ status: 'draft' });
     const result = validateActiveTournamentEnrolledUpdate(t, makeData());
     expect(result.ok).toBe(true);
   });
 
   it('returns ok when active but zero participants', () => {
     const t = makeTournament({ participants: [], participantCount: 0 });
-    const result = validateActiveTournamentEnrolledUpdate(t as any, makeData());
+    const result = validateActiveTournamentEnrolledUpdate(t, makeData());
     expect(result.ok).toBe(true);
   });
 
   it('uses participantCount when provided (avoids array.length)', () => {
     const t = makeTournament({ participantCount: 0, participants: undefined });
-    const result = validateActiveTournamentEnrolledUpdate(t as any, makeData());
+    const result = validateActiveTournamentEnrolledUpdate(t, makeData());
     expect(result.ok).toBe(true);
   });
 });

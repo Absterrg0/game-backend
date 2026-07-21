@@ -8,6 +8,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json && node scripts/write-commit-sha.mjs",
+    "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --config jest.all.config.ts --coverage",
     "test:watch": "jest --config jest.unit.config.ts --watch",
@@ -53,6 +54,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
@@ -63,11 +65,14 @@
     "@types/passport": "^1.0.17",
     "@types/qrcode": "^1",
     "@types/tz-lookup": "^6.1.2",
+    "eslint": "^10.4.1",
+    "globals": "^17.6.0",
     "jest": "^30.2.0",
     "mongodb-memory-server": "^11.2.0",
     "ts-jest": "^29.4.6",
     "tsx": "^4.19.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.61.0"
   },
   "packageManager": "yarn@1.22.22"
 }

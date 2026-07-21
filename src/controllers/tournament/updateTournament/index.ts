@@ -1,8 +1,8 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { logger } from "../../../lib/logger";
 import { guardIdParam } from "../../../shared/guards";
 import { AppError, buildErrorPayload, buildZodErrorPayload } from "../../../shared/errors";
-import { AuthenticatedRequest, type AuthenticatedSession } from "../../../shared/authContext";
+import { AuthenticatedRequest } from "../../../shared/authContext";
 import {
   updateDraftSchema,
   type UpdateTournamentPersistenceInput,

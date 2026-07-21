@@ -51,7 +51,7 @@ export async function leaveTournamentFlow(
     | { outcome: "concurrent_leave" }
     | { outcome: "concurrent_match_update" }
     | null;
-  let returnedDoc: LeaveTransactionResult = null;
+  let returnedDoc: LeaveTransactionResult;
 
   try {
     returnedDoc = await mongoSession.withTransaction(async () => {

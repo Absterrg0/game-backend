@@ -129,7 +129,7 @@ export interface TournamentScheduleContext {
   schedule: Types.ObjectId | null;
 }
 
-type _AssertContext = AssertExact<
+export type TournamentScheduleContextAssert = AssertExact<
   ExactType<TournamentScheduleContext, z.infer<typeof tournamentScheduleContextSchema>>
 >;
 
@@ -183,7 +183,7 @@ export interface TournamentScheduleDocument {
   }>;
 }
 
-type _AssertDocument = AssertExact<
+export type TournamentScheduleDocumentAssert = AssertExact<
   ExactType<TournamentScheduleDocument, z.infer<typeof tournamentScheduleDocumentSchema>>
 >;
 

@@ -101,11 +101,16 @@ async function start() {
 			logger.info(`Server is running on port ${PORT}`);
 		});
 	} catch (err) {
-		logger.error('Failed to start server', { err });
+		logger.error(`Failed to start server: ${err instanceof Error ? err.message : String(err)}`, {
+			stack: err instanceof Error ? err.stack : undefined,
+		});
 		throw err;
 	}
 }
 
-start().catch(() => {
+start().catch((err) => {
+	logger.error(`Fatal error during startup: ${err instanceof Error ? err.message : String(err)}`, {
+		stack: err instanceof Error ? err.stack : undefined,
+	});
 	process.exit(1);
 });

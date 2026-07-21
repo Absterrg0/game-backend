@@ -64,7 +64,7 @@ export async function completeSignUp(req: Request, res: Response) {
 		await session.withTransaction(async () => {
 			const payload = verifyPendingSignupToken(data.pendingToken);
 
-			let user: UserDocument | null = null;
+			let user: UserDocument | null;
 
 			if (payload.appleId) {
 				const userAuth = await UserAuth.findOne({ appleId: payload.appleId }).session(session);
@@ -143,18 +143,19 @@ export async function completeSignUp(req: Request, res: Response) {
 			error: false,
 			token
 		});
-	} catch (error: any) {
+	} catch (error: unknown) {
 		LogError(__dirname, 'POST', req.originalUrl, error);
 
-		if (error.message === 'NO_USER' || error.message === 'NO_USER_APPLE' || error.message === 'NO_USER_GOOGLE') {
+		const message = error instanceof Error ? error.message : '';
+		if (message === 'NO_USER' || message === 'NO_USER_APPLE' || message === 'NO_USER_GOOGLE') {
 			return res.status(404).json({ message: 'No user found. Please login again.', error: true, code: 'NO_USER_FOUND' });
 		}
 
-		if (error.message === 'EMAIL_REQUIRED') {
+		if (message === 'EMAIL_REQUIRED') {
 			return res.status(400).json({ message: 'A valid email address is required to finish signup.', error: true, code: 'EMAIL_REQUIRED' });
 		}
 
-		if (error.message === 'EMAIL_EXISTS') {
+		if (message === 'EMAIL_EXISTS') {
 			return res.status(409).json({ message: 'An account with this email address already exists.', error: true, code: 'EMAIL_ALREADY_EXISTS' });
 		}
 

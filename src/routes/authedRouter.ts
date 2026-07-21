@@ -8,7 +8,7 @@ type FinalHandler<P extends ParamsDictionary = ParamsDictionary> = (
 	req: AuthenticatedRequest & { params: P },
 	res: Response,
 	next: NextFunction
-) => any;
+) => unknown;
 
 export function createAuthedRouter(router: Router) {
 	function wrap<P extends ParamsDictionary>(handler: FinalHandler<P>): RequestHandler<P> {

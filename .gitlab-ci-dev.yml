@@ -1,5 +1,6 @@
 # https://cloud.google.com/blog/products/devops-sre/software-delivery-pipelines-with-gitlab-cicd-and-cloud-deploy/
 stages:
+  - lint
   - typecheck
   - test
   - build
@@ -19,19 +20,20 @@ variables:
     - corepack enable && corepack prepare yarn@1.22.22 --activate
     - yarn install --frozen-lockfile
 
-.ci-test-rules: &ci-test-rules
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "development"
+lint:
+  <<: *node-base
+  stage: lint
+  script:
+    - yarn lint
 
 typecheck:
-  <<: [*node-base, *ci-test-rules]
+  <<: *node-base
   stage: typecheck
   script:
     - yarn typecheck
 
 unit-test:
-  <<: [*node-base, *ci-test-rules]
+  <<: *node-base
   stage: test
   script:
     - yarn test
@@ -41,10 +43,10 @@ build-job:
   services:
     - docker:24.0.5-dind
   image: docker:git
-  rules:
-    - if: $CI_COMMIT_BRANCH == "development"
   before_script:
     - cp ${DEVELOPMENT_ENV_FILE} .env
+    # Secrets are injected at Cloud Run runtime from GCP Secret Manager.
+    - sed -i '/^MONGODB_URI=/d; /^JWT_SECRET=/d; /^GOOGLE_CLIENT_SECRET=/d; /^APPLE_PRIVATE_KEY=/d' .env
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
     - docker build -t $CI_REGISTRY_IMAGE:$IMAGE_TAG --build-arg="COMMIT_SHA=$CI_COMMIT_SHORT_SHA" .
@@ -57,10 +59,11 @@ include:
       source: $CI_REGISTRY_IMAGE:$IMAGE_TAG
       target: $AR_IMAGE:$IMAGE_TAG
 
-  - component: gitlab.com/google-gitlab-components/cloud-run/deploy-cloud-run@0.1.0
-    inputs:
-      stage: deploy
-      image: $AR_IMAGE:$IMAGE_TAG
-      project_id: $PROJECT
-      region: $LOCATION
-      service: $SERVICE
+deploy-cloud-run:
+  identity: google_cloud
+  stage: deploy
+  image: google/cloud-sdk:alpine
+  variables:
+    CLOUD_RUN_SECRETS: "MONGODB_URI=MONGODB_URI_DEV:latest,JWT_SECRET=JWT_SECRET_DEV:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET_DEV:latest,APPLE_PRIVATE_KEY=APPLE_PRIVATE_KEY_DEV:latest, AWS_S3_KEY_ID=AWS_S3_KEY_ID_DEV:latest, AWS_S3_KEY_SECRET=AWS_S3_KEY_SECRET_DEV:latest"
+  script:
+    - gcloud run deploy "$SERVICE" --project="$PROJECT" --region="$LOCATION" --image="$AR_IMAGE:$IMAGE_TAG" --set-secrets="$CLOUD_RUN_SECRETS"

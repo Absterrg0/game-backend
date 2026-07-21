@@ -46,7 +46,6 @@ describe('mapAdminClubsResponse()', () => {
 
   it('returns null for logoUrl when undefined on the doc', () => {
     const club = makeClub({ logoUrl: undefined });
-    const id = club._id.toString();
     const result = mapAdminClubsResponse([club], new Map(), new Map(), new Map());
     expect(result.clubs[0].logoUrl).toBeNull();
   });

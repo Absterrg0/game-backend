@@ -95,7 +95,8 @@ describe('mapLiveMatchItem()', () => {
     const result = mapLiveMatchItem(game, userId);
 
     expect(result.tournament.name).toBe('Test Tournament');
-    expect(result.tournament.id).toBe((game.tournament as any)._id.toString());
+    const tournamentRef = game.tournament as { _id: Types.ObjectId; name: string };
+    expect(result.tournament.id).toBe(tournamentRef._id.toString());
   });
 
   it('places the session user on myTeam', () => {

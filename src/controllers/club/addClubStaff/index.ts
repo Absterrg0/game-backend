@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { logger } from '../../../lib/logger';
 import { buildErrorPayload } from '../../../shared/errors';
 import { parseBodyWithSchema, parseRouteObjectId } from '../../../shared/validation';

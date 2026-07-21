@@ -148,7 +148,8 @@ const baseTournament = z.object({
     })
     .transform((d) => {
       const sponsor = d.sponsor ?? d.sponsorId ?? undefined;
-      const { sponsorId, ...rest } = d;
+      const { sponsorId: _sponsorId, ...rest } = d;
+      void _sponsorId;
       return {
         ...rest,
         sponsor,
