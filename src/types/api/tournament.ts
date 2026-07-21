@@ -51,7 +51,8 @@ export interface TournamentListDoc {
 	status: TournamentStatus;
 	sponsor?: PopulatedSponsor | null;
   maxMember: number;
-  participants?: mongoose.Types.ObjectId[];
+  /** Computed in the list projection ($size of participants). */
+  participantCount: number;
 }
 
 export interface TournamentForUpdateAuth {

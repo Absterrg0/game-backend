@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { connectToDatabase } from './lib/db';
@@ -14,7 +15,9 @@ import tournamentRoutes from './routes/tournament.routes';
 import sponsorRoutes from './routes/sponsor.routes';
 import scheduleRoutes from './routes/schedule.routes';
 import playersRoutes from './routes/players.routes';
+import uploadsRoutes from './routes/uploads.routes';
 import { resolveCommitSha } from './lib/commitSha';
+import { getAssetsConfig } from './lib/assets';
 
 const PORT = process.env.PORT || 4000;
 const REQUEST_ORIGIN = process.env.REQUEST_ORIGIN?.trim();
@@ -52,6 +55,10 @@ app.use(
 	})
 );
 
+// Gzip JSON responses (large list payloads shrink ~5-10x). Skips small bodies automatically.
+app.use(compression());
+
+// Prefer CDN URLs from /api/uploads/presign; keep a higher JSON limit while legacy base64 may remain.
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cookieParser());
@@ -66,6 +73,16 @@ app.get('/api/version', (req, res) => {
 
 async function start() {
 	try {
+		const assetsConfig = getAssetsConfig();
+		logger.info('Asset storage config', {
+			enabled: assetsConfig.enabled,
+			bucket: assetsConfig.bucket,
+			region: assetsConfig.region,
+			prefix: assetsConfig.prefix,
+			deployEnv: assetsConfig.deployEnv,
+			cdnBaseUrl: assetsConfig.cdnBaseUrl,
+		});
+
 		await connectToDatabase();
 		logger.info('Database connected');
 
@@ -78,6 +95,7 @@ async function start() {
 		app.use('/api/schedule', scheduleRoutes);
 		app.use('/api/sponsors', sponsorRoutes);
 		app.use('/api/players', playersRoutes);
+		app.use('/api/uploads', uploadsRoutes);
 
 		app.listen(PORT, () => {
 			logger.info(`Server is running on port ${PORT}`);

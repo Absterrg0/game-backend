@@ -29,6 +29,8 @@ export interface IUser {
 	/** User's designated home club (must be in favoriteClubs). */
 	homeClub: mongoose.Types.ObjectId | null;
 	elo: IElo;
+	/** When the user accepted User terms during first signup. */
+	termsAcceptedAt?: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
 	/** Soft delete: when set, user is considered deleted and excluded from queries. */
@@ -133,6 +135,10 @@ const userSchema = new mongoose.Schema<IUser>(
 				default: 0.06,
 				required: true
 			}
+		},
+		termsAcceptedAt: {
+			type: Date,
+			default: null
 		},
 		deletedAt: {
 			type: Date,

@@ -16,7 +16,11 @@
     "test:coverage": "yarn test",
     "test:all": "jest --config jest.all.config.ts --coverage",
     "test:unit": "jest --config jest.unit.config.ts --coverage",
-    "test:integration": "jest --config jest.integration.config.ts --coverage"
+    "test:integration": "jest --config jest.integration.config.ts --coverage",
+    "assets:migrate-base64": "tsx scripts/migrate-base64-images.ts",
+    "assets:migrate-base64:dry": "tsx scripts/migrate-base64-images.ts --dry-run",
+    "assets:cleanup-orphans": "tsx scripts/cleanup-orphan-assets.ts",
+    "assets:cleanup-orphans:execute": "tsx scripts/cleanup-orphan-assets.ts --execute"
   },
   "repository": {
     "type": "git",
@@ -30,6 +34,9 @@
   },
   "homepage": "https://github.com/Absterrg0/game-backend#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1090.0",
+    "@aws-sdk/s3-request-presigner": "^3.1090.0",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -46,6 +53,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

@@ -135,6 +135,10 @@ const clubSchema = new Schema<IClub>(
 );
 
 clubSchema.index({ coordinates: '2dsphere' });
+/** Active-club listings match on status and sort by name. */
+clubSchema.index({ status: 1, name: 1 });
+/** Organiser club membership lookups (tournament list authorization). */
+clubSchema.index({ organiserIds: 1, status: 1 });
 
 clubSchema.virtual('courts', {
 	ref: 'Court',

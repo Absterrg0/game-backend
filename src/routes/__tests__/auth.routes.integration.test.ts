@@ -36,6 +36,7 @@ describe('auth routes integration', () => {
 				name: ' Ada Player ',
 				dateOfBirth: '1990-03-04',
 				gender: 'female',
+				acceptedTerms: true,
 			},
 		});
 
@@ -56,6 +57,7 @@ describe('auth routes integration', () => {
 			status: 'active',
 		});
 		expect(persisted.dateOfBirth).toBeInstanceOf(Date);
+		expect(persisted.termsAcceptedAt).toBeInstanceOf(Date);
 		await expect(Session.countDocuments({ user: pendingUser._id })).resolves.toBe(1);
 	});
 
@@ -84,6 +86,7 @@ describe('auth routes integration', () => {
 					alias: 'Taken',
 					name: 'Taken Email',
 					email: 'TAKEN@example.com',
+					acceptedTerms: true,
 				},
 			})
 		).resolves.toEqual({

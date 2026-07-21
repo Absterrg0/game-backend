@@ -14,7 +14,7 @@ function makeListDoc(
     club: null,
     status: "active",
     maxMember: 8,
-    participants: [],
+    participantCount: 0,
     date: new Date("2026-06-02T00:00:00.000Z"),
     startTime: "10:00",
     endTime: "18:00",

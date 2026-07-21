@@ -26,6 +26,7 @@ const baseCtx = {
 
 function mockTournamentFind(results: unknown[] = []) {
 	const chain = {
+		select: jest.fn().mockReturnThis(),
 		populate: jest.fn().mockReturnThis(),
 		sort: jest.fn().mockReturnThis(),
 		skip: jest.fn().mockReturnThis(),

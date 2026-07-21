@@ -1,7 +1,5 @@
 
-import mongoose from "mongoose";
 import Club from "../../../models/Club";
-import User from "../../../models/User";
 import { type AuthenticatedSession } from "../../../shared/authContext";
 import { hasRoleOrAbove } from "../../../constants/roles";
 import { ROLES } from "../../../constants/roles";
@@ -37,36 +35,37 @@ export async function authorizeList(session?: AuthenticatedSession) {
   const isOrganiserOrAbove = hasRoleOrAbove(session.role, ROLES.ORGANISER);
   const isSuperAdmin = session.role === ROLES.SUPER_ADMIN;
 
+  // The auth middleware already loaded homeClub/favoriteClubs onto the session,
+  // so we only hit the DB for what it cannot know: organiser club membership
+  // and the home club's coordinates. Both run in parallel.
+  const [organiserClubs, homeClub] = await Promise.all([
+    isOrganiserOrAbove && !isSuperAdmin
+      ? Club.find({ organiserIds: session._id, status: "active" })
+          .select("_id")
+          .lean()
+          .exec()
+      : Promise.resolve([]),
+    session.homeClub
+      ? Club.findById(session.homeClub)
+          .select("coordinates")
+          .lean<{ coordinates?: { coordinates?: [number, number] } }>()
+          .exec()
+      : Promise.resolve(null),
+  ]);
+
   let manageableClubIds: string[] = [];
   if (isOrganiserOrAbove && !isSuperAdmin) {
     const adminClubs = (session.adminOf ?? []).map((id) => id.toString());
-    const organiserClubs = await Club.find({
-      organiserIds: session._id,
-      status: "active",
-    }).select("_id").lean().exec();
     const organiserClubIds = organiserClubs.map((c) => c._id.toString());
     manageableClubIds = Array.from(new Set([...adminClubs, ...organiserClubIds]));
   }
 
-  let homeClubCoordinates: [number, number] | null = null;
-  const user = await User.findById(session._id)
-    .populate({ path: "homeClub", select: "coordinates" })
-    .select("homeClub favoriteClubs")
-    .lean<{
-      homeClub: { coordinates?: { coordinates?: [number, number] } } | null;
-      favoriteClubs?: mongoose.Types.ObjectId[];
-    }>()
-    .exec();
+  const favoriteClubIds = (session.favoriteClubs ?? []).map((id) => id.toString());
 
-  const favoriteClubIds = (user?.favoriteClubs ?? []).map((id) => id.toString());
-
-  if (user?.homeClub) {
-    const homeClub = user.homeClub;
-    const coords = homeClub?.coordinates?.coordinates;
-    if (coords) {
-      homeClubCoordinates = [coords[0], coords[1]];
-    }
-  }
+  const coords = homeClub?.coordinates?.coordinates;
+  const homeClubCoordinates: [number, number] | null = coords
+    ? [coords[0], coords[1]]
+    : null;
 
   const filterContext: ListFilterContext = {
     isOrganiserOrAbove,
