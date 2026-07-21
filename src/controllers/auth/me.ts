@@ -1,11 +1,14 @@
 import type { Request, Response } from 'express';
 import User from '../../models/User';
 
-/** Requires authenticate middleware - req.user is guaranteed. Returns basic user info only. */
+/**
+ * Session probe for the SPA. Use with optionalAuthenticate so guests get
+ * 200 { user: null } instead of 401 (avoids console noise / Lighthouse BP).
+ */
 export async function getMe(req: Request, res: Response) {
 	const sessionUser = req.user;
 	if (!sessionUser?._id) {
-		res.status(401).json({ message: 'Not authenticated' });
+		res.json({ user: null });
 		return;
 	}
 
@@ -15,7 +18,7 @@ export async function getMe(req: Request, res: Response) {
 		.exec();
 
 	if (!user) {
-		res.status(404).json({ message: 'User not found' });
+		res.json({ user: null });
 		return;
 	}
 

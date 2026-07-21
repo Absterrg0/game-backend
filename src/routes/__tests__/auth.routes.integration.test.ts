@@ -149,8 +149,15 @@ describe('auth routes integration', () => {
 				headers: { authorization },
 			})
 		).resolves.toEqual({
-			status: 401,
-			body: { message: 'Session expired, login again' },
+			status: 200,
+			body: { user: null },
+		});
+	});
+
+	it('returns 200 with user null for guests with no token', async () => {
+		await expect(requestJson(app, '/auth/me')).resolves.toEqual({
+			status: 200,
+			body: { user: null },
 		});
 	});
 });
