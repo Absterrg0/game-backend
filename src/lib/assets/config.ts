@@ -33,7 +33,13 @@ export function resolveDeployEnv(): 'production' | 'staging' | 'development' {
 	if (explicit === 'production' || explicit === 'staging' || explicit === 'development') {
 		return explicit;
 	}
-	return isProd ? 'production' : 'development';
+	// Staging often uses NODE_ENV=production — never infer production prefix from NODE_ENV alone.
+	if (isProd) {
+		throw new Error(
+			'DEPLOY_ENV (or ASSETS_ENV) must be explicitly set to production, staging, or development when NODE_ENV=production',
+		);
+	}
+	return 'development';
 }
 
 function defaultPrefixFor(deployEnv: 'production' | 'staging' | 'development'): string {

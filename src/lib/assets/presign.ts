@@ -19,6 +19,7 @@ export type PresignUploadResult = {
 export async function createPresignedUpload(params: {
 	kind: AssetKind;
 	contentType: string;
+	contentLength: number;
 	assetId?: string;
 	config?: AssetsConfig;
 }): Promise<PresignUploadResult> {
@@ -27,6 +28,10 @@ export async function createPresignedUpload(params: {
 	}
 
 	const config = assertAssetsConfigured(params.config ?? getAssetsConfig());
+	if (params.contentLength > config.maxUploadBytes) {
+		throw new Error(`Image exceeds maximum size of ${config.maxUploadBytes} bytes`);
+	}
+
 	const assetId = (params.assetId?.trim() || randomUUID()).replace(/[^a-zA-Z0-9_-]/g, '');
 	if (!assetId) {
 		throw new Error('Invalid asset id');
@@ -46,6 +51,7 @@ export async function createPresignedUpload(params: {
 		Bucket: config.bucket,
 		Key: key,
 		ContentType: params.contentType,
+		ContentLength: params.contentLength,
 		CacheControl: 'public, max-age=31536000, immutable',
 	});
 

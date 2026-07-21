@@ -5,6 +5,7 @@ import { logger } from '../../../lib/logger';
 import { createPresignedUpload, getAssetsConfig } from '../../../lib/assets';
 import { parseBodyWithSchema } from '../../../shared/validation';
 import { presignUploadSchema } from '../../../validation/upload.schemas';
+import { authorizeAssetWrite } from '../authorizeAsset';
 
 export async function createPresignedUploadHandler(
 	req: AuthenticatedRequest,
@@ -25,9 +26,16 @@ export async function createPresignedUploadHandler(
 			return;
 		}
 
+		const authz = await authorizeAssetWrite(req.user, parsed.data.kind, parsed.data.assetId);
+		if (!authz.ok) {
+			res.status(authz.status).json(buildErrorPayload(authz.message));
+			return;
+		}
+
 		const result = await createPresignedUpload({
 			kind: parsed.data.kind,
 			contentType: parsed.data.contentType,
+			contentLength: parsed.data.contentLength,
 			assetId: parsed.data.assetId,
 			config,
 		});
@@ -41,8 +49,14 @@ export async function createPresignedUploadHandler(
 	} catch (err) {
 		logger.error('Error creating presigned upload URL', { err });
 		const message = err instanceof Error ? err.message : 'Failed to create upload URL';
-		if (message.includes('not configured') || message.includes('Only PNG')) {
-			res.status(message.includes('Only PNG') ? 400 : 503).json(buildErrorPayload(message));
+		if (
+			message.includes('not configured') ||
+			message.includes('Only PNG') ||
+			message.includes('maximum size')
+		) {
+			res
+				.status(message.includes('not configured') ? 503 : 400)
+				.json(buildErrorPayload(message));
 			return;
 		}
 		res.status(500).json(buildErrorPayload('Failed to create upload URL'));

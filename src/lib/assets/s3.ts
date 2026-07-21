@@ -51,7 +51,7 @@ export async function deleteObjectKeys(keys: string[], config?: AssetsConfig): P
 	// S3 DeleteObjects accepts max 1000 keys per call.
 	for (let i = 0; i < keys.length; i += 1000) {
 		const chunk = keys.slice(i, i + 1000);
-		await client.send(
+		const result = await client.send(
 			new DeleteObjectsCommand({
 				Bucket: resolved.bucket,
 				Delete: {
@@ -60,6 +60,13 @@ export async function deleteObjectKeys(keys: string[], config?: AssetsConfig): P
 				},
 			}),
 		);
+		const errors = result.Errors ?? [];
+		if (errors.length > 0) {
+			const detail = errors
+				.map((e) => `${e.Key ?? '?'}: ${e.Code ?? 'Error'} ${e.Message ?? ''}`.trim())
+				.join('; ');
+			throw new Error(`S3 DeleteObjects partial failure: ${detail}`);
+		}
 	}
 }
 
