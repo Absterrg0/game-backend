@@ -114,7 +114,7 @@ describe('getMyScoreFlow() — guard conditions', () => {
 describe('getMyScoreFlow() — mapping errors', () => {
   it('returns error 500 when mapGameToMyScoreEntry returns null for a standalone game', async () => {
     const fakeGame = { _id: new Types.ObjectId(), side1: { players: [] }, side2: { players: [] }, tournament: null, status: 'finished' as const };
-    mockFetchStandalone.mockResolvedValue({ entries: [fakeGame as any], totalEntries: 1 });
+    mockFetchStandalone.mockResolvedValue({ entries: [fakeGame as never], totalEntries: 1 });
     // Force mapper to return null (simulates unmappable game)
     mockMapGame.mockReturnValue(null);
 
@@ -129,7 +129,7 @@ describe('getMyScoreFlow() — mapping errors', () => {
     const fakeGame = { _id: new Types.ObjectId(), side1: { players: [] }, side2: { players: [] }, tournament: null };
     mockFetchTournament.mockResolvedValue({
       ...EMPTY_TOURNAMENT_RESULT,
-      entries: [fakeGame as any],
+      entries: [fakeGame as never],
       totalEntries: 1,
     });
     mockMapGame.mockReturnValue(null);
@@ -205,7 +205,7 @@ describe('getMyScoreFlow() — happy path', () => {
     const fakeGame = { _id: new Types.ObjectId(), side1: { players: [] }, side2: { players: [] }, tournament: null, status: 'finished' as const };
 
     mockFetchStandalone.mockResolvedValue({
-      entries: [fakeGame, fakeGame, fakeGame] as any,
+      entries: [fakeGame, fakeGame, fakeGame] as never,
       totalEntries: 3,
     });
 

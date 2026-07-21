@@ -5,7 +5,6 @@
 import mongoose, { Types } from 'mongoose';
 import type { Request, Response } from 'express';
 import User from '../../../models/User';
-import UserAuth from '../../../models/UserAuth';
 import { completeSignUp } from '../completeSignUp';
 import { verifyPendingSignupToken } from '../pendingToken';
 import { createAuthToken, setAuthCookie } from '../../../lib/jwtAuth';
@@ -50,14 +49,6 @@ function makeRes(): Response {
 
 function makeReq(body: Record<string, unknown>): Request {
 	return { body, originalUrl: '/auth/complete-signup' } as Request;
-}
-
-function userFindByIdChain(user: unknown) {
-	return {
-		setOptions: () => ({
-			session: () => Promise.resolve(user),
-		}),
-	};
 }
 
 function userFindOneChain(user: unknown) {

@@ -1,4 +1,4 @@
-import mongoose, { Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { ROLES } from '../../../../constants/roles';
 import Club from '../../../../models/Club';
 import Court from '../../../../models/Court';

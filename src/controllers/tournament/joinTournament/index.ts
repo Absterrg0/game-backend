@@ -1,9 +1,8 @@
-import type { Request, Response } from "express";
-import Tournament from "../../../models/Tournament";
+import type { Response } from "express";
 import { logger } from "../../../lib/logger";
 import { guardIdParam } from "../../../shared/guards";
 import { buildErrorPayload } from "../../../shared/errors";
-import { AuthenticatedRequest, type AuthenticatedSession } from "../../../shared/authContext";
+import { AuthenticatedRequest } from "../../../shared/authContext";
 import { authorizeJoin } from "./authorize";
 import { joinTournamentFlow } from "./handler";
 import { getTournamentById } from "./queries";

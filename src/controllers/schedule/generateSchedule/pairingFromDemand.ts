@@ -59,7 +59,7 @@ function getDemandForRound(
 
   const baseAppearances = participantIds.length * matchesPerPlayer;
   const bucketSize = mode === "singles" ? 2 : 4;
-  let extrasNeeded = (bucketSize - (baseAppearances % bucketSize)) % bucketSize;
+  const extrasNeeded = (bucketSize - (baseAppearances % bucketSize)) % bucketSize;
 
   const extraRecipients = selectExtraRecipients(participantIds, extrasNeeded, roundSeed);
 

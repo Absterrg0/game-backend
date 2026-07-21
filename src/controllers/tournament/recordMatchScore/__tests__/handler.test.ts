@@ -2,7 +2,6 @@ import mongoose, { Types } from 'mongoose';
 import Game from '../../../../models/Game';
 import Schedule from '../../../../models/Schedule';
 import User from '../../../../models/User';
-import { AppError } from '../../../../shared/errors';
 import { recordTournamentMatchScoreFlow } from '../handler';
 
 jest.mock('../../../../models/Game');

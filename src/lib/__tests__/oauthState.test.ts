@@ -62,7 +62,7 @@ describe('createOAuthStateStore', () => {
 
 	it('verify fails when cookie is missing', async () => {
 		const store = createOAuthStateStore('apple');
-		const { req, res } = mockReqRes();
+		const { req } = mockReqRes();
 		const verifyCb = jest.fn();
 
 		store.verify(req, 'any-token', undefined, verifyCb);

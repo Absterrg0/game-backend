@@ -150,7 +150,7 @@ describe('rateGlicko2HeadToHead()', () => {
   it('clamps playerOneScore above 1 to 1 (ensures no overflow)', () => {
     const p1 = makePlayer(1500, 200, 0.06);
     const p2 = makePlayer(1500, 200, 0.06);
-    const { playerOne, playerTwo } = rateGlicko2HeadToHead(p1, p2, 2);
+    const { playerOne } = rateGlicko2HeadToHead(p1, p2, 2);
     // Should behave same as score=1
     const { playerOne: baseP1 } = rateGlicko2HeadToHead(p1, p2, 1);
     expect(playerOne.rating).toBeCloseTo(baseP1.rating, 4);

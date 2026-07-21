@@ -6,7 +6,6 @@ import {
 } from '../tournament.schemas';
 
 const CLUB_ID = '507f1f77bcf86cd799439011';
-const SPONSOR_ID = '507f1f77bcf86cd799439012';
 
 const validPublishBase = {
 	club: CLUB_ID,

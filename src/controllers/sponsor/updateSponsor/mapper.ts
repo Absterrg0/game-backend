@@ -1,5 +1,3 @@
-import type { SponsorUpdateResponse } from '../../../types/api/sponsor';
-
 export interface SponsorUpdateDoc {
 	_id: { toString(): string };
 	name: string;

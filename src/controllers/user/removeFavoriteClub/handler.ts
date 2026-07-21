@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import { error, ok } from '../../../shared/helpers';
 import { removeClubFromFavorites } from './mutations';
 import { findUserById, saveUserFavoriteChanges } from './queries';

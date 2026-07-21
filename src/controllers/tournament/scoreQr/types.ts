@@ -1,7 +1,7 @@
 import type { Types } from "mongoose";
 import type { GamePlayMode, MatchType } from "../../../types/domain/game";
 import type { RecordMatchScoreInput } from "../recordMatchScore/validation";
-import type { ScoreQrFlowKind, ScoreQrTokenPayload } from "../../../shared/scoreQrToken";
+import type { ScoreQrFlowKind } from "../../../shared/scoreQrToken";
 export type {
   ScoreQrFlowKind,
   ScoreQrTokenPayload,

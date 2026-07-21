@@ -73,7 +73,7 @@ describe('sanitizeDoublesPairs()', () => {
   it('drops participants whose partner value is not a string', () => {
     const [a, b] = ids(2);
     // partner of a is a number — invalid
-    const pairs = sanitizeDoublesPairs({ [a]: 123 as any, [b]: a }, [a, b]);
+    const pairs = sanitizeDoublesPairs({ [a]: 123 as unknown as string, [b]: a }, [a, b]);
     expect(pairs[a]).toBeUndefined();
   });
 

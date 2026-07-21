@@ -34,7 +34,7 @@ export async function getAdminClubsFlow(userId: string, query?: GetAdminClubsQue
 		const response = mapAdminClubsResponse(adminClubs, courtCountMap, membersCountMap, eventsCountMap);
 
 		return ok(response, { status: 200, message: 'Admin clubs fetched successfully' });
-	} catch (err) {
+	} catch {
 		return error(500, 'Failed to fetch admin clubs');
 	}
 }

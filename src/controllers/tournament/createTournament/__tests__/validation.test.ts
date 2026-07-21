@@ -33,7 +33,8 @@ describe('createTournamentSchema', () => {
 	});
 
 	it('requires totalRounds when status is active', () => {
-		const { totalRounds: _removed, ...withoutRounds } = activeSingleDay;
+		const { totalRounds: _totalRounds, ...withoutRounds } = activeSingleDay;
+		void _totalRounds;
 		const result = createTournamentSchema.safeParse(withoutRounds);
 		expect(result.success).toBe(false);
 	});

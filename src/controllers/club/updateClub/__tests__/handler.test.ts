@@ -14,14 +14,8 @@ jest.mock('mongoose', () => {
 const mockFindClub = queries.findClubByIdForUpdate as jest.MockedFunction<
 	typeof queries.findClubByIdForUpdate
 >;
-const mockFindCanonical = queries.findCanonicalCourtIdsForClub as jest.MockedFunction<
-	typeof queries.findCanonicalCourtIdsForClub
->;
 const mockDeleteRemoved = queries.deleteRemovedClubCourts as jest.MockedFunction<
 	typeof queries.deleteRemovedClubCourts
->;
-const mockUpdateCourt = queries.updateExistingCourt as jest.MockedFunction<
-	typeof queries.updateExistingCourt
 >;
 const mockCreateCourt = queries.createNewCourt as jest.MockedFunction<typeof queries.createNewCourt>;
 const mockCountCourts = queries.countClubCourts as jest.MockedFunction<typeof queries.countClubCourts>;

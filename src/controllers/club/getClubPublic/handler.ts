@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import { error, ok } from '../../../shared/helpers';
 import {
 	findActiveClubPublicById,

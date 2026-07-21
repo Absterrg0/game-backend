@@ -35,7 +35,7 @@ describe('authorizeJoin', () => {
 	});
 
 	it('rejects when tournament is full', async () => {
-		const full = Array.from({ length: 8 }, (_, i) => new Types.ObjectId());
+		const full = Array.from({ length: 8 }, () => new Types.ObjectId());
 		const result = await authorizeJoin(tournament({ participants: full, maxMember: 8 }), session);
 		expect(result.ok).toBe(false);
 		if (!result.ok) expect(result.message).toMatch(/full/i);
