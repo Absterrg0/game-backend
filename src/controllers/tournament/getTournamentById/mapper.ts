@@ -1,15 +1,14 @@
-import type { TournamentPopulated } from "../../../types/api/tournament";
-import { ROLES } from "../../../constants/roles";
-import { TOURNAMENT_ORGANISER_SCORE_EDIT_GRACE_HOURS } from "../../../lib/config";
-import type { DetailViewContext } from "../shared/authorizeGetById";
 import { computeSpotsTotal } from "../computeSpotsTotal";
-import type { TournamentLeaveBlockers } from "../shared/fetchTournamentById";
+import type { DetailViewContext } from "../shared/authorizeGetById";
 import {
   DEFAULT_TOURNAMENT_TIMEZONE,
   getZonedDateParts,
   isValidIanaTimeZone,
 } from "../../../shared/timezone";
 import { sanitizeDoublesPairs } from "../shared/doublesPairs";
+import { ROLES } from "../../../constants/roles";
+import type { TournamentPopulated } from "../../../types/api/tournament";
+import { TOURNAMENT_ORGANISER_SCORE_EDIT_GRACE_HOURS } from "../../../lib/config";
 
 /* =========================
    Response Types
@@ -143,9 +142,7 @@ export function mapTournamentDetail(
   context: DetailViewContext,
   clubSponsorsList: ClubSponsorDoc[],
   sessionUserId: string,
-  leaveBlockers?: TournamentLeaveBlockers
 ): TournamentDetailResponse {
-  void leaveBlockers;
   if (!tournament) {
     throw new Error("Invalid tournament data: missing tournament");
   }

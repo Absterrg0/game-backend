@@ -1,20 +1,10 @@
-
 import mongoose from "mongoose";
-import { z } from "zod";
-import type { DbIdLike } from "../domain/common";
 import type { SchedulePopulatedLean } from "../domain/tournamentSchedule";
 import {
   TOURNAMENT_MODES,
   TOURNAMENT_PLAY_MODES,
-  TOURNAMENT_STATUSES,
   type TournamentStatus,
 } from "../domain/tournament";
-import type {
-  PublishBodyInput,
-  PublishInput,
-} from "../../validation/tournament.schemas";
-import { isValidIanaTimeZone } from "../../shared/timezone";
-
 import type { ITournament } from "../../models/Tournament";
 
 export interface PopulatedCourt {
@@ -106,111 +96,3 @@ export type TournamentPopulated = Omit<
   /** Set when `schedule` is populated (lean); `null` if ref is broken; omit if no ref. */
   schedule?: SchedulePopulatedLean | null;
 };
-
-
-
-const dbIdLikeSchema = z.union([
-  z.instanceof(mongoose.Types.ObjectId),
-  z.string().regex(/^[0-9a-fA-F]{24}$/),
-]);
-
-/**
- * Source data shape read from DB before publish normalization.
- * Allows missing/nullable optional fields so defaults can be applied.
- */
-export const tournamentPublishSourceSchema = z
-  .object({
-    _id: z.instanceof(mongoose.Types.ObjectId),
-    club: dbIdLikeSchema.nullable(),
-    createdBy: dbIdLikeSchema,
-    status: z.enum(TOURNAMENT_STATUSES),
-    name: z.string(),
-    sponsor: dbIdLikeSchema.optional().nullable(),
-    date: z.coerce.date().optional().nullable(),
-    startTime: z.string().optional().nullable(),
-    endTime: z.string().optional().nullable(),
-    timezone: z
-      .string()
-      .optional()
-      .nullable()
-      .refine((value) => value == null || isValidIanaTimeZone(value), {
-        message: "Invalid IANA timezone",
-      }),
-    playMode: z.enum(TOURNAMENT_PLAY_MODES).optional(),
-    tournamentMode: z.enum(TOURNAMENT_MODES).optional(),
-    entryFee: z.number().optional(),
-    minMember: z.number().int().min(1),
-    maxMember: z.number().int().min(1),
-    totalRounds: z.number().int().min(1).max(100).nullable().optional(),
-    duration: z
-      .number()
-      .int()
-      .min(5)
-      .max(120)
-      .refine((value) => value % 5 === 0, {
-        message: "Duration must be in 5-minute intervals",
-      })
-      .nullable()
-      .optional(),
-    breakDuration: z.number().int().min(0).max(120).nullable().optional(),
-    foodInfo: z.string().optional(),
-    descriptionInfo: z.string().optional(),
-  })
-  .strict();
-
-export type TournamentPublishSource = z.infer<typeof tournamentPublishSourceSchema>;
-
-export type NormalizedTournamentPublishSource = {
-  _id: mongoose.Types.ObjectId;
-  club: DbIdLike | null;
-  createdBy: DbIdLike;
-  status: (typeof TOURNAMENT_STATUSES)[number];
-  name: string;
-  sponsor: DbIdLike | null;
-  date: Date | null;
-  startTime?: string | null;
-  endTime?: string | null;
-  timezone?: string;
-  playMode: PublishInput["playMode"];
-  tournamentMode: PublishInput["tournamentMode"];
-  entryFee?: number;
-  minMember: number;
-  maxMember: number;
-  totalRounds?: number;
-  duration?: number;
-  breakDuration?: number;
-  foodInfo: string;
-  descriptionInfo: string;
-};
-
-const DEFAULT_PLAY_MODE: PublishInput["playMode"] = "TieBreak10";
-const DEFAULT_TOURNAMENT_MODE: PublishInput["tournamentMode"] = "singleDay";
-
-export function normalizeTournamentPublishSource(
-  source: Readonly<TournamentPublishSource>
-): NormalizedTournamentPublishSource {
-  return {
-    _id: source._id,
-    club: source.club,
-    createdBy: source.createdBy,
-    status: source.status,
-    name: source.name,
-    sponsor: source.sponsor ?? null,
-    date: source.date ?? null,
-    startTime: source.startTime,
-    endTime: source.endTime,
-    timezone: source.timezone ?? undefined,
-    playMode: source.playMode ?? DEFAULT_PLAY_MODE,
-    tournamentMode: source.tournamentMode ?? DEFAULT_TOURNAMENT_MODE,
-    entryFee: source.entryFee,
-    minMember: source.minMember ,
-    maxMember: source.maxMember,
-    totalRounds: source.totalRounds ?? undefined,
-    duration: source.duration ?? undefined,
-    breakDuration: source.breakDuration ?? undefined,
-    foodInfo: source.foodInfo ?? "",
-    descriptionInfo: source.descriptionInfo ?? "",
-  };
-}
-
-export type { PublishBodyInput };

@@ -197,39 +197,3 @@ export function rateGlicko2Player(
     tau,
   };
 }
-
-export function rateGlicko2HeadToHead(
-  playerOne: Glicko2Player,
-  playerTwo: Glicko2Player,
-  playerOneScore: number,
-  options?: { inactivityPeriods?: number; maxRd?: number }
-) {
-  const boundedScore = Math.max(0, Math.min(1, playerOneScore));
-
-  const updatedPlayerOne = rateGlicko2Player(
-    playerOne,
-    [
-      {
-        opponent: playerTwo,
-        score: boundedScore,
-      },
-    ],
-    options
-  );
-
-  const updatedPlayerTwo = rateGlicko2Player(
-    playerTwo,
-    [
-      {
-        opponent: playerOne,
-        score: 1 - boundedScore,
-      },
-    ],
-    options
-  );
-
-  return {
-    playerOne: updatedPlayerOne,
-    playerTwo: updatedPlayerTwo,
-  };
-}

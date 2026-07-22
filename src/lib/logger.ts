@@ -28,14 +28,6 @@ export function LogError(
   });
 }
 
-export function LogSuccess(path: string, message: string) {
-  logger.info(message, { ...pathMeta(path), success: true });
-}
-
-export function LogInfo(path: string, message: string) {
-  logger.info(message, pathMeta(path));
-}
-
 export function LogWarning(path: string, message: string) {
   logger.warn(message, pathMeta(path));
 }
