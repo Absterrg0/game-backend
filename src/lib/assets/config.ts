@@ -54,6 +54,10 @@ function resolveAssetsPrefix(assetsEnv: AssetsEnv): string {
 	const explicit = process.env.ASSETS_PREFIX?.trim();
 	const prefix = (explicit || defaultPrefixFor(assetsEnv)).replace(/^\/+|\/+$/g, '');
 
+	if (!/^[A-Za-z0-9_-]+$/.test(prefix)) {
+		throw new Error(`Refusing to start: invalid ASSETS_PREFIX "${prefix}"`);
+	}
+
 	if (assetsEnv !== 'production' && prefix === 'assets') {
 		throw new Error(
 			`Refusing to start: ${assetsEnv} must not use ASSETS_PREFIX=assets (use ${defaultPrefixFor(assetsEnv)})`,
