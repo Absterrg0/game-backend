@@ -1,16 +1,14 @@
-import { isProd } from '../config';
-
 /**
  * Asset storage config.
  *
- * Isolation rule: never write to the production prefix unless DEPLOY_ENV=production.
- * Staging often runs with NODE_ENV=production — do not use NODE_ENV alone.
+ * Two-env isolation (matches Cloud Run services from GitLab CI):
+ * - production → `tournament-api-app` → prefix `assets`
+ * - development → `tournament-api-app-dev` / local → prefix `devassets`
  *
- * Prefixes:
- * - production → assets
- * - staging    → stagingassets
- * - development → devassets
+ * Do not use NODE_ENV alone — Cloud Run often sets NODE_ENV=production on both.
  */
+export type AssetsEnv = 'production' | 'development';
+
 export type AssetsConfig = {
 	enabled: boolean;
 	bucket: string;
@@ -20,50 +18,49 @@ export type AssetsConfig = {
 	cdnBaseUrl: string;
 	/** First path segment under the bucket, e.g. "devassets" or "assets". */
 	prefix: string;
-	deployEnv: 'production' | 'staging' | 'development';
+	assetsEnv: AssetsEnv;
 	maxUploadBytes: number;
 };
+
+/** Cloud Run service names from `.gitlab-ci-prod.yml` / `.gitlab-ci-dev.yml`. */
+const PROD_K_SERVICE = 'tournament-api-app';
+const DEV_K_SERVICE = 'tournament-api-app-dev';
 
 function trimSlash(value: string): string {
 	return value.replace(/\/+$/, '');
 }
 
-export function resolveDeployEnv(): 'production' | 'staging' | 'development' {
-	const explicit = (process.env.DEPLOY_ENV ?? process.env.ASSETS_ENV)?.trim().toLowerCase();
-	if (explicit === 'production' || explicit === 'staging' || explicit === 'development') {
-		return explicit;
+/**
+ * Resolve assets env from Cloud Run `K_SERVICE` (auto-injected).
+ * Local / unknown → development.
+ */
+export function resolveAssetsEnv(): AssetsEnv {
+	const service = process.env.K_SERVICE?.trim() ?? '';
+	if (service === PROD_K_SERVICE) {
+		return 'production';
 	}
-	// Staging often uses NODE_ENV=production — never infer production prefix from NODE_ENV alone.
-	if (isProd) {
-		throw new Error(
-			'DEPLOY_ENV (or ASSETS_ENV) must be explicitly set to production, staging, or development when NODE_ENV=production',
-		);
+	if (service === DEV_K_SERVICE || service === '') {
+		return 'development';
 	}
+	// Any other Cloud Run service name: treat as non-prod (safer than writing to assets/).
 	return 'development';
 }
 
-function defaultPrefixFor(deployEnv: 'production' | 'staging' | 'development'): string {
-	switch (deployEnv) {
-		case 'production':
-			return 'assets';
-		case 'staging':
-			return 'stagingassets';
-		default:
-			return 'devassets';
-	}
+function defaultPrefixFor(assetsEnv: AssetsEnv): string {
+	return assetsEnv === 'production' ? 'assets' : 'devassets';
 }
 
-function resolveAssetsPrefix(deployEnv: 'production' | 'staging' | 'development'): string {
+function resolveAssetsPrefix(assetsEnv: AssetsEnv): string {
 	const explicit = process.env.ASSETS_PREFIX?.trim();
-	const prefix = (explicit || defaultPrefixFor(deployEnv)).replace(/^\/+|\/+$/g, '');
+	const prefix = (explicit || defaultPrefixFor(assetsEnv)).replace(/^\/+|\/+$/g, '');
 
-	if (deployEnv !== 'production' && prefix === 'assets') {
+	if (assetsEnv !== 'production' && prefix === 'assets') {
 		throw new Error(
-			`Refusing to start: ${deployEnv} must not use ASSETS_PREFIX=assets (use ${defaultPrefixFor(deployEnv)})`,
+			`Refusing to start: ${assetsEnv} must not use ASSETS_PREFIX=assets (use ${defaultPrefixFor(assetsEnv)})`,
 		);
 	}
 
-	if (deployEnv === 'production' && prefix !== 'assets') {
+	if (assetsEnv === 'production' && prefix !== 'assets') {
 		throw new Error(
 			`Refusing to start: production must use ASSETS_PREFIX=assets (got "${prefix}")`,
 		);
@@ -80,8 +77,8 @@ export function getAssetsConfig(): AssetsConfig {
 	const cdnBaseUrl = trimSlash(
 		process.env.CDN_BASE_URL?.trim() || 'https://dn1jfspmtx8ws.cloudfront.net',
 	);
-	const deployEnv = resolveDeployEnv();
-	const prefix = resolveAssetsPrefix(deployEnv);
+	const assetsEnv = resolveAssetsEnv();
+	const prefix = resolveAssetsPrefix(assetsEnv);
 	const maxUploadBytes = Number(process.env.ASSETS_MAX_UPLOAD_BYTES ?? 2 * 1024 * 1024);
 
 	const enabled = Boolean(accessKeyId && secretAccessKey);
@@ -94,7 +91,7 @@ export function getAssetsConfig(): AssetsConfig {
 		secretAccessKey,
 		cdnBaseUrl,
 		prefix,
-		deployEnv,
+		assetsEnv,
 		maxUploadBytes: Number.isFinite(maxUploadBytes) ? maxUploadBytes : 2 * 1024 * 1024,
 	};
 }

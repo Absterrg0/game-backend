@@ -1,4 +1,4 @@
-export { getAssetsConfig, assertAssetsConfigured, resolveDeployEnv } from './config';
+export { getAssetsConfig, assertAssetsConfigured, resolveAssetsEnv } from './config';
 export type { AssetsConfig } from './config';
 export { ASSET_KINDS, ACCEPTED_UPLOAD_MIME_TYPES, isAcceptedImageMime, extensionForMime } from './types';
 export type { AssetKind, AcceptedUploadMime } from './types';

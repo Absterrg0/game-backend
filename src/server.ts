@@ -79,7 +79,7 @@ async function start() {
 			bucket: assetsConfig.bucket,
 			region: assetsConfig.region,
 			prefix: assetsConfig.prefix,
-			deployEnv: assetsConfig.deployEnv,
+			assetsEnv: assetsConfig.assetsEnv,
 			cdnBaseUrl: assetsConfig.cdnBaseUrl,
 		});
 

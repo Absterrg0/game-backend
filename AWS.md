@@ -26,13 +26,12 @@ S3 bucket  ←── OAC ──→  CloudFront (CDN_BASE_URL)
 
 **One file per upload** (no size variants). UI scales with CSS.
 
-**Prefix isolation** (do not rely on `NODE_ENV` alone — staging often uses `NODE_ENV=production`):
+**Prefix isolation** (do not rely on `NODE_ENV` — Cloud Run often uses `NODE_ENV=production` on both services):
 
-| `DEPLOY_ENV`   | S3 prefix        |
-|----------------|------------------|
-| `development`  | `devassets/`     |
-| `staging`      | `stagingassets/` |
-| `production`   | `assets/`        |
+| Cloud Run `K_SERVICE`     | S3 prefix    |
+|---------------------------|--------------|
+| `tournament-api-app-dev` / local | `devassets/` |
+| `tournament-api-app`             | `assets/`    |
 
 Non-prod **cannot** start with `ASSETS_PREFIX=assets`. Production **must** use `assets`.
 
@@ -78,7 +77,7 @@ Create a user with **programmatic access** only. Attach an inline policy scoped 
       "Resource": ["arn:aws:s3:::tb10assets-dev"],
       "Condition": {
         "StringLike": {
-          "s3:prefix": ["devassets/*", "stagingassets/*"]
+          "s3:prefix": ["devassets/*"]
         }
       }
     },
@@ -87,8 +86,7 @@ Create a user with **programmatic access** only. Attach an inline policy scoped 
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
       "Resource": [
-        "arn:aws:s3:::tb10assets-dev/devassets/*",
-        "arn:aws:s3:::tb10assets-dev/stagingassets/*"
+        "arn:aws:s3:::tb10assets-dev/devassets/*"
       ]
     }
   ]
@@ -134,12 +132,12 @@ AWS_S3_BUCKET=tb10assets-dev
 AWS_S3_REGION=eu-central-1
 CDN_BASE_URL=https://dxxxxx.cloudfront.net
 
-# Isolation: development | staging | production
-DEPLOY_ENV=development
+# No DEPLOY_ENV — prefix comes from Cloud Run K_SERVICE:
+#   tournament-api-app-dev / local → devassets
+#   tournament-api-app             → assets
 
 # Optional overrides:
-# ASSETS_ENV=development          # alias of DEPLOY_ENV
-# ASSETS_PREFIX=devassets         # only if you must override; guarded by DEPLOY_ENV
+# ASSETS_PREFIX=devassets         # only if you must override; guarded by K_SERVICE
 # ASSETS_MAX_UPLOAD_BYTES=2097152 # default 2 MiB
 ```
 
@@ -150,9 +148,9 @@ MONGODB_URI=mongodb+srv://...   # or local mongodb://...
 # MONGODB_DB_NAME=...            # optional override
 ```
 
-**Shared bucket, multiple envs:** same `AWS_S3_BUCKET` + `CDN_BASE_URL` is OK if each deploy uses a different `DEPLOY_ENV` / prefix. Never point staging at the production prefix.
+**Shared bucket, two envs:** same `AWS_S3_BUCKET` + `CDN_BASE_URL` is OK — Cloud Run service name picks the prefix. Never point the prod service at the `devassets` prefix (or vice versa).
 
-On API boot you should see assets config logging roughly: `enabled: true`, `prefix: devassets`, `deployEnv: development`.
+On API boot you should see assets config logging roughly: `enabled: true`, `prefix: devassets`, `assetsEnv: development`.
 
 ### Related API routes (auth required)
 
@@ -223,7 +221,7 @@ yarn assets:migrate-base64:dry
 yarn assets:migrate-base64
 ```
 
-**Safe order:** dry-run against **dev/staging** Mongo → real migrate there → spot-check CDN URLs → only then consider production (with prod `DEPLOY_ENV` / prefix / bucket).
+**Safe order:** dry-run against **dev** Mongo → real migrate there → spot-check CDN URLs → only then consider production (prod Cloud Run service / `assets/` prefix).
 
 ### Orphan cleanup (optional)
 
@@ -236,16 +234,16 @@ yarn assets:cleanup-orphans:execute   # delete unreferenced keys under current p
 
 ---
 
-## 6. Staging vs production checklist
+## 6. Dev vs production checklist
 
-| Check | Dev | Staging | Prod |
-|-------|-----|---------|------|
-| `DEPLOY_ENV` | `development` | `staging` | `production` |
-| Prefix | `devassets` | `stagingassets` | `assets` |
-| Mongo | local / `tournamentDev` | staging DB | prod DB |
-| IAM | keys limited to non-prod prefixes | same or staging-only | prod-only `assets/*` |
-| CORS origins | localhost | staging FE URL | prod FE URL |
-| Migrate | dry → real on non-prod first | dry → real | last |
+| Check | Dev | Prod |
+|-------|-----|------|
+| `K_SERVICE` | `tournament-api-app-dev` / unset (local) | `tournament-api-app` |
+| Prefix | `devassets` | `assets` |
+| Mongo | local / `tournamentDev` | prod DB |
+| IAM | keys limited to `devassets/*` | prod-only `assets/*` |
+| CORS origins | localhost | prod FE URL |
+| Migrate | dry → real on non-prod first | last |
 
 ---
 
@@ -256,7 +254,7 @@ yarn assets:cleanup-orphans:execute   # delete unreferenced keys under current p
 | Presign 500 / “uploads not configured” | Missing `AWS_S3_KEY_ID` / `AWS_S3_KEY_SECRET` |
 | Browser PUT CORS error | Bucket CORS missing frontend origin or `PUT` |
 | Upload OK but image 403 | CloudFront OAC / bucket policy not allowing CF |
-| Wrong prefix in S3 | `DEPLOY_ENV` wrong; staging with `NODE_ENV=production` but no `DEPLOY_ENV` |
+| Wrong prefix in S3 | Wrong Cloud Run service / unexpected `K_SERVICE`; or bad `ASSETS_PREFIX` override |
 | App refuses to start | Non-prod with `ASSETS_PREFIX=assets`, or prod with non-`assets` prefix |
 | Migration finds 0 rows | No `data:image/` left, or wrong `MONGODB_URI` / DB name |
 
