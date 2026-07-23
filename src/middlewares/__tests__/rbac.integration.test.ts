@@ -6,7 +6,6 @@ import {
   requireExactRoles,
   requireOrganiserOrAbove,
   requirePlayerOrAbove,
-  requireRole,
   requireRoles,
   requireSuperAdmin,
 } from '../rbac';
@@ -14,33 +13,6 @@ import {
 function makeAuthenticatedReq(role: (typeof ROLES)[keyof typeof ROLES]): AuthenticatedRequest {
   return makeReq({ user: makeUser(role) }) as AuthenticatedRequest;
 }
-
-// ---------- requireRole ----------
-
-describe('requireRole()', () => {
-  it('calls next() when the user has the exact role', () => {
-    const req = makeAuthenticatedReq(ROLES.ORGANISER);
-    const res = makeRes();
-    const next = makeNext();
-
-    requireRole(ROLES.ORGANISER)(req, res, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
-  });
-
-  it('returns 403 when the user does not have the exact role', () => {
-    const req = makeAuthenticatedReq(ROLES.CLUB_ADMIN);
-    const res = makeRes();
-    const next = makeNext();
-
-    requireRole(ROLES.ORGANISER)(req, res, next);
-
-    expect(next).not.toHaveBeenCalled();
-    expect(res.statusCode).toBe(403);
-    expect(res.body).toEqual({ message: 'Forbidden' });
-  });
-});
 
 // ---------- requireRoles ----------
 

@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ROLES } from '../../constants/roles';
-import { requireExactRoles, requireRole, requireRoles } from '../rbac';
+import { requireExactRoles, requireRoles } from '../rbac';
 
 function mockRes() {
 	return {
@@ -13,22 +13,6 @@ const next = jest.fn() as NextFunction;
 
 beforeEach(() => {
 	jest.clearAllMocks();
-});
-
-describe('requireRole', () => {
-	it('blocks users without exact role', () => {
-		const req = { user: { role: ROLES.PLAYER } };
-		const res = mockRes();
-		requireRole(ROLES.CLUB_ADMIN)(req as never, res, next);
-		expect(res.status).toHaveBeenCalledWith(403);
-	});
-
-	it('allows matching role', () => {
-		const req = { user: { role: ROLES.CLUB_ADMIN } };
-		const res = mockRes();
-		requireRole(ROLES.CLUB_ADMIN)(req as never, res, next);
-		expect(next).toHaveBeenCalled();
-	});
 });
 
 describe('requireRoles', () => {

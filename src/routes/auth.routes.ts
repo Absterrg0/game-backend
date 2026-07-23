@@ -10,7 +10,7 @@ import {
 	googleAuthCallback,
 	logout,
 } from '../controllers/auth/controller';
-import authenticate from '../middlewares/auth';
+import optionalAuthenticate from '../middlewares/optionalAuthenticate';
 import { validateBody } from '../lib/validation';
 import { completeSignupSchema, exchangeHandoffSchema } from '../validation/auth.schemas';
 
@@ -25,6 +25,6 @@ router.post('/complete-signup', validateBody(completeSignupSchema), completeSign
 router.post('/exchange-handoff', validateBody(exchangeHandoffSchema), exchangeAuthHandoff);
 router.post('/logout', logout);
 
-// Protected routes (require authenticated session)
-router.get('/me', authenticate, getMe);
+// Guest-safe session probe (200 + user:null when logged out)
+router.get('/me', optionalAuthenticate, getMe);
 export default router;

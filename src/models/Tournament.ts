@@ -213,6 +213,10 @@ const tournamentSchema = new mongoose.Schema<ITournament>(
 tournamentSchema.index({ club: 1, status: 1, date: -1, createdAt: -1 });
 tournamentSchema.index({ createdBy: 1, status: 1, createdAt: -1 });
 tournamentSchema.index({ club: 1, name: 1 }, { unique: true });
+/** Public / filtered list often sorts by date without a club constraint. */
+tournamentSchema.index({ status: 1, date: -1, createdAt: -1 });
+/** Participation filter ("joined") matches status + membership (multikey). */
+tournamentSchema.index({ status: 1, participants: 1 });
 
 tournamentSchema.pre('validate', function () {
 	if (this.maxMember != null && this.minMember != null && this.maxMember < this.minMember) {

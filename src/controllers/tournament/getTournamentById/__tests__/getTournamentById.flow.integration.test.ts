@@ -3,7 +3,6 @@ import { mapTournamentDetail } from '../mapper';
 import {
 	createClub,
 	createCourt,
-	createGame,
 	createTournament,
 	createUser,
 	setupMemoryMongo,
@@ -24,24 +23,12 @@ describe('getTournamentById read path integration', () => {
 			participants: [participant._id],
 			maxMember: 4,
 		});
-		await createGame({
-			tournament: tournament._id,
-			side1Players: [participant._id],
-			side2Players: [(await createUser())._id],
-			status: 'pendingScore',
-		});
 
-		const loaded = await fetchTournamentById(tournament._id.toString(), {
-			participantIdForLeaveChecks: participant._id.toString(),
-		});
+		const loaded = await fetchTournamentById(tournament._id.toString());
 
 		expect(loaded?.club?.name).toBe('Populate Club');
 		expect(loaded?.club?.courts?.[0].name).toBe('Centre Court');
 		expect(loaded?.participants?.[0]).toMatchObject({ name: 'Alice', alias: 'ace' });
-		expect(loaded?.leaveBlockers).toEqual({
-			hasPendingScoreMatches: true,
-			hasUnfinishedMatches: false,
-		});
 
 		const response = mapTournamentDetail(
 			loaded!,
@@ -53,7 +40,6 @@ describe('getTournamentById read path integration', () => {
 			},
 			[],
 			participant._id.toString(),
-			loaded?.leaveBlockers
 		);
 
 		expect(response).toMatchObject({

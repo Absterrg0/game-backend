@@ -49,7 +49,21 @@ export async function getTournamentsFlow(
   const skip = (page - 1) * limit;
 
   const [tournaments, total] = await Promise.all([
-    Tournament.find(filter)
+    // Project a computed participantCount instead of shipping the whole
+    // participants array over the wire just to derive isFull.
+    Tournament.find(filter, {
+      name: 1,
+      logoUrl: 1,
+      club: 1,
+      date: 1,
+      startTime: 1,
+      endTime: 1,
+      timezone: 1,
+      status: 1,
+      sponsor: 1,
+      maxMember: 1,
+      participantCount: { $size: { $ifNull: ["$participants", []] } },
+    })
       .populate("club", "name logoUrl")
       .populate("sponsor", "name logoUrl link")
       .sort({ date: -1, createdAt: -1 })

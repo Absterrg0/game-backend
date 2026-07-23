@@ -92,13 +92,3 @@ export interface TournamentMatchResponse {
   detachedFromRound?: number | null;
   detachedFromSlot?: number | null;
 }
-
-export interface TournamentMatchesResponse {
-  schedule: {
-    id: string | null;
-    status: ScheduleStatus | null;
-    currentRound: number;
-    totalRounds: number;
-  };
-  matches: TournamentMatchResponse[];
-}

@@ -84,16 +84,6 @@ export async function findClubStaffUserSnapshotById(userId: string, session?: Cl
 	return q.exec();
 }
 
-export async function isUserAdminOfClub(clubId: string, userId: string) {
-	const existing = await User.exists({ _id: userId, adminOf: clubId });
-	return !!existing;
-}
-
-export async function isUserOrganiserOfClub(clubId: string, userId: string) {
-	const existing = await Club.exists({ _id: clubId, organiserIds: userId });
-	return !!existing;
-}
-
 export async function addUserAdminOfClub(clubId: string, userId: string, session: ClientSession) {
 	const s = requireClubStaffSession(session);
 	const clubExists = await Club.exists({ _id: clubId }).session(s).exec();
@@ -148,10 +138,6 @@ export async function removeUserAsClubOrganiser(clubId: string, userId: string, 
 		.exec();
 	await syncUserRoleFromAssignments(userId, s);
 	return result;
-}
-
-export async function updateClubDefaultAdmin(clubId: string, userId: string) {
-	return Club.updateOne({ _id: clubId }, { $set: { defaultAdminId: userId } }).exec();
 }
 
 /**

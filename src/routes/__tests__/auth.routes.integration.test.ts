@@ -36,6 +36,7 @@ describe('auth routes integration', () => {
 				name: ' Ada Player ',
 				dateOfBirth: '1990-03-04',
 				gender: 'female',
+				acceptedTerms: true,
 			},
 		});
 
@@ -56,6 +57,7 @@ describe('auth routes integration', () => {
 			status: 'active',
 		});
 		expect(persisted.dateOfBirth).toBeInstanceOf(Date);
+		expect(persisted.termsAcceptedAt).toBeInstanceOf(Date);
 		await expect(Session.countDocuments({ user: pendingUser._id })).resolves.toBe(1);
 	});
 
@@ -84,6 +86,7 @@ describe('auth routes integration', () => {
 					alias: 'Taken',
 					name: 'Taken Email',
 					email: 'TAKEN@example.com',
+					acceptedTerms: true,
 				},
 			})
 		).resolves.toEqual({
@@ -146,8 +149,15 @@ describe('auth routes integration', () => {
 				headers: { authorization },
 			})
 		).resolves.toEqual({
-			status: 401,
-			body: { message: 'Session expired, login again' },
+			status: 200,
+			body: { user: null },
+		});
+	});
+
+	it('returns 200 with user null for guests with no token', async () => {
+		await expect(requestJson(app, '/auth/me')).resolves.toEqual({
+			status: 200,
+			body: { user: null },
 		});
 	});
 });

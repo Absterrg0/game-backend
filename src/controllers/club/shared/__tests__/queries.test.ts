@@ -5,7 +5,6 @@ import {
 	addUserAdminOfClub,
 	ClubStaffMutationNotFoundError,
 	findClubStaffSnapshotById,
-	isUserAdminOfClub,
 } from '../queries';
 import { ROLES } from '../../../../constants/roles';
 
@@ -39,17 +38,6 @@ describe('findClubStaffSnapshotById', () => {
 		expect(result).toEqual(snapshot);
 		expect(chain.select).toHaveBeenCalledWith('defaultAdminId organiserIds');
 		expect(chain.session).not.toHaveBeenCalled();
-	});
-});
-
-describe('isUserAdminOfClub', () => {
-	it('returns true when User.exists finds adminOf membership', async () => {
-		(User.exists as jest.Mock).mockResolvedValue({ _id: USER_ID });
-
-		const result = await isUserAdminOfClub(CLUB_ID, USER_ID);
-
-		expect(result).toBe(true);
-		expect(User.exists).toHaveBeenCalledWith({ _id: USER_ID, adminOf: CLUB_ID });
 	});
 });
 

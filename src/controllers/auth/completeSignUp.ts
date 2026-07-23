@@ -52,7 +52,8 @@ export async function completeSignUp(req: Request, res: Response) {
 		name: data.name,
 		dateOfBirth: data.dateOfBirth ?? null,
 		gender: data.gender ?? null,
-		elo: DEFAULT_ELO
+		elo: DEFAULT_ELO,
+		termsAcceptedAt: new Date()
 	};
 
 	const session = await mongoose.startSession();

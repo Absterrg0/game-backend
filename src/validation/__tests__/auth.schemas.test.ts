@@ -6,8 +6,27 @@ describe('completeSignupSchema', () => {
 			pendingToken: 'token-abc',
 			alias: 'ace',
 			name: 'Alice',
+			acceptedTerms: true,
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects when acceptedTerms is missing or false', () => {
+		expect(
+			completeSignupSchema.safeParse({
+				pendingToken: 'token-abc',
+				alias: 'ace',
+				name: 'Alice',
+			}).success,
+		).toBe(false);
+		expect(
+			completeSignupSchema.safeParse({
+				pendingToken: 'token-abc',
+				alias: 'ace',
+				name: 'Alice',
+				acceptedTerms: false,
+			}).success,
+		).toBe(false);
 	});
 
 	it('coerces dateOfBirth string to Date', () => {
@@ -16,6 +35,7 @@ describe('completeSignupSchema', () => {
 			alias: 'ace',
 			name: 'Alice',
 			dateOfBirth: '1990-05-15',
+			acceptedTerms: true,
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
@@ -29,6 +49,7 @@ describe('completeSignupSchema', () => {
 			alias: 'ace',
 			name: 'Alice',
 			gender: '',
+			acceptedTerms: true,
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {

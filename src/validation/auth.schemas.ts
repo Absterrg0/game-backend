@@ -27,6 +27,9 @@ export const completeSignupSchema = z.object({
 		.union([z.enum(['male', 'female', 'other']), z.literal(''), z.null()])
 		.optional()
 		.transform((val) => (val === '' || val == null ? null : val)),
+	acceptedTerms: z.literal(true, {
+		error: 'You must accept the User terms to continue',
+	}),
 });
 
 export type CompleteSignupInput = z.infer<typeof completeSignupSchema>;

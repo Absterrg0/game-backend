@@ -166,10 +166,6 @@ export function mapTournamentListItems(
   tournaments: TournamentListDoc[],
 ): TournamentListItem[] {
   return tournaments.map((t) => {
-    if (!Array.isArray(t.participants)) {
-      throw new Error(`Tournament ${t._id.toString()} missing participants array`);
-    }
-
     return {
       id: t._id.toString(),
       name: t.name,
@@ -183,7 +179,7 @@ export function mapTournamentListItems(
         : null,
       date: t.date ? formatDateOnlyUtc(t.date, t.timezone) : null,
       status: t.status,
-      isFull: t.participants.length >= t.maxMember,
+      isFull: t.participantCount >= t.maxMember,
       isLive: isTournamentLiveByScheduleWindow(t),
       isPast: isTournamentPastByScheduleWindow(t),
       sponsor: t.sponsor

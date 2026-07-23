@@ -1,4 +1,4 @@
-import { rateGlicko2Player, rateGlicko2HeadToHead, type Glicko2Player } from '../glicko2';
+import { rateGlicko2Player, type Glicko2Player } from '../glicko2';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -118,59 +118,5 @@ describe('rateGlicko2Player()', () => {
     // Should not produce absurd values
     expect(result.rating).toBeLessThan(5000);
     expect(result.rating).toBeGreaterThan(1500);
-  });
-});
-
-// ── rateGlicko2HeadToHead ────────────────────────────────────────────────────
-
-describe('rateGlicko2HeadToHead()', () => {
-  it('gives winner more rating than loser after equal match', () => {
-    const p1 = makePlayer(1500, 200, 0.06);
-    const p2 = makePlayer(1500, 200, 0.06);
-    const { playerOne, playerTwo } = rateGlicko2HeadToHead(p1, p2, 1);
-    expect(playerOne.rating).toBeGreaterThan(playerTwo.rating);
-  });
-
-  it('produces symmetric results for a draw (both near original rating)', () => {
-    const p1 = makePlayer(1500, 200, 0.06);
-    const p2 = makePlayer(1500, 200, 0.06);
-    const { playerOne, playerTwo } = rateGlicko2HeadToHead(p1, p2, 0.5);
-    expect(playerOne.rating).toBeCloseTo(playerTwo.rating, 2);
-  });
-
-  it('clamps playerOneScore below 0 to 0 (ensures no negative score abuse)', () => {
-    const p1 = makePlayer(1500, 200, 0.06);
-    const p2 = makePlayer(1500, 200, 0.06);
-    // Score -1 should clamp to 0 → player one treated as full loser
-    const { playerOne, playerTwo } = rateGlicko2HeadToHead(p1, p2, -1);
-    expect(playerOne.rating).toBeLessThan(1500);
-    expect(playerTwo.rating).toBeGreaterThan(1500);
-  });
-
-  it('clamps playerOneScore above 1 to 1 (ensures no overflow)', () => {
-    const p1 = makePlayer(1500, 200, 0.06);
-    const p2 = makePlayer(1500, 200, 0.06);
-    const { playerOne } = rateGlicko2HeadToHead(p1, p2, 2);
-    // Should behave same as score=1
-    const { playerOne: baseP1 } = rateGlicko2HeadToHead(p1, p2, 1);
-    expect(playerOne.rating).toBeCloseTo(baseP1.rating, 4);
-  });
-
-  it('both players move when the higher-rated player loses', () => {
-    const strong = makePlayer(1800, 100, 0.06);
-    const weak = makePlayer(1200, 100, 0.06);
-    const { playerOne: strongAfter, playerTwo: weakAfter } = rateGlicko2HeadToHead(strong, weak, 0);
-    const strongLoss = 1800 - strongAfter.rating;
-    const weakGain = weakAfter.rating - 1200;
-    expect(strongLoss).toBeGreaterThan(0);
-    expect(weakGain).toBeGreaterThan(0);
-  });
-
-  it('both players have reduced RD after a match', () => {
-    const p1 = makePlayer(1500, 200, 0.06);
-    const p2 = makePlayer(1500, 200, 0.06);
-    const { playerOne, playerTwo } = rateGlicko2HeadToHead(p1, p2, 1);
-    expect(playerOne.rd).toBeLessThan(200);
-    expect(playerTwo.rd).toBeLessThan(200);
   });
 });

@@ -45,7 +45,7 @@ const optionalAuthenticate = async (
     }
 
     const user = await User.findById(session.user)
-      .select("_id email name alias role adminOf organizerOf")
+      .select("_id email name alias role adminOf homeClub favoriteClubs")
       .exec();
     if (!user) {
       next();

@@ -83,6 +83,7 @@ describe('completeSignUp', () => {
 				pendingToken: 'token',
 				alias: 'player1',
 				name: 'Player One',
+				acceptedTerms: true,
 			}),
 			res,
 		);
@@ -109,6 +110,7 @@ describe('completeSignUp', () => {
 				pendingToken: 'token',
 				alias: 'player1',
 				name: 'Player One',
+				acceptedTerms: true,
 			}),
 			res,
 		);
@@ -133,6 +135,7 @@ describe('completeSignUp', () => {
 				pendingToken: 'bad',
 				alias: 'player1',
 				name: 'Player One',
+				acceptedTerms: true,
 			}),
 			res,
 		);
@@ -171,6 +174,7 @@ describe('completeSignUp', () => {
 				pendingToken: 'token',
 				alias: 'player1',
 				name: 'Player One',
+				acceptedTerms: true,
 			}),
 			res,
 		);

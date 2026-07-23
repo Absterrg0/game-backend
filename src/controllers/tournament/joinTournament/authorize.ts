@@ -9,10 +9,6 @@ export interface JoinTournamentDoc {
   status: string;
   participants?: mongoose.Types.ObjectId[];
   maxMember: number;
-  firstRoundScheduledAt?: Date | null;
-  schedule?: {
-    currentRound?: number;
-  } | mongoose.Types.ObjectId | null;
 }
 
 /**
