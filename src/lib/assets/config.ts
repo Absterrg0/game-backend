@@ -47,8 +47,12 @@ function defaultPrefixFor(assetsEnv: AssetsEnv): string {
 }
 
 function resolveAssetsPrefix(assetsEnv: AssetsEnv): string {
-	const explicit = process.env.ASSETS_PREFIX?.trim();
-	const prefix = (explicit || defaultPrefixFor(assetsEnv)).replace(/^\/+|\/+$/g, '');
+	const hasExplicitPrefix = process.env.ASSETS_PREFIX !== undefined;
+	const explicit = process.env.ASSETS_PREFIX?.trim() ?? '';
+	const prefix = (hasExplicitPrefix ? explicit : defaultPrefixFor(assetsEnv)).replace(
+		/^\/+|\/+$/g,
+		'',
+	);
 
 	if (!/^[A-Za-z0-9_-]+$/.test(prefix)) {
 		throw new Error(`Refusing to start: invalid ASSETS_PREFIX "${prefix}"`);
@@ -80,9 +84,14 @@ export function getAssetsConfig(): AssetsConfig {
 	const secretAccessKey = process.env.AWS_S3_KEY_SECRET?.trim() ?? '';
 	const assetsEnv = resolveAssetsEnv();
 	const prefix = resolveAssetsPrefix(assetsEnv);
-	const maxUploadBytes = Number(
-		process.env.ASSETS_MAX_UPLOAD_BYTES ?? ASSETS_MAX_UPLOAD_BYTES_DEFAULT,
-	);
+	const rawMaxUploadBytes = process.env.ASSETS_MAX_UPLOAD_BYTES;
+	const maxUploadBytes =
+		rawMaxUploadBytes === undefined
+			? ASSETS_MAX_UPLOAD_BYTES_DEFAULT
+			: Number(rawMaxUploadBytes);
+	if (!Number.isSafeInteger(maxUploadBytes) || maxUploadBytes <= 0) {
+		throw new Error('ASSETS_MAX_UPLOAD_BYTES must be a positive integer');
+	}
 
 	const enabled = Boolean(accessKeyId && secretAccessKey);
 
@@ -95,9 +104,7 @@ export function getAssetsConfig(): AssetsConfig {
 		cdnBaseUrl: ASSETS_CDN_BASE_URL,
 		prefix,
 		assetsEnv,
-		maxUploadBytes: Number.isFinite(maxUploadBytes)
-			? maxUploadBytes
-			: ASSETS_MAX_UPLOAD_BYTES_DEFAULT,
+		maxUploadBytes,
 	};
 }
 
