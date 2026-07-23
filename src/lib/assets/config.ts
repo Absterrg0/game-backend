@@ -26,10 +26,6 @@ export type AssetsConfig = {
 const PROD_K_SERVICE = 'tournament-api-app';
 const DEV_K_SERVICE = 'tournament-api-app-dev';
 
-function trimSlash(value: string): string {
-	return value.replace(/\/+$/, '');
-}
-
 /**
  * Resolve assets env from Cloud Run `K_SERVICE` (auto-injected).
  * Local / unknown → development.
@@ -73,30 +69,35 @@ function resolveAssetsPrefix(assetsEnv: AssetsEnv): string {
 	return prefix;
 }
 
+/** Fixed TB10 asset storage (credentials only come from env). */
+const ASSETS_BUCKET = 'tb10assets';
+const ASSETS_REGION = 'eu-north-1';
+const ASSETS_CDN_BASE_URL = 'https://dn1jfspmtx8ws.cloudfront.net';
+const ASSETS_MAX_UPLOAD_BYTES_DEFAULT = 2 * 1024 * 1024;
+
 export function getAssetsConfig(): AssetsConfig {
 	const accessKeyId = process.env.AWS_S3_KEY_ID?.trim() ?? '';
 	const secretAccessKey = process.env.AWS_S3_KEY_SECRET?.trim() ?? '';
-	const bucket = process.env.AWS_S3_BUCKET?.trim() || 'tb10assets';
-	const region = process.env.AWS_S3_REGION?.trim() || 'eu-central-1';
-	const cdnBaseUrl = trimSlash(
-		process.env.CDN_BASE_URL?.trim() || 'https://dn1jfspmtx8ws.cloudfront.net',
-	);
 	const assetsEnv = resolveAssetsEnv();
 	const prefix = resolveAssetsPrefix(assetsEnv);
-	const maxUploadBytes = Number(process.env.ASSETS_MAX_UPLOAD_BYTES ?? 2 * 1024 * 1024);
+	const maxUploadBytes = Number(
+		process.env.ASSETS_MAX_UPLOAD_BYTES ?? ASSETS_MAX_UPLOAD_BYTES_DEFAULT,
+	);
 
 	const enabled = Boolean(accessKeyId && secretAccessKey);
 
 	return {
 		enabled,
-		bucket,
-		region,
+		bucket: ASSETS_BUCKET,
+		region: ASSETS_REGION,
 		accessKeyId,
 		secretAccessKey,
-		cdnBaseUrl,
+		cdnBaseUrl: ASSETS_CDN_BASE_URL,
 		prefix,
 		assetsEnv,
-		maxUploadBytes: Number.isFinite(maxUploadBytes) ? maxUploadBytes : 2 * 1024 * 1024,
+		maxUploadBytes: Number.isFinite(maxUploadBytes)
+			? maxUploadBytes
+			: ASSETS_MAX_UPLOAD_BYTES_DEFAULT,
 	};
 }
 

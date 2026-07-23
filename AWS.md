@@ -19,7 +19,7 @@ Backend
   └─ signs PUT with IAM keys
   └─ object key: {prefix}/{kind}/{assetId}/{fileId}.{ext}
 
-S3 bucket  ←── OAC ──→  CloudFront (CDN_BASE_URL)
+S3 bucket (tb10assets)  ←── OAC ──→  CloudFront (https://dn1jfspmtx8ws.cloudfront.net)
 ```
 
 **Asset kinds:** `user_avatar` | `club_logo` | `tournament_logo` | `sponsor_logo`
@@ -48,8 +48,8 @@ Prefer a **separate AWS account** (or at least a separate bucket + IAM user) fro
 
 ### 1.2 S3 bucket
 
-1. Region: **`eu-central-1`** (match `AWS_S3_REGION`).
-2. Bucket name example: `tb10assets-dev` (prod may use `tb10assets`).
+1. Region: **`eu-north-1`** (hardcoded in `src/lib/assets/config.ts`).
+2. Bucket name: **`tb10assets`**.
 3. **Block all public access** = ON (CloudFront OAC will read objects).
 4. Default encryption: SSE-S3 (AES-256) is fine.
 5. Optional: lifecycle rules later; not required for first setup.
@@ -59,7 +59,7 @@ Prefer a **separate AWS account** (or at least a separate bucket + IAM user) fro
 1. Origin = the S3 bucket, via **Origin Access Control (OAC)** (not legacy OAI if you can avoid it).
 2. Allow CloudFront to update the bucket policy when prompted.
 3. Viewer protocol: redirect HTTP → HTTPS.
-4. Note the distribution domain, e.g. `dxxxxx.cloudfront.net` → this becomes `CDN_BASE_URL`.
+4. Note the distribution domain: **`https://dn1jfspmtx8ws.cloudfront.net`** (hardcoded as `CDN` base in config).
 5. Default cache behavior can stay mostly default for images; you can tune TTLs later.
 
 ### 1.4 IAM programmatic user (app keys)
@@ -74,7 +74,7 @@ Create a user with **programmatic access** only. Attach an inline policy scoped 
       "Sid": "ListBucketPrefix",
       "Effect": "Allow",
       "Action": ["s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::tb10assets-dev"],
+      "Resource": ["arn:aws:s3:::tb10assets"],
       "Condition": {
         "StringLike": {
           "s3:prefix": ["devassets/*"]
@@ -86,7 +86,7 @@ Create a user with **programmatic access** only. Attach an inline policy scoped 
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
       "Resource": [
-        "arn:aws:s3:::tb10assets-dev/devassets/*"
+        "arn:aws:s3:::tb10assets/devassets/*"
       ]
     }
   ]
@@ -126,11 +126,12 @@ Copy from `.env.example` and fill:
 
 ```bash
 # --- Image assets (S3 + CloudFront) ---
+# Only credentials are env-configured. Bucket/region/CDN are hardcoded:
+#   bucket: tb10assets
+#   region: eu-north-1
+#   CDN:    https://dn1jfspmtx8ws.cloudfront.net
 AWS_S3_KEY_ID=AKIA...
 AWS_S3_KEY_SECRET=...
-AWS_S3_BUCKET=tb10assets-dev
-AWS_S3_REGION=eu-central-1
-CDN_BASE_URL=https://dxxxxx.cloudfront.net
 
 # No DEPLOY_ENV — prefix comes from Cloud Run K_SERVICE:
 #   tournament-api-app-dev / local → devassets
@@ -148,7 +149,7 @@ MONGODB_URI=mongodb+srv://...   # or local mongodb://...
 # MONGODB_DB_NAME=...            # optional override
 ```
 
-**Shared bucket, two envs:** same `AWS_S3_BUCKET` + `CDN_BASE_URL` is OK — Cloud Run service name picks the prefix. Never point the prod service at the `devassets` prefix (or vice versa).
+**Shared bucket, two envs:** one bucket (`tb10assets`) + one CDN — Cloud Run service name picks the prefix. Never point the prod service at the `devassets` prefix (or vice versa).
 
 On API boot you should see assets config logging roughly: `enabled: true`, `prefix: devassets`, `assetsEnv: development`.
 
@@ -189,7 +190,7 @@ Client entry: `src/lib/api/uploadImage.ts` (compress → presign → PUT).
 3. Confirm:
    - Network: `POST /api/uploads/presign` 200, then `PUT` to S3 200.
    - S3 console: object under `devassets/{kind}/…`.
-   - Browser: image loads from `CDN_BASE_URL/...`.
+   - Browser: image loads from `https://dn1jfspmtx8ws.cloudfront.net/...`.
    - Mongo: field is an `https://…` URL, not `data:image/…`.
 
 ---
