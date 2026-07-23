@@ -75,7 +75,7 @@ function resolveAssetsPrefix(assetsEnv: AssetsEnv): string {
 
 /** Fixed TB10 asset storage (credentials only come from env). */
 const ASSETS_BUCKET = 'tb10assets';
-const ASSETS_REGION = 'eu-north-1';
+const ASSETS_REGION = 'eu-central-1';
 const ASSETS_CDN_BASE_URL = 'https://dn1jfspmtx8ws.cloudfront.net';
 const ASSETS_MAX_UPLOAD_BYTES_DEFAULT = 2 * 1024 * 1024;
 

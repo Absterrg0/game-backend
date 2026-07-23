@@ -48,7 +48,7 @@ Prefer a **separate AWS account** (or at least a separate bucket + IAM user) fro
 
 ### 1.2 S3 bucket
 
-1. Region: **`eu-north-1`** (hardcoded in `src/lib/assets/config.ts`).
+1. Region: **`eu-central-1`** (hardcoded in `src/lib/assets/config.ts`).
 2. Bucket name: **`tb10assets`**.
 3. **Block all public access** = ON (CloudFront OAC will read objects).
 4. Default encryption: SSE-S3 (AES-256) is fine.
@@ -128,7 +128,7 @@ Copy from `.env.example` and fill:
 # --- Image assets (S3 + CloudFront) ---
 # Only credentials are env-configured. Bucket/region/CDN are hardcoded:
 #   bucket: tb10assets
-#   region: eu-north-1
+#   region: eu-central-1
 #   CDN:    https://dn1jfspmtx8ws.cloudfront.net
 AWS_S3_KEY_ID=AKIA...
 AWS_S3_KEY_SECRET=...
