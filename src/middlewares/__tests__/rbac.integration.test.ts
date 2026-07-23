@@ -1,5 +1,4 @@
 import { ROLES } from '../../constants/roles';
-import type { AuthenticatedRequest } from '../../shared/authContext';
 import { makeNext, makeReq, makeRes, makeUser } from '../../testUtils/middlewareTestUtils';
 import {
   requireClubAdminOrAbove,
@@ -9,10 +8,6 @@ import {
   requireRoles,
   requireSuperAdmin,
 } from '../rbac';
-
-function makeAuthenticatedReq(role: (typeof ROLES)[keyof typeof ROLES]): AuthenticatedRequest {
-  return makeReq({ user: makeUser(role) }) as AuthenticatedRequest;
-}
 
 // ---------- requireRoles ----------
 

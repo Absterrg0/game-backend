@@ -8,6 +8,7 @@ export default [
       "dist/**",
       "node_modules/**",
       "coverage/**",
+      ".vercel/**",
       "jest.config.ts",
       "jest.*.config.ts",
     ],
