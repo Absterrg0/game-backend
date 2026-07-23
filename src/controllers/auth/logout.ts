@@ -20,15 +20,17 @@ export function clearExistingSession(req: Request, res: Response): void {
 	clearAuthCookie(res);
 }
 
-export function logout(req: Request, res: Response): void {
+export async function logout(req: Request, res: Response): Promise<void> {
 	const token = extractAuthToken(req);
 	if (token) {
-		Session.deleteOne({
-			// Temporary migration fallback: match both legacy raw-token rows and hashed-token rows.
-			$or: [{ token }, { token: hashSessionToken(token) }],
-		}).exec().catch((err: unknown) => {
+		try {
+			await Session.deleteOne({
+				// Temporary migration fallback: match both legacy raw-token rows and hashed-token rows.
+				$or: [{ token }, { token: hashSessionToken(token) }],
+			});
+		} catch (err: unknown) {
 			logger.error('Error deleting session on logout', { err });
-		});
+		}
 	}
 	clearAuthCookie(res);
 	res.json({ message: 'Logged out successfully' });
